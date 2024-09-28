@@ -1,0 +1,111 @@
+{
+  "name": "urdf-editor",
+  "displayName": "URDF Editor for ROS 2",
+  "description": "A robust URDF editor for ROS 2 packages.",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.91.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onWebviewPanel:urdfPreview"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "urdf-editor.create",
+        "title": "ROS: Preview URDDF"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "urdf-editor.create",
+          "when": "explorerResourceIsFolder"
+        }
+      ]
+    },
+    "configuration": {
+      "type": "object",
+      "title": "URDF",
+      "properties": {
+          "ros.BackgroundColor": {
+              "type": "string",
+              "title": "Background Color",
+              "default": "#000000",
+              "description": "Background color of the URDF preview panel."
+          },
+          "ros.GridMainColor": {
+              "type": "string",
+              "title": "Grid Main Color",
+              "default": "#00FF00",
+              "description": "Color of the main grid in the URDF preview panel."
+          },
+          "ros.GridMinorColor": {
+              "type": "string",
+              "title": "Grid Minor Line Color",
+              "default": "#001100",
+              "description": "Color of the line grid in the URDF preview panel."
+          },
+          "ros.GridMinorOpacity": {
+              "type": "number",
+              "default": 0.5,
+              "title": "Minor Grid Line Opacity",
+              "description": "Minor grid line opacity between 0 and 1 in the URDF preview panel."
+          },
+          "ros.CameraDistanceToRobot": {
+              "type": "number",
+              "title": "Camera Distance to Robot",
+              "default": 1,
+              "description": "Distance in meters from the camera to the robot in the URDF preview panel."
+          }
+      }
+    }
+  },
+  "scripts": {
+    "vsix": "vsce package -o vscode-ros-dev.vsix",
+    "vscode:prepublish": "npm run package",
+    "compile": "webpack",
+    "build": "webpack",
+    "watch": "webpack --watch",
+    "package": "webpack --mode production --devtool hidden-source-map",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.6",
+    "@types/node": "18.x",
+    "@types/vscode": "^1.91.0",
+    "@types/vscode-webview": "^1.57.5",
+    "@typescript-eslint/eslint-plugin": "^6.19.1",
+    "@typescript-eslint/parser": "^6.19.1",
+    "@vscode/test-cli": "^0.0.4",
+    "@vscode/test-electron": "^2.3.9",
+    "copy-webpack-plugin": "^12.0.2",
+    "eslint": "^8.56.0",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.5.4",
+    "webpack": "^5.93.0",
+    "webpack-cli": "^5.1.4",
+    "@vscode/vsce": "^3.1.0"
+  },
+  "dependencies": {
+    "@polyhobbyist/babylon_ros": "^0.0.7",
+    "@polyhobbyist/babylon-collada-loader": "^0.0.4",
+    "babylonjs": "^7.16.1",
+    "babylonjs-materials": "^7.16.1",
+    "@vscode/debugadapter": "^1.66.0",
+    "@vscode/webview-ui-toolkit": "^1.4.0",
+    "tslib": "^2.6.3",
+    "handlebars": "^4.7.8",
+    "memfs": "^4.9.3",
+    "yaml": "^2.4.2",
+    "xacro-parser": "^0.3.9"
+  }
+}
