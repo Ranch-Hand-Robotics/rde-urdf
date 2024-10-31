@@ -7,8 +7,14 @@ import * as GUI from 'babylonjs-gui';
 // Get access to the VS Code API from within the webview context
 const vscode = acquireVsCodeApi();
 
-const canvas = document.getElementById("renderCanvas") as HTMLCanvasElement;
-const engine = new BABYLON.Engine(canvas, true); // Generate the BABYLON 3D engine
+const canvas = document.getElementById("renderCanvas");
+const canvasElement = canvas as unknown as HTMLCanvasElement;
+let engine : BABYLON.Engine | undefined = undefined;
+
+if (canvasElement) {
+  engine = new BABYLON.Engine(canvasElement, true); // Generate the BABYLON 3D engine
+}
+
 let scene : BABYLON.Scene | undefined = undefined;
 
 let currentRobot : urdf.Robot | undefined = undefined;
@@ -64,7 +70,11 @@ function addAxisToTransform(list : BABYLON.PositionGizmo[], scene : BABYLON.Scen
   }
 }
 
-function toggleAxisOnRobot(jointOrLink : Boolean, scene : BABYLON.Scene, layer: BABYLON.UtilityLayerRenderer, robot : urdf.Robot) {
+function toggleAxisOnRobot(jointOrLink : Boolean, scene : BABYLON.Scene, layer: BABYLON.UtilityLayerRenderer, robot : urdf.Robot | undefined) {
+  if (!robot) {
+    return;
+  }
+
   let whichAxis = jointOrLink ? jointAxisList : linkAxisList;
 
   if (whichAxis.length === 0) {
@@ -124,7 +134,11 @@ function addRotationToTransform(list : BABYLON.RotationGizmo[], scene : BABYLON.
 
 }
 
-function toggleAxisRotationOnRobot(jointOrLink : Boolean, ui: GUI.AdvancedDynamicTexture, scene : BABYLON.Scene, layer: BABYLON.UtilityLayerRenderer, robot : urdf.Robot) {
+function toggleAxisRotationOnRobot(jointOrLink : Boolean, ui: GUI.AdvancedDynamicTexture, scene : BABYLON.Scene, layer: BABYLON.UtilityLayerRenderer, robot : urdf.Robot | undefined) {
+  if (!robot) {
+    return;
+  }
+
   let whichList = jointOrLink ? jointRotationGizmos : linkRotationGizmos;
   if (whichList.length === 0) {
     if (jointOrLink) {
@@ -146,6 +160,10 @@ function toggleAxisRotationOnRobot(jointOrLink : Boolean, ui: GUI.AdvancedDynami
 
 
 var createScene = async function () {
+  if (!engine) {
+    return;
+  }
+
   scene = new BABYLON.Scene(engine);
   if (BABYLON.SceneLoader) {
     //Add this loader into the register plugin
@@ -213,7 +231,7 @@ function createButton(toolbar: GUI.StackPanel, name : string, text : string, sce
 }
 
 function createUI(scene : BABYLON.Scene) {
-  var advancedTexture = GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+  var advancedTexture = GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI", true, scene);
 
   statusLabel.color = "white";
   statusLabel.textHorizontalAlignment = GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
@@ -276,8 +294,10 @@ async function applyURDF(urdfText: string) {
     });
 
 
-    currentRobot = await urdf.deserializeUrdfToRobot(urdfText);
-    currentRobot.create(scene);
+    if (scene) {
+      currentRobot = await urdf.deserializeUrdfToRobot(urdfText);
+      currentRobot.create(scene);
+    }
 
     vscode.postMessage({
       command: "trace",
@@ -296,6 +316,10 @@ async function applyURDF(urdfText: string) {
 async function main() {
 
   scene = await createScene();
+  if (!scene) {
+    return;
+  }
+
   createUI(scene);
 
   window.addEventListener('message', event => {
@@ -322,19 +346,19 @@ async function main() {
     }
   });
   
-  engine.runRenderLoop(function () {
-    if (scene !== undefined && readyToRender) {
-      scene.render();
-    }
-  });
-  
-  engine.resize();
-  
-  window.addEventListener("resize", function () {
-      engine.resize();
-  });  
-  
-  
+  if (engine) {
+    engine.runRenderLoop(function () {
+      if (scene !== undefined && readyToRender) {
+        scene.render();
+      }
+    });
+    
+    engine.resize();
+    
+    window.addEventListener("resize", function () {
+        engine.resize();
+    });
+  }
 }
 
   // Just like a regular webpage we need to wait for the webview

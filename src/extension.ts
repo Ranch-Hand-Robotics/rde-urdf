@@ -8,10 +8,13 @@ var urdfManager: URDFPreviewManager | null = null;
 export function activate(context: vscode.ExtensionContext) {
 
   console.log('"urdf-editor" is now active!');
+  urdfManager = new URDFPreviewManager(context, tracing);
+  vscode.window.registerWebviewPanelSerializer('urdfPreview_standalone', urdfManager);
 
   const previewURDFCommand = vscode.commands.registerCommand("urdf-editor.create", () => {
-    urdfManager = new URDFPreviewManager(context, tracing);
-    vscode.window.registerWebviewPanelSerializer('urdfPreview', urdfManager);
+    if (urdfManager && vscode.window.activeTextEditor) {
+      urdfManager.preview(vscode.window.activeTextEditor.document.uri);
+    }
   });
 
   context.subscriptions.push(previewURDFCommand);

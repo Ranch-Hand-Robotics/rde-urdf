@@ -1,6 +1,12 @@
 import * as os from "os";
 import * as vscode from "vscode";
 import * as child_process from "child_process";
+import { XacroParser } from 'xacro-parser';
+import {XMLSerializer} from 'xmldom';
+import { JSDOM } from 'jsdom';
+import path = require("path");
+import fs = require("fs");
+import { string } from "yaml/dist/schema/common/string";
 
 export function getNonce() {
   let text = "";
@@ -17,6 +23,22 @@ export function getUri(webview: vscode.Webview, extensionUri: vscode.Uri, pathLi
 
 export function xacro(filename: string): Promise<any> {
   return new Promise((resolve, reject) => {
+
+    global.DOMParser = new JSDOM().window.DOMParser;
+
+    const parser = new XacroParser();
+    const xacroContents = fs.readFileSync( filename, { encoding: 'utf8' } );
+    parser.parse( xacroContents ).then( result => {
+      // Result is an XmlDom object, convert to string.
+      const serializer = new XMLSerializer();
+      const parsedXacro = serializer.serializeToString(result.documentElement);
+      resolve( parsedXacro );
+    }).catch( error => {
+      reject( error );
+    });
+
+    
+      /*
       let processOptions = {
           cwd: vscode.workspace.rootPath,
           windowsHide: false,
@@ -36,40 +58,49 @@ export function xacro(filename: string): Promise<any> {
               reject(error);
           }
       });
+    */
   });
 }
 
-export function getPackages(): Promise<{ [name: string]: () => Promise<string> }> {
-  return new Promise((resolve, reject) => async () => {
-    const packages: { [name: string]: () => Promise<string> } = {};
-    const { stdout } = child_process.exec("ros2 pkg list");
+export async function getPackages(): Promise<Map<string, string>> {
+    var packages = new Map<string, string>();
 
-    if (!stdout) {
+    // For this project, we're focusing on URDF packages within the same workspace. 
+    // We will not use ros2 cli to list packages
+    // Iterate over the top level directories in the 'src' directory, looking for package.xml
+    // Extract the package name
+    // Identify the package path
+    // assume folders relative to this path are where resources are located.
+    // for example if you have a package called 'robot1', with a directory called 'meshes' containing a file called 'robot1.stl', then 
+    // the return from this function will be the root of robot1's package directory
+
+    // Get the workspace path from vscode api:
+
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (!workspaceFolders) {
       return packages;
     }
 
-    let chucks = "";
-    for await (const chuck of stdout) {
-        chucks += chuck;
-    }
+    // for each workspace folder, look for package.xml files
+    for (const workspaceFolder of workspaceFolders) {
+      const packageXmlFiles = await vscode.workspace.findFiles(
+        new vscode.RelativePattern(workspaceFolder, "**/package.xml")
+      );
 
-    chucks.split(os.EOL).map(((line) => {
-        const packageName: string = line.trim();
-        packages[packageName] = async (): Promise<string> => {
-            const { stdout } = await child_process.exec(
-                `ros2 pkg prefix --share ${packageName}`);
-            if (!stdout) {
-                return "";
-            }
+      for (const packageXmlFile of packageXmlFiles) {
+        const packageXml = await vscode.workspace.fs.readFile(packageXmlFile);
+        const packageXmlString = new TextDecoder().decode(packageXml);
+        const packageXmlDom = new JSDOM(packageXmlString);
+        const packageXmlDocument = packageXmlDom.window.document;
 
-            let innerChucks = "";
-            for await (const chuck of stdout) {
-                innerChucks += chuck;
-            }
-            return innerChucks.trim();
+        const packageName = packageXmlDocument.querySelector("name")?.textContent;
+        if (!packageName) {
+          continue;
+        }
+
+        packages[packageName] = path.dirname(packageXmlFile.fsPath);
         };
-    }));
+      }
 
     return packages;
-  });
 }

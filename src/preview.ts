@@ -30,7 +30,7 @@ export default class URDFPreview
     {
         // Create and show a new webview
         var editor = vscode.window.createWebviewPanel(
-            'urdfPreview', // Identifies the type of the webview. Used internally
+            'urdfPreview_standalone', // Identifies the type of the webview. Used internally
             'URDF Preview', // Title of the panel displayed to the user
             vscode.ViewColumn.Two, // Editor column to show the new webview panel in.
             { 
@@ -113,7 +113,7 @@ export default class URDFPreview
         try {
             urdfText = await util.xacro(this._resource.fsPath);
 
-            var packageMap = await rosApi.getPackages();
+            var packageMap = await util.getPackages();
             if (packageMap !== null) {
                 // replace package://(x) with fully resolved paths
                 var pattern =  /package:\/\/(.*?)\//g;
@@ -125,7 +125,7 @@ export default class URDFPreview
                             packagesNotFound.push(match[1]);
                         }
                     } else {
-                        var packagePath = await packageMap[match[1]]();
+                        var packagePath = await packageMap[match[1]];
                         if (packagePath.charAt(0)  === '/') {
                             // inside of mesh re \source, the loader attempts to concatinate the base uri with the new path. It first checks to see if the
                             // base path has a /, if not it adds it.
@@ -248,7 +248,7 @@ export default class URDFPreview
         const webviewUri = this.getUri(webview, extensionUri, ["dist", "webview.js"]);
         const webviewUriUrdf = this.getUri(webview, extensionUri, ["node_modules/@polyhobbyist/babylon_ros/dist", "ros.js"]);
         const webviewUriBabylon = this.getUri(webview, extensionUri, ["node_modules/babylonjs", "babylon.max.js"]);
-        const nonce = this.getNonce();
+        const nonce = util.getNonce();
 
         // Tip: Install the es6-string-html VS Code extension to enable code highlighting below
         return /*html*/ `
@@ -278,19 +278,11 @@ export default class URDFPreview
             <body>
                 <canvas id="renderCanvas" touch-action="none"></canvas>    
                 <script type="module" nonce="${nonce}" src="${webviewUriBabylon}"></script>
+                <script type="module" nonce="${nonce}" src="${webviewUriUrdf}"></script>
                 <script type="module" nonce="${nonce}" src="${webviewUri}"></script>
             </body>
             </html>
         `;
-    }
-
-    private getNonce() {
-        let text = "";
-        const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-        for (let i = 0; i < 32; i++) {
-            text += possible.charAt(Math.floor(Math.random() * possible.length));
-        }
-        return text;
     }
 
     private getUri(webview: vscode.Webview, extensionUri: vscode.Uri, pathList: string[]) {
