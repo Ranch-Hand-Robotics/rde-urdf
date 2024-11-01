@@ -7,13 +7,7 @@ import * as GUI from 'babylonjs-gui';
 // Get access to the VS Code API from within the webview context
 const vscode = acquireVsCodeApi();
 
-const canvas = document.getElementById("renderCanvas");
-const canvasElement = canvas as unknown as HTMLCanvasElement;
 let engine : BABYLON.Engine | undefined = undefined;
-
-if (canvasElement) {
-  engine = new BABYLON.Engine(canvasElement, true); // Generate the BABYLON 3D engine
-}
 
 let scene : BABYLON.Scene | undefined = undefined;
 
@@ -61,7 +55,7 @@ function addAxisToTransform(list : BABYLON.PositionGizmo[], scene : BABYLON.Scen
         statusLabel.linkOffsetY = -100;
       statusLabel.linkWithMesh(transform);
       }
-    }
+    };
 
     axis.xGizmo.dragBehavior.onDragObservable.add(drag);
     axis.yGizmo.dragBehavior.onDragObservable.add(drag);
@@ -125,7 +119,7 @@ function addRotationToTransform(list : BABYLON.RotationGizmo[], scene : BABYLON.
         statusLabel.linkOffsetY = -100;
       statusLabel.linkWithMesh(transform);
       }
-    }
+    };
 
     rotationGizmo.xGizmo.dragBehavior.onDragObservable.add(drag);
     rotationGizmo.yGizmo.dragBehavior.onDragObservable.add(drag);
@@ -160,51 +154,53 @@ function toggleAxisRotationOnRobot(jointOrLink : Boolean, ui: GUI.AdvancedDynami
 
 
 var createScene = async function () {
-  if (!engine) {
-    return;
-  }
-
-  scene = new BABYLON.Scene(engine);
-  if (BABYLON.SceneLoader) {
-    //Add this loader into the register plugin
-    BABYLON.SceneLoader.RegisterPlugin(new ColladaFileLoader.DAEFileLoader());
-  }
-
-  // This creates a basic Babylon Scene object (non-mesh)
-    // Create a default ground and skybox.
-  const environment = scene.createDefaultEnvironment({
-    createGround: true,
-    createSkybox: false,
-    enableGroundMirror: true,
-    groundMirrorSizeRatio: 0.15
-  });
-
-  scene.useRightHandedSystem = true;
-  scene.clearColor = BABYLON.Color4.FromColor3(BABYLON.Color3.Black());
-
+  const canvas = document.getElementById("renderCanvas");
+  const canvasElement = canvas as unknown as HTMLCanvasElement;
+  if (canvasElement) {
+    engine = new BABYLON.Engine(canvasElement, true); // Generate the BABYLON 3D engine
   
-  // This creates and positions a free camera (non-mesh)
-  camera = new BABYLON.ArcRotateCamera("camera1", - Math.PI / 3, 5 * Math.PI / 12, 1, new BABYLON.Vector3(0, 0, 0), scene);
-  camera.wheelDeltaPercentage = 0.01;
-  camera.minZ = 0.1;
+    scene = new BABYLON.Scene(engine);
+    if (BABYLON.SceneLoader) {
+      //Add this loader into the register plugin
+      BABYLON.SceneLoader.RegisterPlugin(new ColladaFileLoader.DAEFileLoader());
+    }
 
-  const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+    // This creates a basic Babylon Scene object (non-mesh)
+      // Create a default ground and skybox.
+    const environment = scene.createDefaultEnvironment({
+      createGround: true,
+      createSkybox: false,
+      enableGroundMirror: true,
+      groundMirrorSizeRatio: 0.15
+    });
 
-  // This attaches the camera to the canvas
-  camera.attachControl(canvas, true);
+    scene.useRightHandedSystem = true;
+    scene.clearColor = BABYLON.Color4.FromColor3(BABYLON.Color3.Black());
 
-  var groundMaterial = new Materials.GridMaterial("groundMaterial", scene);
-  groundMaterial.majorUnitFrequency = 5;
-  groundMaterial.minorUnitVisibility = 0.5;
-  groundMaterial.gridRatio = 1;
-  groundMaterial.opacity = 0.8;
-  groundMaterial.useMaxLine = true;
-  groundMaterial.lineColor = BABYLON.Color3.Green();
-  groundMaterial.mainColor = BABYLON.Color3.Green();
+    
+    // This creates and positions a free camera (non-mesh)
+    camera = new BABYLON.ArcRotateCamera("camera1", - Math.PI / 3, 5 * Math.PI / 12, 1, new BABYLON.Vector3(0, 0, 0), scene);
+    camera.wheelDeltaPercentage = 0.01;
+    camera.minZ = 0.1;
 
-  ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 50, height: 50}, scene);
-  ground.material = groundMaterial;
-  ground.isPickable = false;
+    const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+
+    // This attaches the camera to the canvas
+    camera.attachControl(canvas, true);
+
+    var groundMaterial = new Materials.GridMaterial("groundMaterial", scene);
+    groundMaterial.majorUnitFrequency = 5;
+    groundMaterial.minorUnitVisibility = 0.5;
+    groundMaterial.gridRatio = 1;
+    groundMaterial.opacity = 0.8;
+    groundMaterial.useMaxLine = true;
+    groundMaterial.lineColor = BABYLON.Color3.Green();
+    groundMaterial.mainColor = BABYLON.Color3.Green();
+
+    ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 50, height: 50}, scene);
+    ground.material = groundMaterial;
+    ground.isPickable = false;
+  }
 
 
   return scene;
@@ -220,7 +216,7 @@ function resetCamera() {
 
 function createButton(toolbar: GUI.StackPanel, name : string, text : string, scene : BABYLON.Scene, onClick : () => void) {
   var button = GUI.Button.CreateSimpleButton(name, text);
-  button.width = "100px"
+  button.width = "100px";
   button.height = "20px";
   button.color = "white";
   button.cornerRadius = 5;
@@ -231,7 +227,7 @@ function createButton(toolbar: GUI.StackPanel, name : string, text : string, sce
 }
 
 function createUI(scene : BABYLON.Scene) {
-  var advancedTexture = GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI", true, scene);
+  var advancedTexture = GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI", false, scene);
 
   statusLabel.color = "white";
   statusLabel.textHorizontalAlignment = GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
@@ -251,7 +247,6 @@ function createUI(scene : BABYLON.Scene) {
   toolbar.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_TOP;
   toolbar.isVertical = false;
   advancedTexture.addControl(toolbar);
-
 
   var utilLayer = new BABYLON.UtilityLayerRenderer(scene);
 
@@ -273,7 +268,6 @@ function createUI(scene : BABYLON.Scene) {
   createButton(toolbar, "linkRotationButton", "Link Rotation", scene, () => {  
     toggleAxisRotationOnRobot(false, advancedTexture, scene, utilLayer, currentRobot);
   });
-
 }
 
 async function applyURDF(urdfText: string) {
@@ -336,9 +330,19 @@ async function main() {
             camera.radius = message.cameraRadius;
             scene.clearColor = BABYLON.Color4.FromHexString(message.backgroundColor);
             let gm = ground.material as Materials.GridMaterial;
-            gm.lineColor = BABYLON.Color3.FromHexString(message.gridLineColor);
-            gm.mainColor = BABYLON.Color3.FromHexString(message.gridMainColor);
+            
+            // These are flipped on purpose
+            gm.lineColor = BABYLON.Color3.FromHexString(message.gridMainColor);
+            gm.mainColor = BABYLON.Color3.FromHexString(message.gridLineColor);
             gm.minorUnitVisibility = parseFloat(message.gridMinorOpacity);
+            gm.gridRatio = parseFloat(message.gridRatio);
+            gm.majorUnitFrequency = parseFloat(message.majorUnitFrequency);
+
+            if (message.debugUI) {
+              scene.debugLayer.show();
+            } else {
+              scene.debugLayer.hide();
+            }
 
             readyToRender = true;
           }
@@ -356,9 +360,16 @@ async function main() {
     engine.resize();
     
     window.addEventListener("resize", function () {
-        engine.resize();
+      if (engine){
+          engine.resize();
+      }
     });
   }
+
+  vscode.postMessage({
+    command: "ready"
+  });
+
 }
 
   // Just like a regular webpage we need to wait for the webview

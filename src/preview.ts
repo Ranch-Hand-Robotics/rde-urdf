@@ -86,7 +86,7 @@ export default class URDFPreview
     }
 
     public async refresh() {
-        if (this._processing == false) {
+        if (!this._processing) {
             this.loadResource();
         }
     }
@@ -100,7 +100,10 @@ export default class URDFPreview
                 backgroundColor: config.get("BackgroundColor", "#000000"),
                 gridLineColor: config.get("GridMinorColor", "#00FF00"),
                 gridMainColor: config.get("GridMainColor", "#001100"),
-                gridMinorOpacity: config.get("GridMinorOpacity", "0.4")
+                gridMinorOpacity: config.get("GridMinorOpacity", "0.4"),
+                majorUnitFrequency: config.get("GridFrequency", "5"),
+                gridRatio: config.get("GridRatio", "0.1"),
+                debugUI: config.get("DebugUI", "false"),
             });
         }
     }
@@ -119,8 +122,8 @@ export default class URDFPreview
                 var pattern =  /package:\/\/(.*?)\//g;
                 var match;
                 while (match = pattern.exec(urdfText)) {
-                    if (packageMap.hasOwnProperty(match[1]) == false) {
-                        if (packagesNotFound.indexOf(match[1]) == -1) {
+                    if (packageMap.hasOwnProperty(match[1]) === false) {
+                        if (packagesNotFound.indexOf(match[1]) === -1) {
                             this._trace.appendLine(`Package ${match[1]} not found in workspace.`);
                             packagesNotFound.push(match[1]);
                         }
@@ -165,7 +168,7 @@ export default class URDFPreview
         if (packagesNotFound.length > 0) {
             var packagesNotFoundList = packagesNotFound.join('\n');
 
-            packagesNotFoundList += '\n\nNOTE: If this occurs at startup, please try saving the open file to refresh.';
+            packagesNotFoundList += '\n\nNOTE: This version of the URDF Renderer will not look for packages outside the workspace.';
             vscode.window.showErrorMessage("The following packages were not found in the workspace:\n" + packagesNotFoundList);
         }
     }
@@ -278,7 +281,6 @@ export default class URDFPreview
             <body>
                 <canvas id="renderCanvas" touch-action="none"></canvas>    
                 <script type="module" nonce="${nonce}" src="${webviewUriBabylon}"></script>
-                <script type="module" nonce="${nonce}" src="${webviewUriUrdf}"></script>
                 <script type="module" nonce="${nonce}" src="${webviewUri}"></script>
             </body>
             </html>
@@ -304,7 +306,10 @@ export default class URDFPreview
                 return;
             case "trace":
                 this._trace.appendLine(text);
-            return;
+                return;
+            case "ready":
+                this.refresh();
+                return;
             }
         },
         undefined,

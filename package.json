@@ -56,11 +56,29 @@
           "title": "Minor Grid Line Opacity",
           "description": "Minor grid line opacity between 0 and 1 in the URDF preview panel."
         },
+        "urdf-editor.GridRatio": {
+          "type": "number",
+          "default": 0.1,
+          "title": "Ratio of Grid Spacing",
+          "description": "Ratio of grid spacing in the URDF preview panel."
+        },
+        "urdf-editor.GridFrequency": {
+          "type": "number",
+          "default": 10,
+          "title": "Grid Frequency",
+          "description": "Frequency of grid lines in the URDF preview panel."
+        },
         "urdf-editor.CameraDistanceToRobot": {
           "type": "number",
           "title": "Camera Distance to Robot",
           "default": 1,
           "description": "Distance in meters from the camera to the robot in the URDF preview panel."
+        },
+        "urdf-editor.DebugUI": {
+          "type": "boolean",
+          "title": "Debug User Interface",
+          "default": false,
+          "description": "Display the Diagnostics and Debug User interface elements in the URDF Editor."
         }
       }
     }
@@ -90,6 +108,7 @@
     "@vscode/vsce": "^3.1.0",
     "copy-webpack-plugin": "^12.0.2",
     "eslint": "^8.56.0",
+    "source-map-loader": "^5.0.0",
     "ts-loader": "^9.5.1",
     "typescript": "^5.5.4",
     "webpack": "^5.93.0",
@@ -100,8 +119,11 @@
     "@polyhobbyist/babylon-collada-loader": "^0.0.4",
     "@vscode/debugadapter": "^1.66.0",
     "@vscode/webview-ui-toolkit": "^1.4.0",
-    "babylonjs": "^7.16.1",
-    "babylonjs-materials": "^7.16.1",
+    "babylonjs": "^7.16.0",
+    "babylonjs-gui": "^7.16.0",
+    "babylonjs-loaders": "^7.16.0",
+    "babylonjs-materials": "^7.16.0",
+    "babylonjs-viewer": "^7.16.0",
     "handlebars": "^4.7.8",
     "jsdom": "^25.0.1",
     "memfs": "^4.9.3",
