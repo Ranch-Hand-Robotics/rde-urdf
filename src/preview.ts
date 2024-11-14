@@ -35,7 +35,12 @@ export default class URDFPreview
             vscode.ViewColumn.Two, // Editor column to show the new webview panel in.
             { 
                 enableScripts: true,
-                retainContextWhenHidden: true
+                retainContextWhenHidden: true,
+                localResourceRoots: [
+                    vscode.Uri.file(path.join(context.extensionPath, 'dist')),
+                    vscode.Uri.file(path.join(context.extensionPath, 'node_modules/@polyhobbyist/babylon_ros/dist')),
+                    vscode.Uri.file(path.join(context.extensionPath, 'node_modules/babylonjs')),
+                ]
             }
         );
 
@@ -249,6 +254,7 @@ export default class URDFPreview
    */
     private _getWebviewContent(webview: vscode.Webview, extensionUri: vscode.Uri) {
         const webviewUri = this.getUri(webview, extensionUri, ["dist", "webview.js"]);
+        const webviewUriSourceMap = this.getUri(webview, extensionUri, ["dist", "webview.js.map"]);
         const webviewUriUrdf = this.getUri(webview, extensionUri, ["node_modules/@polyhobbyist/babylon_ros/dist", "ros.js"]);
         const webviewUriBabylon = this.getUri(webview, extensionUri, ["node_modules/babylonjs", "babylon.max.js"]);
         const nonce = util.getNonce();
@@ -260,6 +266,7 @@ export default class URDFPreview
             <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <!--meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; font-src ${webview.cspSource}; img-src ${webview.cspSource} https:; script-src 'nonce-${nonce}';"-->
                 <style nonce="${nonce}">
                 html,
                 body {

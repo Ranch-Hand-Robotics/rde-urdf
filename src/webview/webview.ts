@@ -271,7 +271,6 @@ function createUI(scene : BABYLON.Scene) {
 }
 
 async function applyURDF(urdfText: string) {
-  try {
     clearAxisGizmos();
     clearRotationGizmos();
     clearStatus();
@@ -288,22 +287,25 @@ async function applyURDF(urdfText: string) {
     });
 
 
-    if (scene) {
-      currentRobot = await urdf.deserializeUrdfToRobot(urdfText);
-      currentRobot.create(scene);
-    }
+    try {
+      if (scene) {
+        currentRobot = await urdf.deserializeUrdfToRobot(urdfText);
+        currentRobot.create(scene);
+      }
+    } catch (err: any) {
+
+      vscode.postMessage({
+        command: "error",
+        text: err.message,
+      });
+
+      return;
+    } 
 
     vscode.postMessage({
       command: "trace",
       text: `loaded urdf`,
     });
-  } catch (err: any) {
-    
-    vscode.postMessage({
-      command: "error",
-      text: `Could not render URDF due to: ${err}\n${err.stack}`,
-    });
-  }
 }
 
 // Main function that gets executed once the webview DOM loads

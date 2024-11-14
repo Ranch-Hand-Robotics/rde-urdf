@@ -1,11 +1,11 @@
 import * as os from "os";
 import * as vscode from "vscode";
-import * as child_process from "child_process";
+//import * as child_process from "child_process";
 import { XacroParser } from 'xacro-parser';
 import {XMLSerializer} from 'xmldom';
 import { JSDOM } from 'jsdom';
-import path = require("path");
-import fs = require("fs");
+import * as path from "path";
+import * as fs from "fs";
 import { string } from "yaml/dist/schema/common/string";
 
 export function getNonce() {
