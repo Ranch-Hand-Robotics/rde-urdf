@@ -28,6 +28,22 @@ export default class URDFPreview
         trace: vscode.OutputChannel
         ) : URDFPreview
     {
+
+        var paths : vscode.Uri[] = [];
+
+        // Create paths from workspace folders to vscode uri, and add extensions
+        var workspaceFolders = vscode.workspace.workspaceFolders;
+        if (workspaceFolders) {
+            workspaceFolders.forEach((folder) => {
+                paths.push(vscode.Uri.file(folder.uri.fsPath));
+            });
+        }
+
+        paths.push(vscode.Uri.file(path.join(context.extensionPath, 'dist')));
+        paths.push(vscode.Uri.file(path.join(context.extensionPath, 'node_modules/@polyhobbyist/babylon_ros/dist')));
+        paths.push(vscode.Uri.file(path.join(context.extensionPath, 'node_modules/babylonjs')));
+
+        
         // Create and show a new webview
         var editor = vscode.window.createWebviewPanel(
             'urdfPreview_standalone', // Identifies the type of the webview. Used internally
@@ -36,11 +52,7 @@ export default class URDFPreview
             { 
                 enableScripts: true,
                 retainContextWhenHidden: true,
-                localResourceRoots: [
-                    vscode.Uri.file(path.join(context.extensionPath, 'dist')),
-                    vscode.Uri.file(path.join(context.extensionPath, 'node_modules/@polyhobbyist/babylon_ros/dist')),
-                    vscode.Uri.file(path.join(context.extensionPath, 'node_modules/babylonjs')),
-                ]
+                localResourceRoots: paths
             }
         );
 
