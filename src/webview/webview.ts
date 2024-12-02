@@ -308,6 +308,51 @@ async function applyURDF(urdfText: string) {
     });
 }
 
+async function apply3DFile(filename: string) {
+  clearAxisGizmos();
+  clearRotationGizmos();
+  clearStatus();
+  resetCamera();
+
+  if (currentRobot) {
+    currentRobot.dispose();
+    currentRobot = undefined;
+  }
+
+  vscode.postMessage({
+    command: "trace",
+    text: `loading 3D file ${filename}`,
+  });
+
+  try {
+    if (scene) {
+      let scale = BABYLON.Vector3.One();
+      let m = new urdf.Mesh(filename, scale);
+      currentRobot = new urdf.Robot();
+      
+      let visual = new urdf.Visual();
+      visual.geometry = m;
+
+      let link = new urdf.Link();
+      link.visuals.push(visual);
+
+      currentRobot.links.set("base_link", link);
+      currentRobot.create(scene);
+    }
+  } catch (err: any) {
+    vscode.postMessage({
+      command: "error",
+      text: err.message,
+    });
+    return;
+  }
+
+  vscode.postMessage({
+    command: "trace",
+    text: `loaded 3D file ${filename}`, 
+  });
+}
+
 // Main function that gets executed once the webview DOM loads
 async function main() {
 
@@ -321,6 +366,9 @@ async function main() {
   window.addEventListener('message', event => {
     const message = event.data; // The JSON data our extension sent
     switch (message.command) {
+        case 'view3DFile':
+          apply3DFile(message.filename);
+        break;
         case 'urdf':
         applyURDF(message.urdf);
         break;

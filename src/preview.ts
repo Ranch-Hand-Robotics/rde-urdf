@@ -265,10 +265,10 @@ export default class URDFPreview
    * rendered within the webview panel
    */
     private _getWebviewContent(webview: vscode.Webview, extensionUri: vscode.Uri) {
-        const webviewUri = this.getUri(webview, extensionUri, ["dist", "webview.js"]);
-        const webviewUriSourceMap = this.getUri(webview, extensionUri, ["dist", "webview.js.map"]);
-        const webviewUriUrdf = this.getUri(webview, extensionUri, ["node_modules/@polyhobbyist/babylon_ros/dist", "ros.js"]);
-        const webviewUriBabylon = this.getUri(webview, extensionUri, ["node_modules/babylonjs", "babylon.max.js"]);
+        const webviewUri = util.getUri(webview, extensionUri, ["dist", "webview.js"]);
+        const webviewUriSourceMap = util.getUri(webview, extensionUri, ["dist", "webview.js.map"]);
+        const webviewUriUrdf = util.getUri(webview, extensionUri, ["node_modules/@polyhobbyist/babylon_ros/dist", "ros.js"]);
+        const webviewUriBabylon = util.getUri(webview, extensionUri, ["node_modules/babylonjs", "babylon.max.js"]);
         const nonce = util.getNonce();
 
         // Tip: Install the es6-string-html VS Code extension to enable code highlighting below
@@ -304,10 +304,6 @@ export default class URDFPreview
             </body>
             </html>
         `;
-    }
-
-    private getUri(webview: vscode.Webview, extensionUri: vscode.Uri, pathList: string[]) {
-        return webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, ...pathList));
     }
 
     private _setWebviewMessageListener(webview: vscode.Webview) {

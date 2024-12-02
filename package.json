@@ -14,6 +14,20 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "customEditors": [
+      {
+        "viewType": "urdf-editor.Viewer3D",
+        "displayName": "3D Viewer",
+        "selector": [
+          {
+            "filenamePattern": "*.stl"
+          },
+          {
+            "filenamePattern": "*.dae"
+          }
+        ]
+      }
+    ],
     "commands": [
       {
         "command": "urdf-editor.create",
@@ -99,9 +113,9 @@
   "devDependencies": {
     "@types/mocha": "^10.0.6",
     "@types/node": "18.x",
-    "@types/xml2js": "^0.4.14",
     "@types/vscode": "^1.91.0",
     "@types/vscode-webview": "^1.57.5",
+    "@types/xml2js": "^0.4.14",
     "@typescript-eslint/eslint-plugin": "^6.19.1",
     "@typescript-eslint/parser": "^6.19.1",
     "@vscode/test-cli": "^0.0.4",
@@ -119,6 +133,7 @@
   "dependencies": {
     "@polyhobbyist/babylon_ros": "^0.0.7",
     "@polyhobbyist/babylon-collada-loader": "^0.0.4",
+    "@types/xmldom": "^0.1.34",
     "@vscode/debugadapter": "^1.66.0",
     "@vscode/webview-ui-toolkit": "^1.4.0",
     "babylonjs": "^7.16.0",
