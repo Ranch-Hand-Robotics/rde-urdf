@@ -331,6 +331,8 @@ async function apply3DFile(filename: string) {
       currentRobot = new urdf.Robot();
       
       let visual = new urdf.Visual();
+      visual.material = new urdf.Material();
+      visual.material.name = "default";
       visual.geometry = m;
 
       let link = new urdf.Link();
