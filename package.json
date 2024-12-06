@@ -32,6 +32,10 @@
       {
         "command": "urdf-editor.create",
         "title": "Preview URDF"
+      },
+      {
+        "command": "urdf-editor.createXR",
+        "title": "Preview URDF in WebXR"
       }
     ],
     "menus": {
@@ -141,6 +145,7 @@
     "babylonjs-loaders": "^7.16.0",
     "babylonjs-materials": "^7.16.0",
     "babylonjs-viewer": "^7.16.0",
+    "express": "^4.21.2",
     "handlebars": "^4.7.8",
     "jsdom": "^25.0.1",
     "memfs": "^4.9.3",
