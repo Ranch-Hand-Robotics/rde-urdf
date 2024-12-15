@@ -6,7 +6,11 @@ import * as ColladaFileLoader from '@polyhobbyist/babylon-collada-loader';
 import * as GUI from 'babylonjs-gui';
 
 // Get access to the VS Code API from within the webview context
-const vscode = acquireVsCodeApi();
+let vscode : any | undefined = undefined;
+if (typeof acquireVsCodeApi !== 'undefined') {
+  vscode = acquireVsCodeApi();
+}
+
 let currentRobotScene : urdf.RobotScene | undefined = undefined;
 
 async function apply3DFile(filename: string) {
@@ -24,7 +28,7 @@ async function apply3DFile(filename: string) {
     currentRobotScene.currentRobot = undefined;
   }
 
-  vscode.postMessage({
+  vscode?.postMessage({
     command: "trace",
     text: `loading 3D file ${filename}`,
   });
@@ -47,14 +51,14 @@ async function apply3DFile(filename: string) {
       currentRobotScene.currentRobot.create(currentRobotScene.scene);
     }
   } catch (err: any) {
-    vscode.postMessage({
+    vscode?.postMessage({
       command: "error",
       text: err.message,
     });
     return;
   }
 
-  vscode.postMessage({
+  vscode?.postMessage({
     command: "trace",
     text: `loaded 3D file ${filename}`, 
   });
@@ -128,9 +132,11 @@ async function main() {
     }
   });
 
-  vscode.postMessage({
+  vscode?.postMessage({
     command: "ready"
   });
+
+  const xrHelper = await currentRobotScene.scene.createDefaultXRExperienceAsync();  
 }
 
   // Just like a regular webpage we need to wait for the webview
