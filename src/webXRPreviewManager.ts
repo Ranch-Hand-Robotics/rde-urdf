@@ -65,64 +65,19 @@ export default class WebXRPreviewManager {
       return "";
     }
 
-    var packagesNotFound : any = [];
-    var urdfText = "";
     try {
-        urdfText = await util.xacro(this.uri.fsPath);
+      var [urdfText, packagesNotFound] = await util.processXacro(this.uri.fsPath, (packageName: vscode.Uri) => {
+        return packageName.fsPath.toString();
+      });
 
-        var packageMap = await util.getPackages();
-        if (packageMap !== null) {
-            // replace package://(x) with fully resolved paths
-            var pattern =  /package:\/\/(.*?)\//g;
-            var match;
-            while (match = pattern.exec(urdfText)) {
-                if (packageMap.hasOwnProperty(match[1]) === false) {
-                    if (packagesNotFound.indexOf(match[1]) === -1) {
-                        this._trace.appendLine(`Package ${match[1]} not found in workspace.`);
-                        packagesNotFound.push(match[1]);
-                    }
-                } else {
-                    var packagePath = await packageMap[match[1]];
-                    if (packagePath.charAt(0)  === '/') {
-                        // inside of mesh re \source, the loader attempts to concatinate the base uri with the new path. It first checks to see if the
-                        // base path has a /, if not it adds it.
-                        // We are attempting to use a protocol handler as the base path - which causes this to fail.
-                        // basepath - vscode-webview-resource:
-                        // full path - /home/test/ros
-                        // vscode-webview-resource://home/test/ros.
-                        // It should be vscode-webview-resource:/home/test/ros.
-                        // So remove the first char.
-
-                        packagePath = packagePath.substr(1);
-                    }
-                    let normPath = path.normalize(packagePath);
-                    let vsPath = vscode.Uri.file(normPath);
-                    let newUri = vsPath.fsPath;
-
-                    // find the path relative to the workspace folders
-                    var relativePath = "";
-                    var workspaceFolders = vscode.workspace.workspaceFolders;
-                    if (workspaceFolders) {
-                        workspaceFolders.forEach((folder) => {
-                            if (newUri.startsWith(folder.uri.fsPath)) {
-                                relativePath = newUri.substring(folder.uri.fsPath.length + 1);
-                            }
-                        });
-                    }
-
-                    // replace \ with /
-                    relativePath = relativePath.replace(/\\/g, '/');
-
-                    urdfText = urdfText.replace('package://' + match[1], relativePath);
-                }
-            }
-        }
 
         var previewFile = this.uri.toString();
+        return urdfText;
       } catch (err: any) {
         this._trace.appendLine(`Error processing URDF: ${err.message}`);
       }
-      return urdfText;
+
+      return "";
   }    
 
   private async _getWebviewContent(): Promise<string> {

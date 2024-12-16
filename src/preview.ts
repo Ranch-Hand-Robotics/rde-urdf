@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
+// Additional features added by PolyHobbyist
 
 import * as vscode from 'vscode';
 import * as path from 'path';
@@ -127,45 +128,13 @@ export default class URDFPreview
 
     private async loadResource() {
         this._processing = true;
-
-        var packagesNotFound : any = [];
-        var urdfText = "";
+        
         try {
-            urdfText = await util.xacro(this._resource.fsPath);
 
-            var packageMap = await util.getPackages();
-            if (packageMap !== null) {
-                // replace package://(x) with fully resolved paths
-                var pattern =  /package:\/\/(.*?)\//g;
-                var match;
-                while (match = pattern.exec(urdfText)) {
-                    if (packageMap.hasOwnProperty(match[1]) === false) {
-                        if (packagesNotFound.indexOf(match[1]) === -1) {
-                            this._trace.appendLine(`Package ${match[1]} not found in workspace.`);
-                            packagesNotFound.push(match[1]);
-                        }
-                    } else {
-                        var packagePath = await packageMap[match[1]];
-                        if (packagePath.charAt(0)  === '/') {
-                            // inside of mesh re \source, the loader attempts to concatinate the base uri with the new path. It first checks to see if the
-                            // base path has a /, if not it adds it.
-                            // We are attempting to use a protocol handler as the base path - which causes this to fail.
-                            // basepath - vscode-webview-resource:
-                            // full path - /home/test/ros
-                            // vscode-webview-resource://home/test/ros.
-                            // It should be vscode-webview-resource:/home/test/ros.
-                            // So remove the first char.
-
-                            packagePath = packagePath.substr(1);
-                        }
-                        let normPath = path.normalize(packagePath);
-                        let vsPath = vscode.Uri.file(normPath);
-                        let newUri = this._webview.webview.asWebviewUri(vsPath);
-
-                        urdfText = urdfText.replace('package://' + match[1], newUri.toString());
-                    }
-                }
-            }
+            var [urdfText, packagesNotFound] = await util.processXacro(this._resource.fsPath.toString(), 
+                (packageName :vscode.Uri) => {
+                    return this._webview.webview.asWebviewUri(packageName).toString();
+                });
 
             var previewFile = this._resource.toString();
 
@@ -178,15 +147,15 @@ export default class URDFPreview
             this._webview.webview.postMessage({ command: 'urdf', urdf: urdfText });
 
             this._processing = false;
+            if (packagesNotFound.length > 0) {
+                var packagesNotFoundList = packagesNotFound.join('\n');
+    
+                packagesNotFoundList += '\n\nNOTE: This version of the URDF Renderer will not look for packages outside the workspace.';
+                vscode.window.showErrorMessage("The following packages were not found in the workspace:\n" + packagesNotFoundList);
+            }
+
         } catch (err : any) {
             vscode.window.showErrorMessage(err.message);
-        }
-
-        if (packagesNotFound.length > 0) {
-            var packagesNotFoundList = packagesNotFound.join('\n');
-
-            packagesNotFoundList += '\n\nNOTE: This version of the URDF Renderer will not look for packages outside the workspace.';
-            vscode.window.showErrorMessage("The following packages were not found in the workspace:\n" + packagesNotFoundList);
         }
     }
 

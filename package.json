@@ -36,7 +36,12 @@
       {
         "command": "urdf-editor.createXR",
         "title": "Preview URDF in WebXR"
+      },
+      {
+        "command": "urdf-editor.export",
+        "title": "Export URDF"
       }
+
     ],
     "menus": {
       "explorer/context": [
