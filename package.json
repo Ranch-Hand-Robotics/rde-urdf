@@ -9,6 +9,10 @@
   "categories": [
     "Other"
   ],
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/ranch-hand-robotics/rde-urdf"
+  },
   "activationEvents": [
     "onWebviewPanel:urdfPreview"
   ],
