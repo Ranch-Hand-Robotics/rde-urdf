@@ -2,14 +2,16 @@ on:
   workflow_dispatch:
   push:
     paths-ignore:
-      - "*.md"
-      - "media/**"
+      - "**/*.md"
+      - "docs/**"
+      - "mkdocs.yml"
     branches:
       - main
   pull_request:
     paths-ignore:
-      - "*.md"
-      - "media/**"
+      - "**/*.md"
+      - "docs/**"
+      - "mkdocs.yml"
   release:
     types:
       - published
