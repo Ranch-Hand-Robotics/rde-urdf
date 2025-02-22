@@ -3,6 +3,7 @@ repo_url: https://github.com/ranch-hand-robotics/rde-urdf
 edit_uri: edit/main/docs/
 nav:
   - Home: index.md
+  - Tutorial: tutorial.md
 
 theme: 
   name: readthedocs
