@@ -1,0 +1,22 @@
+name: Publish docs via GitHub Pages
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    name: Deploy docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v2
+
+      - name: Deploy docs
+        run: |
+          sudo apt-get install -y python3-pip
+          pip3 install mkdocs
+          pip3 install pymdown-extensions
+          mkdocs gh-deploy --force
+
