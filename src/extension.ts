@@ -30,9 +30,16 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
-  // Register custom-urdf-instructions.md for Copilot/GitHub context
-  const urdfInstructionsUri = vscode.Uri.file(path.join(context.extensionPath, 'dist', 'prompts', 'custom-urdf-instructions.md'));
-  vscode.workspace.getConfiguration('markdown').update('preview.markdown', urdfInstructionsUri, vscode.ConfigurationTarget.Global);
+  // Force the workspace to use github.copilot.chat.codeGeneration.useInstructionFiles to true
+  vscode.workspace.getConfiguration().update('github.copilot.chat.codeGeneration.useInstructionFiles', true, vscode.ConfigurationTarget.Workspace);
+
+  // Add prompts/urdf-instructions.md to the github.copilot.chat.codeGeneration.instruction array if it is not already there
+  var instructions = vscode.workspace.getConfiguration().get('github.copilot.chat.codeGeneration.instruction') as Array<any>;
+  if (!instructions.includes('urdf-instructions.md')) {
+    let extensionInstructionPath = path.join(context.extensionPath, 'prompts/urdf-instructions.md');
+    instructions.push({ file: extensionInstructionPath });
+    vscode.workspace.getConfiguration().update('github.copilot.chat.codeGeneration.instruction', instructions, vscode.ConfigurationTarget.Workspace);
+  }
 
   // Register language support for URDF and XACRO files
   // This is now handled by the package.json configuration

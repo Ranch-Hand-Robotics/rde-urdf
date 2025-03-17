@@ -133,6 +133,10 @@
         ],
         "path": "./dist/snippets/xacro-snippets.json"
       }
+    ],
+    "xml.fileAssociations": [
+      "*.urdf",
+      "*.xacro"
     ]
   },
   "scripts": {
