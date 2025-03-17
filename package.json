@@ -11,9 +11,9 @@
   "categories": [
     "Other"
   ],
-    "repository": {
-      "type": "git",
-      "url": "https://github.com/ranch-hand-robotics/rde-urdf"
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ranch-hand-robotics/rde-urdf"
   },
   "activationEvents": [
     "onWebviewPanel:urdfPreview"
@@ -34,6 +34,20 @@
         ]
       }
     ],
+    "schemas": [
+      {
+        "fileMatch": [
+          "*.urdf"
+        ],
+        "url": "./dist/schemas/urdf-schema.json"
+      },
+      {
+        "fileMatch": [
+          "*.xacro"
+        ],
+        "url": "./dist/schemas/xacro-schema.json"
+      }
+    ],
     "commands": [
       {
         "command": "urdf-editor.create",
@@ -47,7 +61,6 @@
         "command": "urdf-editor.export",
         "title": "Export URDF"
       }
-
     ],
     "menus": {
       "explorer/context": [
@@ -110,7 +123,17 @@
           "description": "Display the Diagnostics and Debug User interface elements in the URDF Editor."
         }
       }
-    }
+    },
+    "snippets": [
+      {
+        "language": "xml",
+        "extensions": [
+          "xacro",
+          "urdf"
+        ],
+        "path": "./dist/snippets/xacro-snippets.json"
+      }
+    ]
   },
   "scripts": {
     "vsix": "vsce package -o vscode-ros-dev.vsix",
@@ -136,7 +159,7 @@
     "@vscode/test-cli": "^0.0.4",
     "@vscode/test-electron": "^2.3.9",
     "@vscode/vsce": "^3.1.0",
-    "copy-webpack-plugin": "^12.0.2",
+    "copy-webpack-plugin": "^11.0.0",
     "eslint": "^8.56.0",
     "source-map-loader": "^5.0.0",
     "ts-loader": "^9.5.1",
@@ -146,8 +169,8 @@
     "xml2js": "^0.6.2"
   },
   "dependencies": {
-    "@polyhobbyist/babylon_ros": "^0.0.8",
-    "@polyhobbyist/babylon-collada-loader": "^0.0.5",
+    "@polyhobbyist/babylon_ros": "^0.0.9",
+    "@polyhobbyist/babylon-collada-loader": "^0.0.7",
     "@types/xmldom": "^0.1.34",
     "@vscode/debugadapter": "^1.66.0",
     "@vscode/webview-ui-toolkit": "^1.4.0",

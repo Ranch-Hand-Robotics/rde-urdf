@@ -12,3 +12,8 @@ vsc-extension-quickstart.md
 **/*.map
 **/*.ts
 **/.vscode-test.*
+
+# Don't ignore these folders in the dist directory
+!dist/snippets/**
+!dist/schemas/**
+!dist/prompts/**

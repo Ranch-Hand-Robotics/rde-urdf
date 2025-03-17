@@ -48,6 +48,16 @@ const extensionConfig = {
   infrastructureLogging: {
     level: "log", // enables logging required for problem matchers
   },
+  plugins: [
+    new CopyWebpackPlugin({
+      patterns: [
+        { from: 'snippets', to: 'snippets' },
+        { from: 'schemas', to: 'schemas' },
+        { from: 'prompts', to: 'prompts' },
+        // If you need to copy any other assets, add them here
+      ],
+    }),
+  ],
 };
 
 const webviewConfig = {
@@ -87,7 +97,16 @@ const webviewConfig = {
   infrastructureLogging: {
     level: "log", // enables logging required for problem matchers
   },
-
+  plugins: [
+    new CopyWebpackPlugin({
+      patterns: [
+        { from: 'snippets', to: 'snippets' },
+        { from: 'schemas', to: 'schemas' },
+        { from: 'prompts', to: 'prompts' },
+        // If you need to copy any other assets, add them here
+      ],
+    }),
+  ],
 };
 
 module.exports = [ extensionConfig, webviewConfig ];

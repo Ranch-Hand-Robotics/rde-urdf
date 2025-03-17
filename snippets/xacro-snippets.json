@@ -1,0 +1,112 @@
+{
+  "XACRO Property": {
+    "prefix": "xacro-property",
+    "body": [
+      "<xacro:property name=\"${1:name}\" value=\"${2:value}\" />"
+    ],
+    "description": "Define a XACRO property"
+  },
+  "XACRO Macro": {
+    "prefix": "xacro-macro",
+    "body": [
+      "<xacro:macro name=\"${1:name}\" params=\"${2:params}\">",
+      "\t${3:content}",
+      "</xacro:macro>"
+    ],
+    "description": "Define a XACRO macro"
+  },
+  "XACRO Include": {
+    "prefix": "xacro-include",
+    "body": [
+      "<xacro:include filename=\"${1:path/to/file.xacro}\" />"
+    ],
+    "description": "Include another XACRO file"
+  },
+  "XACRO Link": {
+    "prefix": "xacro-link",
+    "body": [
+      "<link name=\"${1:name}\">",
+      "\t<visual>",
+      "\t\t<origin xyz=\"${2:0 0 0}\" rpy=\"${3:0 0 0}\" />",
+      "\t\t<geometry>",
+      "\t\t\t<mesh filename=\"${4:package://package_name/meshes/mesh.stl}\" />",
+      "\t\t</geometry>",
+      "\t\t<material name=\"${5:material_name}\">",
+      "\t\t\t<color rgba=\"${6:1 1 1 1}\" />",
+      "\t\t</material>",
+      "\t</visual>",
+      "\t<collision>",
+      "\t\t<origin xyz=\"${2:0 0 0}\" rpy=\"${3:0 0 0}\" />",
+      "\t\t<geometry>",
+      "\t\t\t<mesh filename=\"${4:package://package_name/meshes/mesh.stl}\" />",
+      "\t\t</geometry>",
+      "\t</collision>",
+      "\t<inertial>",
+      "\t\t<mass value=\"${7:1.0}\" />",
+      "\t\t<origin xyz=\"${8:0 0 0}\" />",
+      "\t\t<inertia ixx=\"${9:1.0}\" ixy=\"${10:0.0}\" ixz=\"${11:0.0}\" iyy=\"${12:1.0}\" iyz=\"${13:0.0}\" izz=\"${14:1.0}\" />",
+      "\t</inertial>",
+      "</link>"
+    ],
+    "description": "Define a URDF link with visual, collision, and inertial elements"
+  },
+  "XACRO Joint": {
+    "prefix": "xacro-joint",
+    "body": [
+      "<joint name=\"${1:name}\" type=\"${2|revolute,continuous,prismatic,fixed,floating,planar|}\">",
+      "\t<parent link=\"${3:parent_link}\" />",
+      "\t<child link=\"${4:child_link}\" />",
+      "\t<origin xyz=\"${5:0 0 0}\" rpy=\"${6:0 0 0}\" />",
+      "\t<axis xyz=\"${7:1 0 0}\" />",
+      "\t<limit lower=\"${8:-1.0}\" upper=\"${9:1.0}\" effort=\"${10:100}\" velocity=\"${11:100}\" />",
+      "</joint>"
+    ],
+    "description": "Define a URDF joint between two links"
+  },
+  "XACRO Math Expression": {
+    "prefix": "xacro-math",
+    "body": [
+      "${${1:1.0 * 2.0}}"
+    ],
+    "description": "Insert a XACRO math expression"
+  },
+  "XACRO Conditional": {
+    "prefix": "xacro-if",
+    "body": [
+      "<xacro:if value=\"${1:condition}\">",
+      "\t${2:content}",
+      "</xacro:if>"
+    ],
+    "description": "XACRO conditional statement"
+  },
+  "XACRO Material": {
+    "prefix": "xacro-material",
+    "body": [
+      "<material name=\"${1:name}\">",
+      "\t<color rgba=\"${2:r} ${3:g} ${4:b} ${5:a}\" />",
+      "</material>"
+    ],
+    "description": "Define a URDF material with color"
+  },
+  "XACRO Cylinder": {
+    "prefix": "xacro-cylinder",
+    "body": [
+      "<cylinder radius=\"${1:radius}\" length=\"${2:length}\" />"
+    ],
+    "description": "Define a cylinder geometry"
+  },
+  "XACRO Box": {
+    "prefix": "xacro-box",
+    "body": [
+      "<box size=\"${1:x} ${2:y} ${3:z}\" />"
+    ],
+    "description": "Define a box geometry"
+  },
+  "XACRO Sphere": {
+    "prefix": "xacro-sphere",
+    "body": [
+      "<sphere radius=\"${1:radius}\" />"
+    ],
+    "description": "Define a sphere geometry"
+  }
+}

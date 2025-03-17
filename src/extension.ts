@@ -30,6 +30,13 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
+  // Register custom-urdf-instructions.md for Copilot/GitHub context
+  const urdfInstructionsUri = vscode.Uri.file(path.join(context.extensionPath, 'dist', 'prompts', 'custom-urdf-instructions.md'));
+  vscode.workspace.getConfiguration('markdown').update('preview.markdown', urdfInstructionsUri, vscode.ConfigurationTarget.Global);
+
+  // Register language support for URDF and XACRO files
+  // This is now handled by the package.json configuration
+
   const previewURDFCommand = vscode.commands.registerCommand("urdf-editor.create", () => {
     if (urdfManager && vscode.window.activeTextEditor) {
       urdfManager.preview(vscode.window.activeTextEditor.document.uri);
@@ -84,9 +91,8 @@ export function activate(context: vscode.ExtensionContext) {
     }
   });
 
-  context.subscriptions.push(previewURDFCommand);
+  context.subscriptions.push(exportURDFCommand);
 }
-
 
 export function deactivate() {
 

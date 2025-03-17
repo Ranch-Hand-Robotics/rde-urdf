@@ -1,5 +1,5 @@
 # Visual Studio Code ROS URDF Editor
-this extension is a stand alone URDF Preview Window which does not require a ROS 2 installation. 
+This extension is a stand alone URDF Preview Window which does not require a ROS 2 installation. 
 
 ## Features
 - 3D preview
@@ -27,6 +27,8 @@ this extension is a stand alone URDF Preview Window which does not require a ROS
 I was the maintainer of Microsoft's [Visual Studio Code ROS Extension](http://aka.ms/ros/vscode). It is no longer maintained, and I've been given permission to externalize the components. The URDF editor was built on work done in my private personal time, and not associated with Microsoft. This extension is a stand alone implementation and will be maintained moving forward.
 
 This extension relis on the [Xacro-Parser](https://www.npmjs.com/package/xacro-parser) by [GKJohnson](https://github.com/gkjohnson) for stand alone Xacro parsing without requiring ROS.
+
+The code for this extension unapologetically uses AI generated code.
 
 # License
 Some of the code in this extension is based on the [Visual Studio Code ROS Extension](http://aka.ms/ros/vscode) which is licensed under the MIT License. It also depends on Babylon ROS and Babylon Collada Loader by Polyhobbyist, both of which are MIT licensed.

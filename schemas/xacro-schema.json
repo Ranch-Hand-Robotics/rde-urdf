@@ -1,0 +1,207 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Xacro Schema",
+    "type": "object",
+    "properties": {
+        "robot": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                },
+                "xacro": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "macro": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "params": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "body": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": ["name", "body"]
+                            },
+                            "include": {
+                                "type": "object",
+                                "properties": {
+                                    "filename": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": ["filename"]
+                            }
+                        },
+                        "oneOf": [
+                            { "required": ["macro"] },
+                            { "required": ["include"] }
+                        ]
+                    }
+                },
+                "link": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "inertial": {
+                                "type": "object",
+                                "properties": {
+                                    "mass": {
+                                        "type": "object",
+                                        "properties": {
+                                            "value": {
+                                                "type": "number"
+                                            }
+                                        },
+                                        "required": ["value"]
+                                    },
+                                    "inertia": {
+                                        "type": "object",
+                                        "properties": {
+                                            "ixx": { "type": "number" },
+                                            "ixy": { "type": "number" },
+                                            "ixz": { "type": "number" },
+                                            "iyy": { "type": "number" },
+                                            "iyz": { "type": "number" },
+                                            "izz": { "type": "number" }
+                                        },
+                                        "required": ["ixx", "iyy", "izz"]
+                                    }
+                                },
+                                "required": ["mass", "inertia"]
+                            },
+                            "visual": {
+                                "type": "object",
+                                "properties": {
+                                    "geometry": {
+                                        "type": "object",
+                                        "properties": {
+                                            "mesh": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "filename": { "type": "string" }
+                                                },
+                                                "required": ["filename"]
+                                            }
+                                        },
+                                        "required": ["mesh"]
+                                    }
+                                },
+                                "required": ["geometry"]
+                            },
+                            "collision": {
+                                "type": "object",
+                                "properties": {
+                                    "geometry": {
+                                        "type": "object",
+                                        "properties": {
+                                            "mesh": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "filename": { "type": "string" }
+                                                },
+                                                "required": ["filename"]
+                                            }
+                                        },
+                                        "required": ["mesh"]
+                                    }
+                                },
+                                "required": ["geometry"]
+                            }
+                        },
+                        "required": ["name"]
+                    }
+                },
+                "joint": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string"
+                            },
+                            "parent": {
+                                "type": "object",
+                                "properties": {
+                                    "link": { "type": "string" }
+                                },
+                                "required": ["link"]
+                            },
+                            "child": {
+                                "type": "object",
+                                "properties": {
+                                    "link": { "type": "string" }
+                                },
+                                "required": ["link"]
+                            },
+                            "origin": {
+                                "type": "object",
+                                "properties": {
+                                    "xyz": { "type": "string" },
+                                    "rpy": { "type": "string" }
+                                }
+                            },
+                            "axis": {
+                                "type": "object",
+                                "properties": {
+                                    "xyz": { "type": "string" }
+                                }
+                            },
+                            "limit": {
+                                "type": "object",
+                                "properties": {
+                                    "lower": { "type": "number" },
+                                    "upper": { "type": "number" },
+                                    "effort": { "type": "number" },
+                                    "velocity": { "type": "number" }
+                                },
+                                "required": ["effort", "velocity"]
+                            }
+                        },
+                        "required": ["name", "type", "parent", "child"]
+                    }
+                },
+                "material": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "color": {
+                                "type": "object",
+                                "properties": {
+                                    "rgba": { "type": "string" }
+                                },
+                                "required": ["rgba"]
+                            }
+                        },
+                        "required": ["name"]
+                    }
+                }
+            },
+            "required": ["name", "xacro"]
+        }
+    },
+    "required": ["robot"]
+}

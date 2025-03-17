@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "URDF Schema",
+  "type": "object",
+  "properties": {
+    "robot": {
+      "type": "object",
+      "properties": {
+        "@name": { "type": "string" },
+        "link": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "@name": { "type": "string" },
+              "visual": {
+                "type": "object",
+                "properties": {
+                  "geometry": {
+                    "type": "object",
+                    "properties": {
+                      "box": {
+                        "type": "object",
+                        "properties": {
+                          "@size": { "type": "string" }
+                        },
+                        "required": ["@size"]
+                      },
+                      "cylinder": {
+                        "type": "object",
+                        "properties": {
+                          "@radius": { "type": "string" },
+                          "@length": { "type": "string" }
+                        },
+                        "required": ["@radius", "@length"]
+                      },
+                      "sphere": {
+                        "type": "object",
+                        "properties": {
+                          "@radius": { "type": "string" }
+                        },
+                        "required": ["@radius"]
+                      },
+                      "mesh": {
+                        "type": "object",
+                        "properties": {
+                          "@filename": { "type": "string" },
+                          "@scale": { "type": "string" }
+                        },
+                        "required": ["@filename"]
+                      }
+                    },
+                    "required": ["box", "cylinder", "sphere", "mesh"]
+                  }
+                },
+                "required": ["geometry"]
+              }
+            },
+            "required": ["@name", "visual"]
+          }
+        }
+      },
+      "required": ["@name", "link"]
+    }
+  },
+  "required": ["robot"]
+}
