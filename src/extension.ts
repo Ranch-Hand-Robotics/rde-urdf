@@ -34,7 +34,7 @@ export function activate(context: vscode.ExtensionContext) {
   vscode.workspace.getConfiguration().update('github.copilot.chat.codeGeneration.useInstructionFiles', true, vscode.ConfigurationTarget.Workspace);
 
   // Add prompts/urdf-instructions.md to the github.copilot.chat.codeGeneration.instruction array if it is not already there
-  var instructions = vscode.workspace.getConfiguration().get('github.copilot.chat.codeGeneration.instruction') as Array<any>;
+  var instructions = vscode.workspace.getConfiguration().get('github.copilot.chat.codeGeneration.instruction') as Array<any> || [];
   if (!instructions.includes('urdf-instructions.md')) {
     let extensionInstructionPath = path.join(context.extensionPath, 'prompts/urdf-instructions.md');
     instructions.push({ file: extensionInstructionPath });
