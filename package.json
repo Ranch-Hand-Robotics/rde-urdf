@@ -134,9 +134,18 @@
         "path": "./dist/snippets/xacro-snippets.json"
       }
     ],
-    "xml.fileAssociations": [
-      "*.urdf",
-      "*.xacro"
+    "languages": [
+      {
+        "id": "xml",
+        "extensions": [
+          ".urdf",
+          ".xacro"
+        ],
+        "aliases": [
+          "URDF",
+          "Xacro"
+        ]
+      }
     ]
   },
   "scripts": {
