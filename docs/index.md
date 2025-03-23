@@ -11,12 +11,20 @@ This Visual Studio Code extension helps you buid Universal Robot Description For
 - Visualize the robot's joints and links axis and rotation parameters
 - Visualize the robot's collision and visual geometries
 - "Explode" the robot's joints to see the robot's internal structure
-
+- 3D preview
+- Link Visualization
+- Joint Visualization
+- Color Customization
+- Camera Controls
+- Gizmos for exploring a URDF
+- Syntax highlighting
+- Code completion
+- Collision Visualization
+- Schema Validation
+- AI Assisted Coding prompts fpr Github Copilot
+- Virtual Reality preview of the model you are editing.
+- 
 ## Coming soon
-- WebXR Virtual Reality preview of your robot
-- [Syntax highlighting](https://github.com/ranchhandrobotics/vscode_urdf/issues/1)
-- [Code completion](https://github.com/ranchhandrobotics/vscode_urdf/issues/2)
-- [Collision Visualization](https://github.com/ranchhandrobotics/vscode_urdf/issues/3)
 - [Physics Emulation](https://github.com/ranchhandrobotics/vscode_urdf/issues/4)
 - [Kinematics Visualization](https://github.com/ranchhandrobotics/vscode_urdf/issues/5)
 - [External URDF / Xacro References](https://github.com/ranchhandrobotics/vscode_urdf/issues/6)
