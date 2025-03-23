@@ -1,7 +1,7 @@
 {
   "name": "urdf-editor",
-  "displayName": "URDF Editor for ROS 2",
-  "description": "A robust URDF editor for ROS 2 packages.",
+  "displayName": "URDF Editor for ROS",
+  "description": "A robust URDF editor for ROS packages.",
   "publisher": "Ranch-Hand-Robotics",
   "icon": "media/icon.png",
   "version": "0.0.1",
