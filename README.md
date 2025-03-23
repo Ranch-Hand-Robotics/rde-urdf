@@ -1,5 +1,5 @@
 # Visual Studio Code ROS URDF Editor
-This extension is a stand alone URDF Preview Window which does not require a ROS 2 installation. 
+This extension provides developer tooling for Unified Robot Description Files (URDF) and Xacro Editing and Preview. 
 
 ## Features
 - 3D preview
@@ -8,12 +8,14 @@ This extension is a stand alone URDF Preview Window which does not require a ROS
 - Color Customization
 - Camera Controls
 - Gizmos for exploring a URDF
-
+- Syntax highlighting
+- Code completion
+- Collision Visualization
+- Schema Validation
+- AI Assisted Coding prompts fpr Github Copilot
+- Virtual Reality preview of the model you are editing.
 
 ## Coming Soon
-- [Syntax highlighting](https://github.com/ranchhandrobotics/vscode_urdf/issues/1)
-- [Code completion](https://github.com/ranchhandrobotics/vscode_urdf/issues/2)
-- [Collision Visualization](https://github.com/ranchhandrobotics/vscode_urdf/issues/3)
 - [Physics Emulation](https://github.com/ranchhandrobotics/vscode_urdf/issues/4)
 - [Kinematics Visualization](https://github.com/ranchhandrobotics/vscode_urdf/issues/5)
 - [External URDF / Xacro References](https://github.com/ranchhandrobotics/vscode_urdf/issues/6)
