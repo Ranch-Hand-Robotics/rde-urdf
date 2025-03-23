@@ -36,8 +36,10 @@ Please provide as much details as possible, including an isolated reproduction o
 [Github Discussions](https://github.com/orgs/Ranch-Hand-Robotics/discussions) are provided for community driven general guidance, walkthroughs, or support.
 
 ### Sponsored Support
- ![Coming Soon](https://img.shields.io/badge/Coming%20Soon-8A2BE2)
- One on one support, mentoring and consulting will be available through Github Sponsors and Patreon. 
+
+![Coming Soon](https://img.shields.io/badge/Coming%20Soon-8A2BE2)
+
+One on one support, mentoring and consulting will be available through Github Sponsors and Patreon. 
 
 ## Acknowledgements
 I was the maintainer of Microsoft's [Visual Studio Code ROS Extension](http://aka.ms/ros/vscode). It is no longer maintained, and I've been given permission to externalize the components. The URDF editor was built on work done in my private personal time, and not associated with Microsoft. This extension is a stand alone implementation and will be maintained moving forward.
