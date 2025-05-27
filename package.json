@@ -4,7 +4,7 @@
   "description": "A robust URDF editor for ROS packages.",
   "publisher": "Ranch-Hand-Robotics",
   "icon": "media/icon.png",
-  "version": "0.0.4",
+  "version": "1.0.0",
   "engines": {
     "vscode": "^1.91.0"
   },
