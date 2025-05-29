@@ -14,7 +14,7 @@ export default class URDFPreview
     private  _context: vscode.ExtensionContext;
     private _disposables: vscode.Disposable[] = [];
     private _urdfEditor: vscode.TextEditor | null = null;
-    _webview: vscode.WebviewPanel;
+    _webview: vscode.WebviewPanel | undefined = undefined;
     private _trace: vscode.OutputChannel;
 
     public get state() {
@@ -128,11 +128,20 @@ export default class URDFPreview
 
     private async loadResource() {
         this._processing = true;
-        
+
+        if (!this._webview) {
+            this._processing = false;
+            return;
+        }
+
         try {
 
             var [urdfText, packagesNotFound] = await util.processXacro(this._resource.fsPath.toString(), 
                 (packageName :vscode.Uri) => {
+                    if (!this._webview) {
+                        return packageName.fsPath.toString();
+                    }
+                    // Convert the package name to a webview URI
                     return this._webview.webview.asWebviewUri(packageName).toString();
                 });
 
@@ -183,7 +192,7 @@ export default class URDFPreview
     }
 
     public reveal() {
-        this._webview.reveal(vscode.ViewColumn.Two);
+        this._webview?.reveal(vscode.ViewColumn.Two);
     }    
 
     private isPreviewOf(resource: vscode.Uri): boolean {
@@ -218,7 +227,9 @@ export default class URDFPreview
         this._onDisposeEmitter.dispose();
 
         this._onDidChangeViewStateEmitter.dispose();
-        this._webview.dispose();    
+        this._webview?.dispose();    
+        this._webview = undefined;
+        this._processing = false;
     }
 
 

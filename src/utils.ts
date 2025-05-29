@@ -22,45 +22,52 @@ export function getUri(webview: vscode.Webview, extensionUri: vscode.Uri, pathLi
   return webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, ...pathList));
 }
 
-export function xacro(filename: string): Promise<string> {
-  return new Promise((resolve, reject) => {
+/**
+ * URDF/Xacro Processing Pipeline:
+ * 
+ * The processXacro function implements a complete processing pipeline that handles:
+ * 1. $(find package) idiom conversion to package:// format
+ * 2. Package resolution using workspace package.xml files  
+ * 3. Path resolution to webview-compatible URIs
+ * 4. Xacro macro expansion and processing
+ * 
+ * This unified approach ensures that:
+ * - $(find package) conversion happens before xacro parsing, as xacro 
+ *   parameters and includes may contain find expressions
+ * - Package resolution happens on the raw content before xacro processing,
+ *   so that file includes and mesh references resolve correctly during macro expansion
+ * - All preprocessing is completed before xacro parsing to ensure the parser
+ *   works with valid, resolved file paths and content
+ */
 
-    global.DOMParser = new JSDOM().window.DOMParser;
-
-    const parser = new XacroParser();
-    const xacroContents = fs.readFileSync( filename, { encoding: 'utf8' } );
-    parser.parse( xacroContents ).then( result => {
-      // Result is an XmlDom object, convert to string.
-      const serializer = new XMLSerializer();
-      const parsedXacro = serializer.serializeToString(result.documentElement) as string;
-      resolve( parsedXacro );
-    }).catch( error => {
-      reject( error );
-    });
-
-    
-      /*
-      let processOptions = {
-          cwd: vscode.workspace.rootPath,
-          windowsHide: false,
-      };
-
-      let xacroCommand: string;
-      if (process.platform === "win32") {
-          xacroCommand = `cmd /c "xacro "${filename}""`;
-      } else {
-          xacroCommand = `bash --login -c "xacro '${filename}' && env"`;
-      }
-
-      child_process.exec(xacroCommand, processOptions, (error, stdout, _stderr) => {
-          if (!error) {
-              resolve(stdout);
-          } else {
-              reject(error);
-          }
-      });
-    */
+/**
+ * Converts ${find package} idiom to package:// format.
+ * This is commonly used in ROS launch files and xacro files.
+ * @param text The input text containing ${find package} patterns
+ * @returns The text with ${find package} converted to package:// format
+ */
+export function convertFindToPackageUri(text: string): string {
+  // Pattern to match ${find package_name} where package_name can contain letters, numbers, underscores, and hyphens
+  const findPattern = /\$\(find\s+([a-zA-Z0-9_-]+)\)/g;
+  
+  return text.replace(findPattern, (match, packageName) => {
+    return `package://${packageName}`;
   });
+}
+
+/**
+ * Processes a file's content to convert ${find package} idiom to package:// format.
+ * This function reads the file, performs the conversion, and returns the modified content.
+ * @param filePath The path to the file to process
+ * @returns Promise resolving to the converted file content
+ */
+export async function convertFindToPackageUriInFile(filePath: string): Promise<string> {
+  try {
+    const fileContent = fs.readFileSync(filePath, { encoding: 'utf8' });
+    return convertFindToPackageUri(fileContent);
+  } catch (error) {
+    throw new Error(`Failed to process file ${filePath}: ${error}`);
+  }
 }
 
 export async function getPackages(): Promise<Map<string, string>> {
@@ -106,31 +113,58 @@ export async function getPackages(): Promise<Map<string, string>> {
     return packages;
 }
 
+/**
+ * Processes URDF or xacro content to convert ${find package} patterns.
+ * This is useful for processing content that may come from various sources.
+ * @param content The URDF/xacro content to process
+ * @returns The processed content with ${find package} converted to package:// format
+ */
+export function processUrdfContent(content: string): string {
+  return convertFindToPackageUri(content);
+}
+
+/**
+ * Processes a xacro file with complete package resolution and find idiom conversion.
+ * This function handles the full pipeline:
+ * 1. Reads the xacro file content
+ * 2. Converts $(find package) idioms to package:// format
+ * 3. Resolves package:// URIs to actual file paths
+ * 4. Parses the xacro content with resolved paths
+ * 5. Returns the final URDF content and any missing packages
+ * 
+ * @param filename The path to the xacro file to process
+ * @param resolvePackagesFxn Function to resolve package URIs to webview URIs
+ * @returns Promise resolving to [urdfText, packagesNotFound]
+ */
 export async function processXacro(filename: string, resolvePackagesFxn: (packageName :vscode.Uri) => string) : Promise<[string, string[]]> {
   return new Promise(async (resolve, reject) => {
     var packagesNotFound: string[] = [];
     var urdfText = "";
     try {
-      urdfText = await xacro(filename);
-
-      // Xacro may not add a <?xml> tag, so add it if it is not there.
-      if (urdfText.indexOf("<?xml") === -1) {
-          urdfText = '<?xml version="1.0"?>' + os.EOL + urdfText;
-      }
-
+      // Read the file content
+      let xacroContents = fs.readFileSync(filename, { encoding: 'utf8' });
+      
+      // Convert $(find package) idiom to package:// format before parsing
+      xacroContents = convertFindToPackageUri(xacroContents);
+      
+      // Get package map for resolving package:// URIs
       var packageMap = await getPackages();
+      
+      // Replace package:// URIs with resolved paths in the raw xacro content
+      // package://package_name/path/to/resource should be replaced with the actual path to the resource
+      // For example, package://my_package/meshes/robot.stl where my_package is located in /home/user/ros2_ws/src/mypackage, the url should be replaced with /home/user/ros2_ws/src/my_package/meshes/robot.stl
+      // on Windows, it should be replaced with C:\Users\user\ros2_ws\src\my_package\meshes\robot.stl
       if (packageMap !== null) {
-          // replace package://(x) with fully resolved paths
-          var pattern =  /package:\/\/(.*?)\//g;
+          var pattern = /package:\/\/(.*?)\//g;
           var match;
-          while (match = pattern.exec(urdfText)) {
+          while (match = pattern.exec(xacroContents)) {
               if (packageMap.hasOwnProperty(match[1]) === false) {
                   if (packagesNotFound.indexOf(match[1]) === -1) {
                       packagesNotFound.push(match[1]);
                   }
               } else {
                   var packagePath = await packageMap[match[1]];
-                  if (packagePath.charAt(0)  === '/') {
+                  if (packagePath.charAt(0) === '/') {
                       // inside of mesh re \source, the loader attempts to concatinate the base uri with the new path. It first checks to see if the
                       // base path has a /, if not it adds it.
                       // We are attempting to use a protocol handler as the base path - which causes this to fail.
@@ -146,13 +180,53 @@ export async function processXacro(filename: string, resolvePackagesFxn: (packag
                   let vsPath = vscode.Uri.file(normPath);
                   let newUri = resolvePackagesFxn(vsPath);
 
-                  urdfText = urdfText.replace('package://' + match[1], newUri);
+                  // Replace all occurrences in the content
+                  xacroContents = xacroContents.replace(new RegExp('package://' + match[1], 'g'), newUri);
               }
           }
       }
+
+      // Now parse the preprocessed xacro content
+      global.DOMParser = new JSDOM().window.DOMParser;
+      const parser = new XacroParser();
+
+      parser.getFileContents = async (filePath: string): Promise<string> => {
+        // Check if the file exists
+        try {
+          // detect if this starts with "https://file%2B.vscode-resource.vscode-cdn.net/ then remove the prefix and convert to a file URI
+          if (filePath.startsWith("https://file%2B.vscode-resource.vscode-cdn.net/")) {
+            // Remove the prefix
+            filePath = filePath.replace("https://file%2B.vscode-resource.vscode-cdn.net/", "");
+          }
+
+          // Resolve the file path to a URI
+          let filename = path.normalize(filePath);
+
+          // uri decode filename, as windows filenames may contain encoded characters
+          filename = decodeURIComponent(filename);
+
+          let content = fs.readFileSync(filename, { encoding: 'utf8' });
+          return content;
+          
+        } catch (error) {
+          // If the file does not exist, throw an error
+          throw new Error(`File not found: ${filePath}`);
+        }
+      };
+      
+      const result = await parser.parse(xacroContents);
+      // Result is an XmlDom object, convert to string.
+      const serializer = new XMLSerializer();
+      urdfText = serializer.serializeToString(result.documentElement) as string;
+
+      // Xacro may not add a <?xml> tag, so add it if it is not there.
+      if (urdfText.indexOf("<?xml") === -1) {
+          urdfText = '<?xml version="1.0"?>' + os.EOL + urdfText;
+      }
     }
     catch (err: any) {
-      rejects(err);
+      reject(err);
+      return;
     }
 
     resolve([urdfText, packagesNotFound]);

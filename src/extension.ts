@@ -85,13 +85,25 @@ export function activate(context: vscode.ExtensionContext) {
         if (uri) {
           if (vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.uri) {
             // Write the contents of the active editor to the file
-            var [urdfText, packagesNotFound] = await util.processXacro(vscode.window.activeTextEditor.document.uri.fsPath, (packageName: vscode.Uri) => {
-              return packageName.fsPath;
-            });
+            try {
+              var [urdfText, packagesNotFound] = await util.processXacro(vscode.window.activeTextEditor.document.uri.fsPath, (packageName: vscode.Uri) => {
+                return packageName.fsPath;
+              });
 
-            var saveBuffer = Buffer.from(urdfText);
-            
-            await vscode.workspace.fs.writeFile(uri, saveBuffer);
+              var saveBuffer = Buffer.from(urdfText);
+              
+              await vscode.workspace.fs.writeFile(uri, saveBuffer);
+
+              if (packagesNotFound.length > 0) {
+                  var packagesNotFoundList = packagesNotFound.join('\n');
+      
+                  packagesNotFoundList += '\n\nNOTE: This version of the URDF Exporter will not look for packages outside the workspace.';
+                  vscode.window.showErrorMessage("The following packages were not found in the workspace:\n" + packagesNotFoundList);
+              }
+
+            } catch (error) {
+              vscode.window.showErrorMessage(`Failed to export URDF: ${error instanceof Error ? error.message : String(error)}`);
+            }
           }
         }
       });
