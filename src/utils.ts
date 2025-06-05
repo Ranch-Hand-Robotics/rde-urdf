@@ -176,7 +176,11 @@ export async function processXacro(filename: string, resolvePackagesFxn: (packag
 
                       packagePath = packagePath.substr(1);
                   }
-                  let normPath = path.normalize(packagePath);
+                    let normPath = path.normalize(packagePath);
+                    // Convert backslashes to forward slashes on Windows
+                    if (os.platform() === 'win32') {
+                      normPath = normPath.replace(/\\/g, '/');
+                    }
                   let vsPath = vscode.Uri.file(normPath);
                   let newUri = resolvePackagesFxn(vsPath);
 
@@ -191,6 +195,10 @@ export async function processXacro(filename: string, resolvePackagesFxn: (packag
       const parser = new XacroParser();
 
       parser.getFileContents = async (filePath: string): Promise<string> => {
+        if (!filePath || filePath.trim() === "") {
+          return "";
+        }
+        
         // Check if the file exists
         try {
           // detect if this starts with "https://file%2B.vscode-resource.vscode-cdn.net/ then remove the prefix and convert to a file URI
@@ -199,13 +207,42 @@ export async function processXacro(filename: string, resolvePackagesFxn: (packag
             filePath = filePath.replace("https://file%2B.vscode-resource.vscode-cdn.net/", "");
           }
 
+          // Handle package:// protocol
+          if (filePath.startsWith("package://")) {
+            const packagePattern = /^package:\/\/([^/]+)(\/.*)?$/;
+            const match = packagePattern.exec(filePath);
+            
+            if (match && match.length >= 2) {
+              const packageName = match[1];
+              const resourcePath = match[2] || '';
+              
+              if (!packageMap.hasOwnProperty(packageName)) {
+                if (!packagesNotFound.includes(packageName)) {
+                  packagesNotFound.push(packageName);
+                }
+                return "";
+              }
+              
+              const packageBasePath = packageMap[packageName];
+              filePath = path.join(packageBasePath, resourcePath);
+            }
+          }
+
           // Resolve the file path to a URI
           let filename = path.normalize(filePath);
 
           // uri decode filename, as windows filenames may contain encoded characters
           filename = decodeURIComponent(filename);
 
-          let content = fs.readFileSync(filename, { encoding: 'utf8' });
+          let [content, missingPackages] = await processXacro(filename, resolvePackagesFxn);
+          // If there are missing packages from the included file, add them to our list
+          if (missingPackages && missingPackages.length > 0) {
+            for (const pkg of missingPackages) {
+              if (!packagesNotFound.includes(pkg)) {
+          packagesNotFound.push(pkg);
+              }
+            }
+          }
           return content;
           
         } catch (error) {

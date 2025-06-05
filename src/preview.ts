@@ -126,7 +126,7 @@ export default class URDFPreview
         }
     }
 
-    private async loadResource() {
+    private async loadResource()  {
         this._processing = true;
 
         if (!this._webview) {
@@ -157,10 +157,18 @@ export default class URDFPreview
 
             this._processing = false;
             if (packagesNotFound.length > 0) {
-                var packagesNotFoundList = packagesNotFound.join('\n');
-    
-                packagesNotFoundList += '\n\nNOTE: This version of the URDF Renderer will not look for packages outside the workspace.';
-                vscode.window.showErrorMessage("The following packages were not found in the workspace:\n" + packagesNotFoundList);
+   
+                // Log each package not found
+                for (const pkg of packagesNotFound) {
+                    this._trace.appendLine(`\nPackage not found: ${pkg}`);
+                }
+                
+                this._trace.appendLine("\nNOTE: This version of the URDF Renderer will not look for packages outside the workspace.");
+                // Show missing packages as a temporary status bar message
+                vscode.window.setStatusBarMessage(
+                    `$(warning) ${packagesNotFound.length} package(s) not found. Check 'URDF Editor' output for details.`, 
+                    10000  // show for 10 seconds
+                );
             }
 
         } catch (err : any) {
