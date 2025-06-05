@@ -43,26 +43,47 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Register language support for URDF and XACRO files
   // This is now handled by the package.json configuration
-
-  const previewURDFCommand = vscode.commands.registerCommand("urdf-editor.create", () => {
-    if (urdfManager && vscode.window.activeTextEditor) {
-      urdfManager.preview(vscode.window.activeTextEditor.document.uri);
+  const previewURDFCommand = vscode.commands.registerCommand("urdf-editor.create", (uri?: vscode.Uri) => {
+    if (urdfManager) {
+      // If called from context menu, use the provided URI
+      if (uri) {
+        urdfManager.preview(uri);
+      } 
+      // If called from command palette, use active text editor
+      else if (vscode.window.activeTextEditor) {
+        urdfManager.preview(vscode.window.activeTextEditor.document.uri);
+      }
     }
   });
 
   context.subscriptions.push(previewURDFCommand);
-
-  const previewURDFWebXRCommand = vscode.commands.registerCommand("urdf-editor.createXR", () => {
-    if (urdfXRManager && vscode.window.activeTextEditor) {
-      urdfXRManager.preview(vscode.window.activeTextEditor.document.uri);
+  const previewURDFWebXRCommand = vscode.commands.registerCommand("urdf-editor.createXR", (uri?: vscode.Uri) => {
+    if (urdfXRManager) {
+      // If called from context menu, use the provided URI
+      if (uri) {
+        urdfXRManager.preview(uri);
+      }
+      // If called from command palette, use active text editor
+      else if (vscode.window.activeTextEditor) {
+        urdfXRManager.preview(vscode.window.activeTextEditor.document.uri);
+      }
     }
   });
   context.subscriptions.push(previewURDFWebXRCommand);
+  const exportURDFCommand = vscode.commands.registerCommand("urdf-editor.export", (uri?: vscode.Uri) => {
+    // Determine which URI to use
+    let documentUri: vscode.Uri | undefined;
+    if (uri) {
+      // Called from context menu
+      documentUri = uri;
+    } else if (vscode.window.activeTextEditor) {
+      // Called from command palette
+      documentUri = vscode.window.activeTextEditor.document.uri;
+    }
 
-  const exportURDFCommand = vscode.commands.registerCommand("urdf-editor.export", () => {
-    if (vscode.window.activeTextEditor) {
+    if (documentUri) {
       // default filename should be urdf, but with the same name as the current file without xacro if it is there.
-      var defaultFilename = vscode.window.activeTextEditor.document.uri.fsPath;
+      var defaultFilename = documentUri.fsPath;
       var ext = path.extname(defaultFilename);
       if (ext === ".xacro") {
         defaultFilename = defaultFilename.slice(0, -6);
@@ -81,29 +102,27 @@ export function activate(context: vscode.ExtensionContext) {
         saveLabel: 'Export URDF',
         title: 'Export URDF',
         defaultUri: vscode.Uri.file(defaultFilename + ".export.urdf"),
-      }).then(async (uri) => {
-        if (uri) {
-          if (vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.uri) {
-            // Write the contents of the active editor to the file
-            try {
-              var [urdfText, packagesNotFound] = await util.processXacro(vscode.window.activeTextEditor.document.uri.fsPath, (packageName: vscode.Uri) => {
-                return packageName.fsPath;
-              });
+      }).then(async (saveUri) => {
+        if (saveUri && documentUri) {
+          // Write the contents of the file to the export location
+          try {
+            var [urdfText, packagesNotFound] = await util.processXacro(documentUri.fsPath, (packageName: vscode.Uri) => {
+              return packageName.fsPath;
+            });
 
-              var saveBuffer = Buffer.from(urdfText);
-              
-              await vscode.workspace.fs.writeFile(uri, saveBuffer);
+            var saveBuffer = Buffer.from(urdfText);
+            
+            await vscode.workspace.fs.writeFile(saveUri, saveBuffer);
 
-              if (packagesNotFound.length > 0) {
-                  var packagesNotFoundList = packagesNotFound.join('\n');
-      
-                  packagesNotFoundList += '\n\nNOTE: This version of the URDF Exporter will not look for packages outside the workspace.';
-                  vscode.window.showErrorMessage("The following packages were not found in the workspace:\n" + packagesNotFoundList);
-              }
-
-            } catch (error) {
-              vscode.window.showErrorMessage(`Failed to export URDF: ${error instanceof Error ? error.message : String(error)}`);
+            if (packagesNotFound.length > 0) {
+                var packagesNotFoundList = packagesNotFound.join('\n');
+    
+                packagesNotFoundList += '\n\nNOTE: This version of the URDF Exporter will not look for packages outside the workspace.';
+                vscode.window.showErrorMessage("The following packages were not found in the workspace:\n" + packagesNotFoundList);
             }
+
+          } catch (error) {
+            vscode.window.showErrorMessage(`Failed to export URDF: ${error instanceof Error ? error.message : String(error)}`);
           }
         }
       });

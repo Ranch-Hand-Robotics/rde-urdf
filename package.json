@@ -47,8 +47,7 @@
         ],
         "url": "./dist/schemas/xacro-schema.json"
       }
-    ],
-    "commands": [
+    ],    "commands": [
       {
         "command": "urdf-editor.create",
         "title": "Preview URDF"
@@ -61,12 +60,41 @@
         "command": "urdf-editor.export",
         "title": "Export URDF"
       }
-    ],
-    "menus": {
+    ],    "menus": {
       "explorer/context": [
         {
           "command": "urdf-editor.create",
           "when": "explorerResourceIsFolder"
+        },
+        {
+          "command": "urdf-editor.create",
+          "when": "resourceExtname == .urdf",
+          "group": "urdf"
+        },
+        {
+          "command": "urdf-editor.create",
+          "when": "resourceExtname == .xacro",
+          "group": "urdf"
+        },
+        {
+          "command": "urdf-editor.createXR",
+          "when": "resourceExtname == .urdf",
+          "group": "urdf"
+        },
+        {
+          "command": "urdf-editor.createXR",
+          "when": "resourceExtname == .xacro",
+          "group": "urdf"
+        },
+        {
+          "command": "urdf-editor.export",
+          "when": "resourceExtname == .urdf",
+          "group": "urdf"
+        },
+        {
+          "command": "urdf-editor.export",
+          "when": "resourceExtname == .xacro",
+          "group": "urdf"
         }
       ]
     },
