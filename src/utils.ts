@@ -8,6 +8,11 @@ import * as path from "path";
 import * as fs from "fs";
 import { string } from "yaml/dist/schema/common/string";
 import { rejects } from "assert";
+import { tracing } from "./extension";
+import { env } from "process";
+
+
+
 
 export function getNonce() {
   let text = "";
@@ -25,19 +30,17 @@ export function getUri(webview: vscode.Webview, extensionUri: vscode.Uri, pathLi
 /**
  * URDF/Xacro Processing Pipeline:
  * 
- * The processXacro function implements a complete processing pipeline that handles:
- * 1. $(find package) idiom conversion to package:// format
- * 2. Package resolution using workspace package.xml files  
- * 3. Path resolution to webview-compatible URIs
- * 4. Xacro macro expansion and processing
+ * The processXacro function implements a streamlined processing pipeline that:
+ * 1. Uses XacroParser to parse the xacro file directly
+ * 2. Custom getFileContents function detects and resolves $(find package) idioms
+ * 3. Package:// URIs are resolved after xacro processing is complete
+ * 4. Final URDF content has all package references resolved to webview URIs
  * 
- * This unified approach ensures that:
- * - $(find package) conversion happens before xacro parsing, as xacro 
- *   parameters and includes may contain find expressions
- * - Package resolution happens on the raw content before xacro processing,
- *   so that file includes and mesh references resolve correctly during macro expansion
- * - All preprocessing is completed before xacro parsing to ensure the parser
- *   works with valid, resolved file paths and content
+ * This approach ensures that:
+ * - XacroParser handles macro expansion and processing first
+ * - $(find package) idioms are resolved during file loading but content is not parsed as xacro
+ * - Package:// URI mapping occurs after xacro processing to handle generated content
+ * - File includes and mesh references resolve correctly during and after macro expansion
  */
 
 /**
@@ -106,7 +109,7 @@ export async function getPackages(): Promise<Map<string, string>> {
           continue;
         }
 
-        packages[packageName] = path.dirname(packageXmlFile.fsPath);
+        packages.set(packageName, path.dirname(packageXmlFile.fsPath));
         };
       }
 
@@ -124,73 +127,89 @@ export function processUrdfContent(content: string): string {
 }
 
 /**
- * Processes a xacro file with complete package resolution and find idiom conversion.
- * This function handles the full pipeline:
- * 1. Reads the xacro file content
- * 2. Converts $(find package) idioms to package:// format
- * 3. Resolves package:// URIs to actual file paths
- * 4. Parses the xacro content with resolved paths
- * 5. Returns the final URDF content and any missing packages
+ * Resolves package:// URIs to actual file paths after xacro processing.
+ * This function maps package URIs to resolved webview URIs.
+ * 
+ * @param urdfContent The URDF content containing package:// URIs
+ * @param packageMap Map of package names to their filesystem paths
+ * @param resolvePackagesFxn Function to resolve package URIs to webview URIs
+ * @param packagesNotFound Array to collect missing package names
+ * @returns The URDF content with package:// URIs resolved to webview URIs
+ */
+function resolvePackageUris(
+  urdfContent: string,
+  packageMap: Map<string, string>,
+  resolvePackagesFxn: (packageUri: vscode.Uri) => string,
+  packagesNotFound: string[]
+): string {
+  if (!packageMap || packageMap.size === 0) {
+    return urdfContent;
+  }
+
+  const pattern = /package:\/\/(.*?)\//g;
+  let match;
+  let resolvedContent = urdfContent;
+
+  while ((match = pattern.exec(urdfContent)) !== null) {
+    const packageName = match[1];
+    
+    if (!packageMap.has(packageName)) {
+      if (!packagesNotFound.includes(packageName)) {
+        packagesNotFound.push(packageName);
+      }
+    } else {
+      const packagePath = packageMap.get(packageName)!;
+      let normalizedPath = packagePath;
+      
+      // Handle absolute paths
+      if (normalizedPath.charAt(0) === '/') {
+        normalizedPath = normalizedPath.substring(1);
+      }
+      
+      // Normalize path and convert backslashes to forward slashes on Windows
+      normalizedPath = path.normalize(normalizedPath);
+      if (os.platform() === 'win32') {
+        normalizedPath = normalizedPath.replace(/\\/g, '/');
+      }
+      
+      const vsPath = vscode.Uri.file(normalizedPath);
+      const newUri = resolvePackagesFxn(vsPath);
+
+      // Replace all occurrences of this package URI
+      resolvedContent = resolvedContent.replace(
+        new RegExp(`package://${packageName}/`, 'g'),
+        newUri + '/'
+      );
+    }
+  }
+
+  return resolvedContent;
+}
+
+/**
+ * Processes a xacro file with package resolution.
+ * This function handles the processing pipeline:
+ * 1. Uses XacroParser to parse the xacro file with custom getFileContents
+ * 2. Maps package:// URIs to resolved paths after xacro processing
+ * 3. Returns the final URDF content and any missing packages
  * 
  * @param filename The path to the xacro file to process
  * @param resolvePackagesFxn Function to resolve package URIs to webview URIs
  * @returns Promise resolving to [urdfText, packagesNotFound]
  */
-export async function processXacro(filename: string, resolvePackagesFxn: (packageName :vscode.Uri) => string) : Promise<[string, string[]]> {
+export async function processXacro(filename: string, resolvePackagesFxn: (packageName: vscode.Uri) => string): Promise<[string, string[]]> {
   return new Promise(async (resolve, reject) => {
-    var packagesNotFound: string[] = [];
-    var urdfText = "";
+    const packagesNotFound: string[] = [];
+    let urdfText = "";
+
     try {
       // Read the file content
-      let xacroContents = fs.readFileSync(filename, { encoding: 'utf8' });
+      const xacroContents = fs.readFileSync(filename, { encoding: 'utf8' });
       
-      // Convert $(find package) idiom to package:// format before parsing
-      xacroContents = convertFindToPackageUri(xacroContents);
-      
-      // Get package map for resolving package:// URIs
-      var packageMap = await getPackages();
-      
-      // Replace package:// URIs with resolved paths in the raw xacro content
-      // package://package_name/path/to/resource should be replaced with the actual path to the resource
-      // For example, package://my_package/meshes/robot.stl where my_package is located in /home/user/ros2_ws/src/mypackage, the url should be replaced with /home/user/ros2_ws/src/my_package/meshes/robot.stl
-      // on Windows, it should be replaced with C:\Users\user\ros2_ws\src\my_package\meshes\robot.stl
-      if (packageMap !== null) {
-          var pattern = /package:\/\/(.*?)\//g;
-          var match;
-          while (match = pattern.exec(xacroContents)) {
-              if (packageMap.hasOwnProperty(match[1]) === false) {
-                  if (packagesNotFound.indexOf(match[1]) === -1) {
-                      packagesNotFound.push(match[1]);
-                  }
-              } else {
-                  var packagePath = await packageMap[match[1]];
-                  if (packagePath.charAt(0) === '/') {
-                      // inside of mesh re \source, the loader attempts to concatinate the base uri with the new path. It first checks to see if the
-                      // base path has a /, if not it adds it.
-                      // We are attempting to use a protocol handler as the base path - which causes this to fail.
-                      // basepath - vscode-webview-resource:
-                      // full path - /home/test/ros
-                      // vscode-webview-resource://home/test/ros.
-                      // It should be vscode-webview-resource:/home/test/ros.
-                      // So remove the first char.
+      // Get package map for resolving package:// URIs and $(find) idioms
+      const packageMap = await getPackages();
 
-                      packagePath = packagePath.substr(1);
-                  }
-                    let normPath = path.normalize(packagePath);
-                    // Convert backslashes to forward slashes on Windows
-                    if (os.platform() === 'win32') {
-                      normPath = normPath.replace(/\\/g, '/');
-                    }
-                  let vsPath = vscode.Uri.file(normPath);
-                  let newUri = resolvePackagesFxn(vsPath);
-
-                  // Replace all occurrences in the content
-                  xacroContents = xacroContents.replace(new RegExp('package://' + match[1], 'g'), newUri);
-              }
-          }
-      }
-
-      // Now parse the preprocessed xacro content
+      // Setup XacroParser with custom getFileContents
       global.DOMParser = new JSDOM().window.DOMParser;
       const parser = new XacroParser();
 
@@ -199,69 +218,126 @@ export async function processXacro(filename: string, resolvePackagesFxn: (packag
           return "";
         }
         
-        // Check if the file exists
         try {
-          // detect if this starts with "https://file%2B.vscode-resource.vscode-cdn.net/ then remove the prefix and convert to a file URI
-          if (filePath.startsWith("https://file%2B.vscode-resource.vscode-cdn.net/")) {
-            // Remove the prefix
-            filePath = filePath.replace("https://file%2B.vscode-resource.vscode-cdn.net/", "");
+          let resolvedPath = filePath;
+
+          // Handle vscode-resource URLs
+          if (resolvedPath.startsWith("https://file%2B.vscode-resource.vscode-cdn.net/")) {
+            resolvedPath = resolvedPath.replace("https://file%2B.vscode-resource.vscode-cdn.net/", "");
           }
 
           // Handle package:// protocol
-          if (filePath.startsWith("package://")) {
+          if (resolvedPath.startsWith("package://")) {
             const packagePattern = /^package:\/\/([^/]+)(\/.*)?$/;
-            const match = packagePattern.exec(filePath);
+            const packageMatch = packagePattern.exec(resolvedPath);
             
-            if (match && match.length >= 2) {
-              const packageName = match[1];
-              const resourcePath = match[2] || '';
+            if (packageMatch && packageMatch.length >= 2) {
+              const packageName = packageMatch[1];
+              const resourcePath = packageMatch[2] || '';
               
-              if (!packageMap.hasOwnProperty(packageName)) {
+              if (!packageMap.has(packageName)) {
                 if (!packagesNotFound.includes(packageName)) {
                   packagesNotFound.push(packageName);
                 }
                 return "";
               }
               
-              const packageBasePath = packageMap[packageName];
-              filePath = path.join(packageBasePath, resourcePath);
+              const packageBasePath = packageMap.get(packageName)!;
+              resolvedPath = path.join(packageBasePath, resourcePath);
             }
           }
 
-          // Resolve the file path to a URI
-          let filename = path.normalize(filePath);
+          // Normalize and decode the file path
+          let normalizedPath = path.normalize(resolvedPath);
+          normalizedPath = decodeURIComponent(normalizedPath);
 
-          // uri decode filename, as windows filenames may contain encoded characters
-          filename = decodeURIComponent(filename);
-
-          let [content, missingPackages] = await processXacro(filename, resolvePackagesFxn);
-          // If there are missing packages from the included file, add them to our list
-          if (missingPackages && missingPackages.length > 0) {
-            for (const pkg of missingPackages) {
-              if (!packagesNotFound.includes(pkg)) {
-          packagesNotFound.push(pkg);
-              }
-            }
-          }
-          return content;
+          // Read and return file contents (not parsed as xacro)
+          return fs.readFileSync(normalizedPath, { encoding: 'utf8' });
           
         } catch (error) {
-          // If the file does not exist, throw an error
           throw new Error(`File not found: ${filePath}`);
         }
       };
-      
+
+      parser.rospackCommands =
+      {
+        find: (...args:string[]): string => {
+          let packageName = args[0] as string;
+          if (!packageName || packageName.trim() === "") {
+            return "";
+          }
+
+          if (!packageMap.has(packageName)) {
+            if (!packagesNotFound.includes(packageName)) {
+              packagesNotFound.push(packageName);
+            }
+            return "";
+          }
+          return packageMap.get(packageName)!;
+        },
+
+        eval: (...args: string[]): string => {
+          // This function is not used in the current implementation
+          // but can be extended to handle other rospack commands if needed
+
+          tracing.appendLine(`rospack eval is not supported currently, called with args: ${args.join(', ')}. If you'd like to see this implemented, +1 https://github.com/Ranch-Hand-Robotics/rde-urdf/issues/43, or submit a pull request.`);
+
+          return "";
+        },
+
+        dirname: (filePath: string): string => {
+          if (!filePath || filePath.trim() === "") {
+            return "";
+          }
+          return path.dirname(filePath);
+        },
+
+        arg: (arg: string): string => {
+          // This function is not used in the current implementation
+          // but can be extended to handle other rospack commands if needed
+
+          tracing.appendLine(`rospack arg is not supported currently, called with arg: ${arg}. If you'd like to see this implemented, +1 https://github.com/Ranch-Hand-Robotics/rde-urdf/issues/44`);
+          return "";
+        },
+
+        anon: (arg: string): string => {
+          // return random string for anonymous names
+          return getNonce();
+        },
+
+        optenv: (...args : Array<String>): string => {
+          // This function is not used in the current implementation
+          // but can be extended to handle other rospack commands if needed
+
+          tracing.appendLine(`rospack optenv is not supported currently. If you'd like to see this implemented, +1 https://github.com/Ranch-Hand-Robotics/rde-urdf/issues/45`);
+          if (args.length < 2) {
+            return "";
+          }
+          return args.slice(1).join("");
+        },
+
+        env: (env: string): string => {
+          // Get the environment variable if it exists, otherwise return empty string
+          return env[env.toString()] !== undefined ? env[env.toString()].toString() : "";
+        }
+      };
+
+      // Add XML declaration if missing
+      if (urdfText.indexOf("<?xml") === -1) {
+        urdfText = '<?xml version="1.0"?>' + os.EOL + urdfText;
+      }
+
+      // Parse the xacro content
       const result = await parser.parse(xacroContents);
-      // Result is an XmlDom object, convert to string.
+      
+      // Convert result to string
       const serializer = new XMLSerializer();
       urdfText = serializer.serializeToString(result.documentElement) as string;
 
-      // Xacro may not add a <?xml> tag, so add it if it is not there.
-      if (urdfText.indexOf("<?xml") === -1) {
-          urdfText = '<?xml version="1.0"?>' + os.EOL + urdfText;
-      }
-    }
-    catch (err: any) {
+      // Process package:// URIs in the final URDF content
+      urdfText = resolvePackageUris(urdfText, packageMap, resolvePackagesFxn, packagesNotFound);
+
+    } catch (err: any) {
       reject(err);
       return;
     }

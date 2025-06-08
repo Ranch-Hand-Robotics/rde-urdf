@@ -131,6 +131,7 @@ export default class URDFPreview
 
         if (!this._webview) {
             this._processing = false;
+            this._trace.appendLine("Webview is not available, cannot load resource.");
             return;
         }
 
@@ -155,7 +156,6 @@ export default class URDFPreview
             this._webview.webview.postMessage({ command: 'previewFile', previewFile: this._resource.path});
             this._webview.webview.postMessage({ command: 'urdf', urdf: urdfText });
 
-            this._processing = false;
             if (packagesNotFound.length > 0) {
    
                 // Log each package not found
@@ -173,6 +173,8 @@ export default class URDFPreview
 
         } catch (err : any) {
             vscode.window.showErrorMessage(err.message);
+        } finally {
+            this._processing = false;
         }
     }
 

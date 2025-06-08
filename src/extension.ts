@@ -6,7 +6,7 @@ import * as util from "./utils";
 
 import { Viewer3DProvider } from './3DViewerProvider';
 
-var tracing: vscode.OutputChannel = vscode.window.createOutputChannel("URDF Editor");
+export var tracing: vscode.OutputChannel = vscode.window.createOutputChannel("URDF Editor");
 
 var urdfManager: URDFPreviewManager | null = null;
 var urdfXRManager: WebXRPreviewManager | null = null;
