@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1">
+  <!-- Mock COLLADA/DAE file for testing -->
+  <asset>
+    <created>2025-06-08T00:00:00Z</created>
+    <modified>2025-06-08T00:00:00Z</modified>
+    <unit meter="1.0" name="meter"/>
+    <up_axis>Z_UP</up_axis>
+  </asset>
+  
+  <library_materials>
+    <material id="arm_material" name="arm_material">
+      <instance_effect url="#arm_material_effect"/>
+    </material>
+  </library_materials>
+  
+  <library_effects>
+    <effect id="arm_material_effect">
+      <profile_COMMON>
+        <technique sid="common">
+          <phong>
+            <diffuse>
+              <color>0.8 0.4 0.1 1</color>
+            </diffuse>
+          </phong>
+        </technique>
+      </profile_COMMON>
+    </effect>
+  </library_effects>
+  
+  <library_geometries>
+    <geometry id="arm_geometry" name="arm_geometry">
+      <mesh>
+        <source id="arm_positions">
+          <float_array id="arm_positions_array" count="24">
+            -0.02 -0.02 0 0.02 -0.02 0 0.02 0.02 0 -0.02 0.02 0
+            -0.02 -0.02 0.3 0.02 -0.02 0.3 0.02 0.02 0.3 -0.02 0.02 0.3
+          </float_array>
+          <technique_common>
+            <accessor source="#arm_positions_array" count="8" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="arm_vertices">
+          <input semantic="POSITION" source="#arm_positions"/>
+        </vertices>
+        <triangles material="arm_material" count="12">
+          <input semantic="VERTEX" source="#arm_vertices" offset="0"/>
+          <p>0 1 2 0 2 3 4 7 6 4 6 5 0 4 5 0 5 1 1 5 6 1 6 2 2 6 7 2 7 3 4 0 3 4 3 7</p>
+        </triangles>
+      </mesh>
+    </geometry>
+  </library_geometries>
+  
+  <library_visual_scenes>
+    <visual_scene id="arm_scene" name="arm_scene">
+      <node id="arm_node" name="arm_node">
+        <instance_geometry url="#arm_geometry">
+          <bind_material>
+            <technique_common>
+              <instance_material symbol="arm_material" target="#arm_material"/>
+            </technique_common>
+          </bind_material>
+        </instance_geometry>
+      </node>
+    </visual_scene>
+  </library_visual_scenes>
+  
+  <scene>
+    <instance_visual_scene url="#arm_scene"/>
+  </scene>
+</COLLADA>

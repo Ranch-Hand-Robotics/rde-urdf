@@ -1,0 +1,80 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- Common macros for robot parts -->
+  
+  <xacro:macro name="wheel" params="name parent origin_xyz origin_rpy radius length mass">
+    <link name="${name}">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${radius}" length="${length}"/>
+        </geometry>
+        <material name="black">
+          <color rgba="0.1 0.1 0.1 1"/>
+        </material>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${radius}" length="${length}"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="${mass}"/>
+        <inertia ixx="${mass * (3 * radius * radius + length * length) / 12}" 
+                 ixy="0" ixz="0" 
+                 iyy="${mass * (3 * radius * radius + length * length) / 12}" 
+                 iyz="0" 
+                 izz="${mass * radius * radius / 2}"/>
+      </inertial>
+    </link>
+
+    <joint name="${name}_joint" type="continuous">
+      <parent link="${parent}"/>
+      <child link="${name}"/>
+      <origin xyz="${origin_xyz}" rpy="${origin_rpy}"/>
+      <axis xyz="0 0 1"/>
+      <dynamics damping="0.1" friction="0.1"/>
+    </joint>
+  </xacro:macro>
+
+  <xacro:macro name="arm_segment" params="name parent origin_xyz origin_rpy length radius mass joint_type:=revolute lower:=-1.57 upper:=1.57">
+    <link name="${name}">
+      <visual>
+        <origin xyz="0 0 ${length/2}" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${radius}" length="${length}"/>
+        </geometry>
+        <material name="arm_color">
+          <color rgba="0.8 0.4 0.1 1"/>
+        </material>
+      </visual>
+      <collision>
+        <origin xyz="0 0 ${length/2}" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${radius}" length="${length}"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <origin xyz="0 0 ${length/2}" rpy="0 0 0"/>
+        <mass value="${mass}"/>
+        <inertia ixx="${mass * (3 * radius * radius + length * length) / 12}" 
+                 ixy="0" ixz="0" 
+                 iyy="${mass * (3 * radius * radius + length * length) / 12}" 
+                 iyz="0" 
+                 izz="${mass * radius * radius / 2}"/>
+      </inertial>
+    </link>
+
+    <joint name="${name}_joint" type="${joint_type}">
+      <parent link="${parent}"/>
+      <child link="${name}"/>
+      <origin xyz="${origin_xyz}" rpy="${origin_rpy}"/>
+      <axis xyz="0 0 1"/>
+      <xacro:if value="${joint_type == 'revolute'}">
+        <limit lower="${lower}" upper="${upper}" effort="10" velocity="1"/>
+      </xacro:if>
+      <dynamics damping="0.5" friction="0.1"/>
+    </joint>
+  </xacro:macro>
+</robot>

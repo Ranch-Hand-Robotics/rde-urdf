@@ -1,0 +1,139 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="complex_robot">
+  <!-- Complex robot with includes and multiple components -->
+  
+  <!-- Include common macros -->
+  <xacro:include filename="$(find test_robot)/test/testdata/common_macros.xacro"/>
+  
+  <!-- Robot properties -->
+  <xacro:property name="base_mass" value="15.0"/>
+  <xacro:property name="base_radius" value="0.3"/>
+  <xacro:property name="base_height" value="0.15"/>
+  
+  <xacro:property name="wheel_radius" value="0.1"/>
+  <xacro:property name="wheel_length" value="0.05"/>
+  <xacro:property name="wheel_mass" value="1.0"/>
+  <xacro:property name="wheel_offset" value="0.35"/>
+  
+  <xacro:property name="arm_segment_length" value="0.3"/>
+  <xacro:property name="arm_segment_radius" value="0.03"/>
+  <xacro:property name="arm_segment_mass" value="1.5"/>
+
+  <!-- Base link -->
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0 ${base_height/2}" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="${base_radius}" length="${base_height}"/>
+      </geometry>
+      <material name="base_color">
+        <color rgba="0.5 0.5 0.5 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 ${base_height/2}" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="${base_radius}" length="${base_height}"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 ${base_height/2}" rpy="0 0 0"/>
+      <mass value="${base_mass}"/>
+      <inertia ixx="${base_mass * (3 * base_radius * base_radius + base_height * base_height) / 12}" 
+               ixy="0" ixz="0" 
+               iyy="${base_mass * (3 * base_radius * base_radius + base_height * base_height) / 12}" 
+               iyz="0" 
+               izz="${base_mass * base_radius * base_radius / 2}"/>
+    </inertial>
+  </link>
+
+  <!-- Wheels using macro -->
+  <xacro:wheel name="front_left_wheel" parent="base_link" 
+               origin_xyz="${wheel_offset} ${wheel_offset} 0" origin_rpy="1.57079 0 0"
+               radius="${wheel_radius}" length="${wheel_length}" mass="${wheel_mass}"/>
+               
+  <xacro:wheel name="front_right_wheel" parent="base_link" 
+               origin_xyz="${wheel_offset} ${-wheel_offset} 0" origin_rpy="1.57079 0 0"
+               radius="${wheel_radius}" length="${wheel_length}" mass="${wheel_mass}"/>
+               
+  <xacro:wheel name="rear_left_wheel" parent="base_link" 
+               origin_xyz="${-wheel_offset} ${wheel_offset} 0" origin_rpy="1.57079 0 0"
+               radius="${wheel_radius}" length="${wheel_length}" mass="${wheel_mass}"/>
+               
+  <xacro:wheel name="rear_right_wheel" parent="base_link" 
+               origin_xyz="${-wheel_offset} ${-wheel_offset} 0" origin_rpy="1.57079 0 0"
+               radius="${wheel_radius}" length="${wheel_length}" mass="${wheel_mass}"/>
+
+  <!-- Robotic arm using macros -->
+  <xacro:arm_segment name="arm_base" parent="base_link" 
+                     origin_xyz="0 0 ${base_height}" origin_rpy="0 0 0"
+                     length="${arm_segment_length}" radius="${arm_segment_radius}" mass="${arm_segment_mass}"/>
+                     
+  <xacro:arm_segment name="arm_segment_1" parent="arm_base" 
+                     origin_xyz="0 0 ${arm_segment_length}" origin_rpy="0 0 0"
+                     length="${arm_segment_length}" radius="${arm_segment_radius}" mass="${arm_segment_mass}"/>
+                     
+  <xacro:arm_segment name="arm_segment_2" parent="arm_segment_1" 
+                     origin_xyz="0 0 ${arm_segment_length}" origin_rpy="0 0 0"
+                     length="${arm_segment_length * 0.8}" radius="${arm_segment_radius * 0.8}" mass="${arm_segment_mass * 0.8}"/>
+
+  <!-- End effector -->
+  <link name="end_effector">
+    <visual>
+      <origin xyz="0 0 0.025" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://test_robot/meshes/gripper.stl" scale="0.001 0.001 0.001"/>
+      </geometry>
+      <material name="gripper_color">
+        <color rgba="0.1 0.1 0.8 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.025" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.05 0.05 0.05"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.5"/>
+      <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
+    </inertial>
+  </link>
+
+  <joint name="end_effector_joint" type="fixed">
+    <parent link="arm_segment_2"/>
+    <child link="end_effector"/>
+    <origin xyz="0 0 ${arm_segment_length * 0.8}" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Camera sensor -->
+  <link name="camera_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.05 0.08 0.03"/>
+      </geometry>
+      <material name="camera_color">
+        <color rgba="0.1 0.1 0.1 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.05 0.08 0.03"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.2"/>
+      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
+    </inertial>
+  </link>
+
+  <joint name="camera_joint" type="revolute">
+    <parent link="base_link"/>
+    <child link="camera_link"/>
+    <origin xyz="0.25 0 ${base_height + 0.1}" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-1.57" upper="1.57" effort="5" velocity="0.5"/>
+  </joint>
+</robot>

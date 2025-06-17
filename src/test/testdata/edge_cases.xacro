@@ -1,0 +1,69 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="edge_cases">
+  <!-- Test edge cases and potential error conditions -->
+  
+  <!-- Missing package reference -->
+  <xacro:property name="missing_mesh" value="$(find nonexistent_package)/meshes/missing.stl"/>
+  
+  <!-- Invalid package:// URI -->
+  <xacro:property name="invalid_package_uri" value="package://invalid_package/some/path.dae"/>
+  
+  <!-- Complex property calculations -->
+  <xacro:property name="pi" value="3.14159"/>
+  <xacro:property name="complex_value" value="${pi * 2 / 3}"/>
+  
+  <!-- Conditional content -->
+  <xacro:property name="use_advanced_features" value="false"/>
+  
+  <link name="test_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 ${complex_value}"/>
+      <geometry>
+        <xacro:if value="${use_advanced_features}">
+          <mesh filename="${missing_mesh}"/>
+        </xacro:if>
+        <xacro:unless value="${use_advanced_features}">
+          <box size="1 1 1"/>
+        </xacro:unless>
+      </geometry>
+      <material name="test_material">
+        <color rgba="1 0 1 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="${invalid_package_uri}"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="1.0"/>
+      <inertia ixx="0.1" ixy="0" ixz="0" iyy="0.1" iyz="0" izz="0.1"/>
+    </inertial>
+  </link>
+
+  <!-- Test different joint types -->
+  <link name="prismatic_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.02" length="0.1"/>
+      </geometry>
+      <material name="silver">
+        <color rgba="0.8 0.8 0.8 1"/>
+      </material>
+    </visual>
+    <inertial>
+      <mass value="0.1"/>
+      <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
+    </inertial>
+  </link>
+
+  <joint name="prismatic_joint" type="prismatic">
+    <parent link="test_link"/>
+    <child link="prismatic_link"/>
+    <origin xyz="0 0 0.5" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="0" upper="0.2" effort="100" velocity="1"/>
+  </joint>
+</robot>

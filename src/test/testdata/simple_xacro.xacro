@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="simple_xacro">
+  <!-- Simple xacro with properties -->
+  <xacro:property name="box_size" value="0.5"/>
+  <xacro:property name="box_mass" value="1.0"/>
+
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="${box_size} ${box_size} ${box_size}"/>
+      </geometry>
+      <material name="green">
+        <color rgba="0 1 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="${box_size} ${box_size} ${box_size}"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="${box_mass}"/>
+      <inertia ixx="${box_mass * box_size * box_size / 6}" 
+               ixy="0" ixz="0" 
+               iyy="${box_mass * box_size * box_size / 6}" 
+               iyz="0" 
+               izz="${box_mass * box_size * box_size / 6}"/>
+    </inertial>
+  </link>
+</robot>

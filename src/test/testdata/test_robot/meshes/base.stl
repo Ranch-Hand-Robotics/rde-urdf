@@ -1,0 +1,12 @@
+# Mock STL file for testing
+# This is a placeholder for base.stl
+# In a real implementation, this would be a binary STL file
+solid base_mesh
+  facet normal 0 0 1
+    outer loop
+      vertex 0 0 0
+      vertex 1 0 0
+      vertex 0 1 0
+    endloop
+  endfacet
+endsolid base_mesh

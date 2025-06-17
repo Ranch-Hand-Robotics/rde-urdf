@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>test_robot</name>
+  <version>1.0.0</version>
+  <description>Test robot package for URDF/Xacro parsing tests</description>
+  
+  <maintainer email="test@example.com">Test Maintainer</maintainer>
+  <license>MIT</license>
+  
+  <buildtool_depend>catkin</buildtool_depend>
+  
+  <build_depend>urdf</build_depend>
+  <build_depend>xacro</build_depend>
+  
+  <run_depend>urdf</run_depend>
+  <run_depend>xacro</run_depend>
+  
+  <export></export>
+</package>

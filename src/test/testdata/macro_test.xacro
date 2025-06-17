@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="macro_test">
+  <!-- Xacro with macros -->
+  <xacro:macro name="cylinder_link" params="name radius length mass color_r color_g color_b">
+    <link name="${name}">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${radius}" length="${length}"/>
+        </geometry>
+        <material name="${name}_material">
+          <color rgba="${color_r} ${color_g} ${color_b} 1"/>
+        </material>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${radius}" length="${length}"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="${mass}"/>
+        <inertia ixx="${mass * (3 * radius * radius + length * length) / 12}" 
+                 ixy="0" ixz="0" 
+                 iyy="${mass * (3 * radius * radius + length * length) / 12}" 
+                 iyz="0" 
+                 izz="${mass * radius * radius / 2}"/>
+      </inertial>
+    </link>
+  </xacro:macro>
+
+  <xacro:cylinder_link name="base_link" radius="0.3" length="0.1" mass="2.0" color_r="0.5" color_g="0.5" color_b="0.5"/>
+  <xacro:cylinder_link name="wheel_left" radius="0.1" length="0.05" mass="0.5" color_r="0" color_g="0" color_b="1"/>
+  <xacro:cylinder_link name="wheel_right" radius="0.1" length="0.05" mass="0.5" color_r="0" color_g="0" color_b="1"/>
+
+  <joint name="left_wheel_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="wheel_left"/>
+    <origin xyz="0 0.25 0" rpy="1.57079 0 0"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+
+  <joint name="right_wheel_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="wheel_right"/>
+    <origin xyz="0 -0.25 0" rpy="1.57079 0 0"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+</robot>
