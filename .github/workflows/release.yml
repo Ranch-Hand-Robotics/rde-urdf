@@ -26,10 +26,6 @@ jobs:
         with:
           node-version: 22.x
       - run: npm install
-      
-      # Update version in package.json
-      - name: Update version
-        run: npm version ${{ github.event.inputs.tags }} --no-git-tag-version
         
       - name: Install VSCE
         run: npm install @vscode/vsce -g
