@@ -292,14 +292,6 @@ export async function processXacro(filename: string, resolvePackagesFxn: (packag
           return path.dirname(filePath);
         },
 
-        arg: (arg: string): string => {
-          // This function is not used in the current implementation
-          // but can be extended to handle other rospack commands if needed
-
-          tracing.appendLine(`rospack arg is not supported currently, called with arg: ${arg}. If you'd like to see this implemented, +1 https://github.com/Ranch-Hand-Robotics/rde-urdf/issues/44`);
-          return "";
-        },
-
         anon: (arg: string): string => {
           // return random string for anonymous names
           return getNonce();
