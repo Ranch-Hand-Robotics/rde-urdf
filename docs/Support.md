@@ -11,6 +11,4 @@ Please provide as much details as possible, including an isolated reproduction o
 
 ## Sponsored Support
 
-![Coming Soon](https://img.shields.io/badge/Coming%20Soon-8A2BE2)
-
-One on one support, mentoring and consulting will be available through Github Sponsors and Patreon. 
+If you are looking for more direct support or would like to help cover costs associated with building and releasing this extension, Ranch Hand Robotics offers [sponsored support](https://github.com/sponsors/Ranch-Hand-Robotics) for this extension. This includes direct support from the developers.
