@@ -4,7 +4,7 @@
   "description": "A robust URDF editor for ROS packages.",
   "publisher": "Ranch-Hand-Robotics",
   "icon": "media/icon.png",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "engines": {
     "vscode": "^1.91.0"
   },
@@ -168,7 +168,7 @@
     ]
   },
   "scripts": {
-    "vsix": "vsce package -o vscode-ros-dev.vsix",
+    "vsix": "vsce package -o rde-urdf.vsix",
     "vscode:prepublish": "npm run package",
     "compile": "webpack",
     "build": "webpack",

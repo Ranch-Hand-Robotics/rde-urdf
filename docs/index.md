@@ -1,8 +1,7 @@
 # Robot Development Extensions for URDF
 This Visual Studio Code extension helps you buid Universal Robot Description Format (URDF) files for your robot. This extension does not require ROS to be installed in order to edit and visualize URDF files.
 
-> NOTE: This extension is rebranded and re-released by Ranch Hand Robotics, owned by the maintainer of the [ms-iot VSCode ROS Extension](https://github.com/ms-iot/vscode-ros) with permission from Microsoft. The source extension was split into 3 parts - [ROS 1](https://ranchhandrobotics.github.io/rde-ros-1/), [ROS 2](https://ranchhandrobotics.github.io/rde-ros-2/) and a [URDF editor](https://ranchhandrobotics.github.io/rde-urdf/).
-
+![URDF Preview](media/URDF_Preview.png)
 
 ## Features
 - Export to Isaac Simulation
@@ -33,3 +32,8 @@ This Visual Studio Code extension helps you buid Universal Robot Description For
 1. Open a URDF file
 2. Right click on the file and select "Preview URDF", or press `Ctrl+Shift+P` and select "Preview URDF"
 
+
+
+
+## Acknowledgements
+This extension is rebranded and re-released by Ranch Hand Robotics, owned by the maintainer of the [ms-iot VSCode ROS Extension](https://github.com/ms-iot/vscode-ros) with permission from Microsoft. The source extension was split into 3 parts - [ROS 1](https://ranchhandrobotics.github.io/rde-ros-1/), [ROS 2](https://ranchhandrobotics.github.io/rde-ros-2/) and a [URDF editor](https://ranchhandrobotics.github.io/rde-urdf/).
