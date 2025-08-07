@@ -1,5 +1,7 @@
-# Visual Studio Code ROS URDF Editor
+# Robot Developer Extensions for URDF
 This extension provides developer tooling for Unified Robot Description Files (URDF) and Xacro Editing and Preview. 
+
+![URDF Preview](media/URDF_Preview.png)
 
 ## Features
 - 3D preview
@@ -12,8 +14,9 @@ This extension provides developer tooling for Unified Robot Description Files (U
 - Code completion
 - Collision Visualization
 - Schema Validation
-- AI Assisted Coding prompts fpr Github Copilot
+- AI Assisted Coding prompts for Github Copilot
 - Virtual Reality preview of the model you are editing.
+
 
 ## Coming Soon
 - [Physics Emulation](https://github.com/ranchhandrobotics/vscode_urdf/issues/4)
@@ -21,12 +24,13 @@ This extension provides developer tooling for Unified Robot Description Files (U
 - [External URDF / Xacro References](https://github.com/ranchhandrobotics/vscode_urdf/issues/6)
 
 ## Usage
-1. Open a URDF file
+1. Open a URDF or .xacro file.
 2. Right click on the file and select "Preview URDF", or press `Ctrl+Shift+P` and select "Preview URDF"
 
 
 ## Support
 If you encounter any issues with this extension, the following resources are provided:
+
 ### Github Issues
 Bugs and feature requests are handled through [Github Issues in the Repository](https://github.com/Ranch-Hand-Robotics/rde-urdf/issues). 
 If you find that you are hitting the same issue as someone else, please give a :+1: or comment on an existing issue.

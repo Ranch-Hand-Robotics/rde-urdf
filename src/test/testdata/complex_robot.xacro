@@ -3,7 +3,7 @@
   <!-- Complex robot with includes and multiple components -->
   
   <!-- Include common macros -->
-  <xacro:include filename="$(find test_robot)/test/testdata/common_macros.xacro"/>
+  <xacro:include filename="$(find test_robot)/common_macros.xacro"/>
   
   <!-- Robot properties -->
   <xacro:property name="base_mass" value="15.0"/>

@@ -1,4 +1,5 @@
 # WebXR URDF (https://img.shields.io/badge/Preview-8A2BE2)
+
 The Robot Developer Extension for URDF allows previewing a URDF file in Virtual Reality. This feature has been tested with a Meta Quest 3 headset and provides a way to visualize robot models in a 3D environment. 
 
 WebXR requires a secure connection to function properly, which is why we use the Microsoft DevTunnel tool to create a secure tunnel to your local machine, which has the URDF file open. To start the WebXR Preview for a URDF file, you need to follow the steps outlined below.
@@ -6,6 +7,7 @@ WebXR requires a secure connection to function properly, which is why we use the
 Microsoft DevTunnel is a tool that allows you to create secure tunnels to your local machine, enabling you to access local resources from remote devices, such as VR headsets. This is particularly useful for WebXR applications, which require HTTPS to function properly.
 
 ## Prerequisites
+
 - A VR headset. The extension has been tested with the Meta Quest 3.
 - [Microsoft DevTunnel Tool](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/get-started)
 
@@ -24,7 +26,3 @@ Follow these steps:
 - Improved user interface for the WebXR Preview.
 - Integration with other tools and services for a more seamless experience.
 - Enhanced performance and stability for larger URDF files.
-
-
-
-
