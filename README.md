@@ -1,7 +1,7 @@
 # Robot Developer Extensions for URDF
 This extension provides developer tooling for Unified Robot Description Files (URDF) and Xacro Editing and Preview. 
 
-![URDF Preview](media/URDF_Preview.png)
+![URDF Preview](https://raw.githubusercontent.com/Ranch-Hand-Robotics/rde-urdf/refs/heads/main/docs/URDF_Preview.png)
 
 ## Features
 - 3D preview
