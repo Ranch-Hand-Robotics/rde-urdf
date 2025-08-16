@@ -1,0 +1,139 @@
+{
+  "cube": {
+    "prefix": "cube",
+    "body": [
+      "cube([${1:x}, ${2:y}, ${3:z}]${4:, center=${5:false}});"
+    ],
+    "description": "Create a cube with specified dimensions"
+  },
+  "sphere": {
+    "prefix": "sphere",
+    "body": [
+      "sphere(r=${1:radius}${2:, \\$fn=${3:100}});"
+    ],
+    "description": "Create a sphere with specified radius"
+  },
+  "cylinder": {
+    "prefix": "cylinder",
+    "body": [
+      "cylinder(h=${1:height}, r=${2:radius}${3:, center=${4:false}}${5:, \\$fn=${6:100}});"
+    ],
+    "description": "Create a cylinder with specified height and radius"
+  },
+  "translate": {
+    "prefix": "translate",
+    "body": [
+      "translate([${1:x}, ${2:y}, ${3:z}]) {",
+      "\t${4:// child objects}",
+      "}"
+    ],
+    "description": "Translate (move) child objects"
+  },
+  "rotate": {
+    "prefix": "rotate",
+    "body": [
+      "rotate([${1:x}, ${2:y}, ${3:z}]) {",
+      "\t${4:// child objects}",
+      "}"
+    ],
+    "description": "Rotate child objects"
+  },
+  "scale": {
+    "prefix": "scale",
+    "body": [
+      "scale([${1:x}, ${2:y}, ${3:z}]) {",
+      "\t${4:// child objects}",
+      "}"
+    ],
+    "description": "Scale child objects"
+  },
+  "union": {
+    "prefix": "union",
+    "body": [
+      "union() {",
+      "\t${1:// objects to union}",
+      "}"
+    ],
+    "description": "Union (combine) multiple objects"
+  },
+  "difference": {
+    "prefix": "difference",
+    "body": [
+      "difference() {",
+      "\t${1:// base object}",
+      "\t${2:// objects to subtract}",
+      "}"
+    ],
+    "description": "Subtract objects from the first object"
+  },
+  "intersection": {
+    "prefix": "intersection",
+    "body": [
+      "intersection() {",
+      "\t${1:// objects to intersect}",
+      "}"
+    ],
+    "description": "Keep only the intersection of objects"
+  },
+  "module": {
+    "prefix": "module",
+    "body": [
+      "module ${1:module_name}(${2:parameters}) {",
+      "\t${3:// module body}",
+      "}"
+    ],
+    "description": "Define a reusable module"
+  },
+  "function": {
+    "prefix": "function",
+    "body": [
+      "function ${1:function_name}(${2:parameters}) = ${3:expression};"
+    ],
+    "description": "Define a function"
+  },
+  "for": {
+    "prefix": "for",
+    "body": [
+      "for (${1:i} = [${2:start}:${3:end}]) {",
+      "\t${4:// loop body}",
+      "}"
+    ],
+    "description": "For loop"
+  },
+  "if": {
+    "prefix": "if",
+    "body": [
+      "if (${1:condition}) {",
+      "\t${2:// if body}",
+      "}"
+    ],
+    "description": "Conditional statement"
+  },
+  "linear_extrude": {
+    "prefix": "linear_extrude",
+    "body": [
+      "linear_extrude(height=${1:height}${2:, twist=${3:0}}${4:, scale=${5:1}}) {",
+      "\t${6:// 2D shape to extrude}",
+      "}"
+    ],
+    "description": "Extrude a 2D shape into 3D"
+  },
+  "rotate_extrude": {
+    "prefix": "rotate_extrude",
+    "body": [
+      "rotate_extrude(${1:angle=${2:360}}${3:, \\$fn=${4:100}}) {",
+      "\t${5:// 2D shape to revolve}",
+      "}"
+    ],
+    "description": "Revolve a 2D shape around the Z-axis"
+  },
+  "color": {
+    "prefix": "color",
+    "body": [
+      "color(\"${1:red}\") {",
+      "\t${2:// objects to color}",
+      "}"
+    ],
+    "description": "Apply color to objects"
+  }
+}

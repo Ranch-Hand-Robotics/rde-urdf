@@ -16,6 +16,7 @@ This extension provides developer tooling for Unified Robot Description Files (U
 - Schema Validation
 - AI Assisted Coding prompts for Github Copilot
 - Virtual Reality preview of the model you are editing.
+- Supports OpenSCAD Rendering and syntax Highlighting for programatically creating robot parts.
 
 
 ## Coming Soon
@@ -24,8 +25,8 @@ This extension provides developer tooling for Unified Robot Description Files (U
 - [External URDF / Xacro References](https://github.com/ranchhandrobotics/vscode_urdf/issues/6)
 
 ## Usage
-1. Open a URDF or .xacro file.
-2. Right click on the file and select "Preview URDF", or press `Ctrl+Shift+P` and select "Preview URDF"
+1. Open a URDF, .xacro, or OpenSCAD file.
+2. Right click on the file and select "Preview", or press `Ctrl+Shift+P` and select "Preview"
 
 
 ## Support
@@ -48,7 +49,9 @@ One on one support, mentoring and consulting will be available through Github Sp
 ## Acknowledgements
 I was the maintainer of Microsoft's [Visual Studio Code ROS Extension](http://aka.ms/ros/vscode). It is no longer maintained, and I've been given permission to externalize the components. The URDF editor was built on work done in my private personal time, and not associated with Microsoft. This extension is a stand alone implementation and will be maintained moving forward.
 
-This extension relis on the [Xacro-Parser](https://www.npmjs.com/package/xacro-parser) by [GKJohnson](https://github.com/gkjohnson) for stand alone Xacro parsing without requiring ROS.
+This extension relies on the [Xacro-Parser](https://www.npmjs.com/package/xacro-parser) by [GKJohnson](https://github.com/gkjohnson) for stand alone Xacro parsing without requiring ROS.
+
+This extension also uses the [openscad-wasm-prebuilt](https://www.npmjs.com/package/openscad-wasm-prebuilt) package for OpenSCAD processing, which is a prebuilt version of OpenSCAD for use in web applications.
 
 The code for this extension unapologetically uses AI generated code.
 

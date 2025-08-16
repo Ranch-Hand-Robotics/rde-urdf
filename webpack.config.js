@@ -54,6 +54,8 @@ const extensionConfig = {
         { from: 'snippets', to: 'snippets' },
         { from: 'schemas', to: 'schemas' },
         { from: 'prompts', to: 'prompts' },
+        { from: 'syntaxes', to: 'syntaxes' },
+        { from: 'language-configuration.json', to: 'language-configuration.json' },
         // If you need to copy any other assets, add them here
       ],
     }),
@@ -103,6 +105,8 @@ const webviewConfig = {
         { from: 'snippets', to: 'snippets' },
         { from: 'schemas', to: 'schemas' },
         { from: 'prompts', to: 'prompts' },
+        { from: 'syntaxes', to: 'syntaxes' },
+        { from: 'language-configuration.json', to: 'language-configuration.json' },
         // If you need to copy any other assets, add them here
       ],
     }),
