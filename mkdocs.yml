@@ -5,6 +5,7 @@ nav:
   - Home: index.md
   - Tutorial: tutorial.md
   - WebXR Preview: WebXRPreview.md
+  - OpenSCAD: OpenSCAD.md
   - Support: Support.md
 
 theme: 
