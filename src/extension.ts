@@ -3,6 +3,7 @@ import * as path from 'path';
 import URDFPreviewManager from "./previewManager";
 import WebXRPreviewManager from "./webXRPreviewManager";
 import * as util from "./utils";
+import { UrdfMcpServer } from './mcp';
 
 import { Viewer3DProvider } from './3DViewerProvider';
 
@@ -10,8 +11,8 @@ export var tracing: vscode.OutputChannel = vscode.window.createOutputChannel("UR
 
 var urdfManager: URDFPreviewManager | null = null;
 var urdfXRManager: WebXRPreviewManager | null = null;
-
 var viewProvider: Viewer3DProvider | null = null;
+var mcpServer: UrdfMcpServer | null = null;
 
 export function activate(context: vscode.ExtensionContext) {
 
@@ -130,8 +131,54 @@ export function activate(context: vscode.ExtensionContext) {
   });
 
   context.subscriptions.push(exportURDFCommand);
+
+  // Register MCP Server commands
+  const startMcpServerCommand = vscode.commands.registerCommand("urdf-editor.startMcpServer", async () => {
+    try {
+      if (mcpServer && mcpServer.getStatus().isRunning) {
+        vscode.window.showWarningMessage('URDF MCP Server is already running');
+        return;
+      }
+
+      const config = vscode.workspace.getConfiguration('urdf-editor');
+      const port = config.get<number>('mcpServerPort', 3005);
+      
+      mcpServer = new UrdfMcpServer(port);
+      await mcpServer.start();
+    } catch (error) {
+      const message = `Failed to start URDF MCP Server: ${error instanceof Error ? error.message : String(error)}`;
+      vscode.window.showErrorMessage(message);
+      tracing.appendLine(message);
+    }
+  });
+
+  const stopMcpServerCommand = vscode.commands.registerCommand("urdf-editor.stopMcpServer", async () => {
+    try {
+      if (!mcpServer || !mcpServer.getStatus().isRunning) {
+        vscode.window.showWarningMessage('URDF MCP Server is not running');
+        return;
+      }
+
+      await mcpServer.stop();
+      mcpServer = null;
+    } catch (error) {
+      const message = `Failed to stop URDF MCP Server: ${error instanceof Error ? error.message : String(error)}`;
+      vscode.window.showErrorMessage(message);
+      tracing.appendLine(message);
+    }
+  });
+
+  context.subscriptions.push(startMcpServerCommand);
+  context.subscriptions.push(stopMcpServerCommand);
 }
 
-export function deactivate() {
-
+export async function deactivate() {
+  // Stop MCP server if running
+  if (mcpServer && mcpServer.getStatus().isRunning) {
+    try {
+      await mcpServer.stop();
+    } catch (error) {
+      tracing.appendLine(`Error stopping MCP server during deactivation: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
 }
