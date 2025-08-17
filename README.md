@@ -16,6 +16,7 @@ This extension provides developer tooling for Unified Robot Description Files (U
 - Schema Validation
 - AI Assisted Coding prompts for Github Copilot
 - Virtual Reality preview of the model you are editing.
+- Supports OpenSCAD Rendering and syntax Highlighting for programatically creating robot parts.
 
 
 ## Coming Soon
@@ -24,8 +25,8 @@ This extension provides developer tooling for Unified Robot Description Files (U
 - [External URDF / Xacro References](https://github.com/ranchhandrobotics/vscode_urdf/issues/6)
 
 ## Usage
-1. Open a URDF or .xacro file.
-2. Right click on the file and select "Preview URDF", or press `Ctrl+Shift+P` and select "Preview URDF"
+1. Open a URDF, .xacro, or OpenSCAD file.
+2. Right click on the file and select "Preview", or press `Ctrl+Shift+P` and select "Preview"
 
 
 ## Support
@@ -48,11 +49,21 @@ One on one support, mentoring and consulting will be available through Github Sp
 ## Acknowledgements
 I was the maintainer of Microsoft's [Visual Studio Code ROS Extension](http://aka.ms/ros/vscode). It is no longer maintained, and I've been given permission to externalize the components. The URDF editor was built on work done in my private personal time, and not associated with Microsoft. This extension is a stand alone implementation and will be maintained moving forward.
 
-This extension relis on the [Xacro-Parser](https://www.npmjs.com/package/xacro-parser) by [GKJohnson](https://github.com/gkjohnson) for stand alone Xacro parsing without requiring ROS.
+This extension relies on the [Xacro-Parser](https://www.npmjs.com/package/xacro-parser) by [GKJohnson](https://github.com/gkjohnson) for stand alone Xacro parsing without requiring ROS.
+
+This extension also uses the [openscad-wasm-prebuilt](https://www.npmjs.com/package/openscad-wasm-prebuilt) package for OpenSCAD processing, which is a prebuilt version of OpenSCAD for use in web applications. **Important**: This package is licensed under GPL-2.0-or-later.
 
 The code for this extension unapologetically uses AI generated code.
 
 ## License
 Some of the code in this extension is based on the [Visual Studio Code ROS Extension](http://aka.ms/ros/vscode) which is licensed under the MIT License. It also depends on Babylon ROS and Babylon Collada Loader by Polyhobbyist, both of which are MIT licensed.
-This extension is also licensed under the MIT License.
+
+**Important Licensing Note**: This extension includes the GPL-2.0 licensed openscad-wasm-prebuilt dependency. While the main extension code is MIT licensed, the combination creates a complex licensing situation. Please see:
+
+- [LICENSE-COMPATIBILITY.md](LICENSE-COMPATIBILITY.md) - Comprehensive licensing guide and compliance checklist
+- [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt) - Full GPL-2.0 license text and attribution
+
+When redistributing this extension, you must comply with both MIT and GPL-2.0 license requirements.
+
+This extension is licensed under the MIT License, except where noted otherwise.
 

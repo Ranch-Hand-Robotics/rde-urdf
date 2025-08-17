@@ -18,7 +18,7 @@ export function activate(context: vscode.ExtensionContext) {
   console.log('"urdf-editor" is now active!');
   urdfManager = new URDFPreviewManager(context, tracing);
   urdfXRManager = new WebXRPreviewManager(context, tracing);
-  viewProvider = new Viewer3DProvider(context);
+  viewProvider = new Viewer3DProvider(context, tracing);
   vscode.window.registerWebviewPanelSerializer('urdfPreview_standalone', urdfManager);
 
   vscode.window.registerCustomEditorProvider('urdf-editor.Viewer3D', viewProvider, 

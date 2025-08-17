@@ -1,0 +1,259 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "OpenSCAD",
+  "scopeName": "source.openscad",
+  "fileTypes": ["scad"],
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#builtin-functions"
+    },
+    {
+      "include": "#builtin-variables"
+    },
+    {
+      "include": "#operators"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#module-definition"
+    },
+    {
+      "include": "#function-definition"
+    },
+    {
+      "include": "#function-call"
+    },
+    {
+      "include": "#variables"
+    },
+    {
+      "include": "#control-flow"
+    },
+    {
+      "include": "#brackets"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.openscad",
+          "match": "//.*$"
+        },
+        {
+          "name": "comment.block.openscad",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.openscad",
+          "match": "\\b(if|else|for|each|let|assert|echo|include|use|import)\\b"
+        },
+        {
+          "name": "keyword.other.openscad",
+          "match": "\\b(module|function|true|false|undef)\\b"
+        }
+      ]
+    },
+    "builtin-functions": {
+      "patterns": [
+        {
+          "name": "support.function.builtin.primitive.openscad",
+          "match": "\\b(cube|sphere|cylinder|polyhedron|square|circle|polygon|text)\\b"
+        },
+        {
+          "name": "support.function.builtin.transform.openscad",
+          "match": "\\b(translate|rotate|scale|resize|mirror|multmatrix|color|minkowski|hull|union|difference|intersection|linear_extrude|rotate_extrude|surface|projection|render|children)\\b"
+        },
+        {
+          "name": "support.function.builtin.math.openscad",
+          "match": "\\b(abs|acos|asin|atan|atan2|ceil|cos|exp|floor|ln|log|max|min|pow|round|sign|sin|sqrt|tan|norm|cross|lookup|len|concat|str|chr|ord|search|version|version_num|parent_module|is_undef|is_bool|is_num|is_string|is_list)\\b"
+        }
+      ]
+    },
+    "builtin-variables": {
+      "patterns": [
+        {
+          "name": "support.variable.builtin.openscad",
+          "match": "\\$\\b(fa|fs|fn|t|vpr|vpt|vpd|children)\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.arithmetic.openscad",
+          "match": "\\+|\\-|\\*|\\/|%|\\^"
+        },
+        {
+          "name": "keyword.operator.comparison.openscad",
+          "match": "==|!=|<|>|<=|>="
+        },
+        {
+          "name": "keyword.operator.logical.openscad",
+          "match": "&&|\\|\\||!"
+        },
+        {
+          "name": "keyword.operator.assignment.openscad",
+          "match": "="
+        },
+        {
+          "name": "keyword.operator.ternary.openscad",
+          "match": "\\?|:"
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.float.openscad",
+          "match": "\\b\\d+\\.\\d+([eE][+-]?\\d+)?\\b"
+        },
+        {
+          "name": "constant.numeric.integer.openscad",
+          "match": "\\b\\d+([eE][+-]?\\d+)?\\b"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.openscad",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.openscad",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "module-definition": {
+      "patterns": [
+        {
+          "name": "meta.function.openscad",
+          "begin": "\\b(module)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\(",
+          "beginCaptures": {
+            "1": {
+              "name": "storage.type.function.openscad"
+            },
+            "2": {
+              "name": "entity.name.function.openscad"
+            }
+          },
+          "end": "\\)",
+          "patterns": [
+            {
+              "include": "#parameters"
+            }
+          ]
+        }
+      ]
+    },
+    "function-definition": {
+      "patterns": [
+        {
+          "name": "meta.function.openscad",
+          "begin": "\\b(function)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\(",
+          "beginCaptures": {
+            "1": {
+              "name": "storage.type.function.openscad"
+            },
+            "2": {
+              "name": "entity.name.function.openscad"
+            }
+          },
+          "end": "\\)",
+          "patterns": [
+            {
+              "include": "#parameters"
+            }
+          ]
+        }
+      ]
+    },
+    "function-call": {
+      "patterns": [
+        {
+          "name": "meta.function-call.openscad",
+          "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s*(?=\\()",
+          "captures": {
+            "1": {
+              "name": "entity.name.function.openscad"
+            }
+          }
+        }
+      ]
+    },
+    "parameters": {
+      "patterns": [
+        {
+          "name": "variable.parameter.openscad",
+          "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
+        },
+        {
+          "include": "#numbers"
+        },
+        {
+          "include": "#strings"
+        },
+        {
+          "include": "#operators"
+        }
+      ]
+    },
+    "variables": {
+      "patterns": [
+        {
+          "name": "variable.other.openscad",
+          "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
+        }
+      ]
+    },
+    "control-flow": {
+      "patterns": [
+        {
+          "name": "keyword.control.conditional.openscad",
+          "match": "\\b(if|else)\\b"
+        },
+        {
+          "name": "keyword.control.loop.openscad",
+          "match": "\\b(for|each)\\b"
+        }
+      ]
+    },
+    "brackets": {
+      "patterns": [
+        {
+          "name": "meta.brace.round.openscad",
+          "match": "\\(|\\)"
+        },
+        {
+          "name": "meta.brace.square.openscad",
+          "match": "\\[|\\]"
+        },
+        {
+          "name": "meta.brace.curly.openscad",
+          "match": "\\{|\\}"
+        }
+      ]
+    }
+  }
+}

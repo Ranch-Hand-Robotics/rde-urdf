@@ -6,6 +6,29 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as util from './utils';
 import { trace } from 'console';
+import * as fs from 'fs';
+import * as os from 'os';
+import {createOpenSCAD} from 'openscad-wasm-prebuilt';
+
+// Type declaration for openscad-wasm
+interface OpenSCADInstance {
+  FS: {
+    writeFile(path: string, data: string): void;
+    readFile(path: string, options: { encoding: string }): string;
+  };
+  callMain(args: string[]): void;
+}
+
+interface OpenSCAD {
+  getInstance(): OpenSCADInstance;
+}
+
+interface OpenSCADModule {
+  createOpenSCAD(options?: {
+    print?: (text: string) => void;
+    printErr?: (text: string) => void;
+  }): Promise<OpenSCAD>;
+}
 
 export default class URDFPreview 
 {
@@ -16,6 +39,7 @@ export default class URDFPreview
     private _urdfEditor: vscode.TextEditor | null = null;
     _webview: vscode.WebviewPanel | undefined = undefined;
     private _trace: vscode.OutputChannel;
+    private _convertedSTLPath: string | undefined = undefined;
 
     public get state() {
         return {
@@ -99,6 +123,48 @@ export default class URDFPreview
         this._disposables = subscriptions;
     }
 
+    // Convert OpenSCAD file to STL
+    private async convertOpenSCADToSTL(scadFilePath: string): Promise<string | null> {
+        try {
+            this._trace.appendLine(`Starting OpenSCAD conversion for: ${scadFilePath}`);
+            
+            const openscad = await createOpenSCAD({
+                // Optional callbacks for stdout/stderr
+                print: (text: string) => this._trace.appendLine(`OpenSCAD: ${text}`),
+                printErr: (text: string) => this._trace.appendLine(`OpenSCAD Error: ${text}`),
+            });
+
+            // Get direct access to the WASM module
+            const instance = openscad.getInstance();
+
+            const basename = path.basename(scadFilePath, '.scad');
+            const dir = path.dirname(scadFilePath);
+            const stlPath = path.join(dir, `${basename}.stl`);
+            
+            this._trace.appendLine(`Converting OpenSCAD to STL: ${stlPath}`);
+
+            const scadText = await fs.promises.readFile(scadFilePath, 'utf8');
+            const stl = await openscad.renderToStl(scadText);
+
+            // Use the filesystem API directly
+            await fs.promises.writeFile(stlPath, stl, {flag: 'w'});
+
+            this._convertedSTLPath = stlPath;
+            
+            this._trace.appendLine(`OpenSCAD conversion completed successfully: ${stlPath}`);
+            return stlPath;
+        } catch (error) {
+            this._trace.appendLine(`OpenSCAD conversion failed: ${error}`);
+            vscode.window.showErrorMessage(`Failed to convert OpenSCAD file: ${error}`);
+            return null;
+        }
+    }
+
+    // Check if file is OpenSCAD
+    private isOpenSCADFile(filePath: string): boolean {
+        return path.extname(filePath).toLowerCase() === '.scad';
+    }
+
     public get resource(): vscode.Uri {
         return this._resource;
     }
@@ -136,39 +202,58 @@ export default class URDFPreview
         }
 
         try {
-
-            var [urdfText, packagesNotFound] = await util.processXacro(this._resource.fsPath.toString(), 
-                (packageName :vscode.Uri) => {
-                    if (!this._webview) {
-                        return packageName.fsPath.toString();
-                    }
-                    // Convert the package name to a webview URI
-                    return this._webview.webview.asWebviewUri(packageName).toString();
-                });
-
-            var previewFile = this._resource.toString();
-
-            this._trace.appendLine("URDF previewing: " + previewFile);
-            this._trace.append(urdfText);
-
-            this.updateColors();        
-
-            this._webview.webview.postMessage({ command: 'previewFile', previewFile: this._resource.path});
-            this._webview.webview.postMessage({ command: 'urdf', urdf: urdfText });
-
-            if (packagesNotFound.length > 0) {
-   
-                // Log each package not found
-                for (const pkg of packagesNotFound) {
-                    this._trace.appendLine(`\nPackage not found: ${pkg}`);
+            // Check if this is an OpenSCAD file
+            if (this.isOpenSCADFile(this._resource.fsPath)) {
+                // Handle OpenSCAD file - convert to STL and display as 3D model
+                const stlPath = await this.convertOpenSCADToSTL(this._resource.fsPath);
+                if (stlPath) {
+                    const stlUri = vscode.Uri.file(stlPath);
+                    
+                    this._trace.appendLine("OpenSCAD file previewing: " + this._resource.toString());
+                    
+                    this.updateColors();
+                    
+                    this._webview.webview.postMessage({ command: 'previewFile', previewFile: this._resource.path});
+                    this._webview.webview.postMessage({
+                        command: 'view3DFile',
+                        filename: this._webview.webview.asWebviewUri(stlUri).toString()
+                    });
                 }
-                
-                this._trace.appendLine("\nNOTE: This version of the URDF Renderer will not look for packages outside the workspace.");
-                // Show missing packages as a temporary status bar message
-                vscode.window.setStatusBarMessage(
-                    `$(warning) ${packagesNotFound.length} package(s) not found. Check 'URDF Editor' output for details.`, 
-                    10000  // show for 10 seconds
-                );
+            } else {
+                // Handle URDF/Xacro files
+                var [urdfText, packagesNotFound] = await util.processXacro(this._resource.fsPath.toString(), 
+                    (packageName :vscode.Uri) => {
+                        if (!this._webview) {
+                            return packageName.fsPath.toString();
+                        }
+                        // Convert the package name to a webview URI
+                        return this._webview.webview.asWebviewUri(packageName).toString();
+                    });
+
+                var previewFile = this._resource.toString();
+
+                this._trace.appendLine("URDF previewing: " + previewFile);
+                this._trace.append(urdfText);
+
+                this.updateColors();        
+
+                this._webview.webview.postMessage({ command: 'previewFile', previewFile: this._resource.path});
+                this._webview.webview.postMessage({ command: 'urdf', urdf: urdfText });
+
+                if (packagesNotFound.length > 0) {
+       
+                    // Log each package not found
+                    for (const pkg of packagesNotFound) {
+                        this._trace.appendLine(`\nPackage not found: ${pkg}`);
+                    }
+                    
+                    this._trace.appendLine("\nNOTE: This version of the URDF Renderer will not look for packages outside the workspace.");
+                    // Show missing packages as a temporary status bar message
+                    vscode.window.setStatusBarMessage(
+                        `$(warning) ${packagesNotFound.length} package(s) not found. Check 'URDF Editor' output for details.`, 
+                        10000  // show for 10 seconds
+                    );
+                }
             }
 
         } catch (err : any) {
@@ -230,6 +315,15 @@ export default class URDFPreview
             const disposable = this._disposables.pop();
             if (disposable) {
                 disposable.dispose();
+            }
+        }
+
+        // Clean up temporary STL file if it exists
+        if (this._convertedSTLPath && fs.existsSync(this._convertedSTLPath)) {
+            try {
+                fs.unlinkSync(this._convertedSTLPath);
+            } catch (error) {
+                this._trace.appendLine(`Failed to clean up temporary STL file: ${error}`);
             }
         }
 

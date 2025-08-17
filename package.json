@@ -30,8 +30,32 @@
           },
           {
             "filenamePattern": "*.dae"
+          },
+          {
+            "filenamePattern": "*.obj"
+          },
+          {
+            "filenamePattern": "*.glb"
+          },
+          {
+            "filenamePattern": "*.gltf"
           }
         ]
+      }
+    ],
+    "languages": [
+      {
+        "id": "openscad",
+        "aliases": ["OpenSCAD", "openscad"],
+        "extensions": [".scad"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "openscad",
+        "scopeName": "source.openscad",
+        "path": "./dist/syntaxes/openscad.tmLanguage.json"
       }
     ],
     "schemas": [
@@ -47,20 +71,22 @@
         ],
         "url": "./dist/schemas/xacro-schema.json"
       }
-    ],    "commands": [
+    ],
+    "commands": [
       {
         "command": "urdf-editor.create",
-        "title": "Preview URDF"
+        "title": "Preview"
       },
       {
         "command": "urdf-editor.createXR",
-        "title": "Preview URDF in WebXR"
+        "title": "Preview in WebXR"
       },
       {
         "command": "urdf-editor.export",
-        "title": "Export URDF"
+        "title": "Export"
       }
-    ],    "menus": {
+    ],
+    "menus": {
       "explorer/context": [
         {
           "command": "urdf-editor.create",
@@ -77,6 +103,11 @@
           "group": "urdf"
         },
         {
+          "command": "urdf-editor.create",
+          "when": "resourceExtname == .scad",
+          "group": "urdf"
+        },
+        {
           "command": "urdf-editor.createXR",
           "when": "resourceExtname == .urdf",
           "group": "urdf"
@@ -84,6 +115,11 @@
         {
           "command": "urdf-editor.createXR",
           "when": "resourceExtname == .xacro",
+          "group": "urdf"
+        },
+        {
+          "command": "urdf-editor.createXR",
+          "when": "resourceExtname == .scad",
           "group": "urdf"
         },
         {
@@ -160,6 +196,10 @@
           "urdf"
         ],
         "path": "./dist/snippets/xacro-snippets.json"
+      },
+      {
+        "language": "openscad",
+        "path": "./dist/snippets/openscad-snippets.json"
       }
     ],
     "xml.fileAssociations": [
@@ -223,6 +263,7 @@
     "handlebars": "^4.7.8",
     "jsdom": "^25.0.1",
     "memfs": "^4.9.3",
+    "openscad-wasm-prebuilt": "^1.2.0",
     "tslib": "^2.6.3",
     "xacro-parser": "^0.3.9",
     "xmldom": "^0.6.0",

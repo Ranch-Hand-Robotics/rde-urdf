@@ -10,11 +10,13 @@ export class Viewer3DDocument implements vscode.CustomDocument {
   private _disposables: vscode.Disposable[] = [];
 
   protected _context: vscode.ExtensionContext;
+  private _trace: vscode.OutputChannel;
 
-  constructor(context: vscode.ExtensionContext, uri: vscode.Uri) {
+  constructor(context: vscode.ExtensionContext, uri: vscode.Uri, trace: vscode.OutputChannel) {
     this._context = context;
     this.uri = uri;
-  }
+    this._trace = trace;
+}
 
   create(webviewPanel: vscode.WebviewPanel) {
     var paths : vscode.Uri[] = [];
@@ -60,7 +62,7 @@ export class Viewer3DDocument implements vscode.CustomDocument {
               vscode.window.showErrorMessage(text);
               return;
           case "trace":
-              ///this._trace.appendLine(text);
+              this._trace.appendLine(text);
               return;
           case "ready":
               this.refresh();
@@ -76,6 +78,7 @@ export class Viewer3DDocument implements vscode.CustomDocument {
  private refresh() {
     this.updateColors();
 
+    // Handle STL, DAE and other 3D files directly
     this.webviewPanel?.webview.postMessage({
       command: 'view3DFile',
       filename: this.webviewPanel?.webview.asWebviewUri(this.uri).toString()

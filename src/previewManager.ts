@@ -112,7 +112,8 @@ export default class URDFPreviewManager implements vscode.WebviewPanelSerializer
 
         let ext = path.extname(uri.fsPath);
         if (ext === ".xacro" ||
-            ext === ".urdf") {
+            ext === ".urdf" ||
+            ext === ".scad") {
                 return true;
             }
 
