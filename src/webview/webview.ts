@@ -36,6 +36,13 @@ async function apply3DFile(filename: string) {
   try {
     if (currentRobotScene.scene) {
       let scale = BABYLON.Vector3.One();
+      
+      // Apply scaling for STL files
+      if (filename.toLowerCase().endsWith('.stl')) {
+        // STL files are often in mm, scale down to meters for robotics
+        scale = new BABYLON.Vector3(0.001, 0.001, 0.001);
+      }
+      
       let m = new urdf.Mesh(filename, scale);
       currentRobotScene.currentRobot = new urdf.Robot();
       
@@ -129,6 +136,31 @@ async function main() {
             currentRobotScene.readyToRender = true;
           }
           break;
+
+          case 'takeScreenshot':
+            if (currentRobotScene.camera && currentRobotScene.scene) {
+              const width = message.width || 1024;
+              const height = message.height || 1024;
+
+              currentRobotScene.takeScreenshot(width, height).then((base64Image) => {
+                vscode?.postMessage({
+                  command: "screenshotResult",
+                  base64Image: base64Image,
+                  width: width,
+                  height: height,
+                  success: true,
+                });
+              }).catch((error) => {
+                vscode?.postMessage({
+                  command: "screenshotResult",
+                  width: width,
+                  height: height,
+                  success: false,
+                  text: `Failed to take screenshot: ${error instanceof Error ? error.message : String(error)}`,
+                });
+              });
+            }
+            break;
     }
   });
 

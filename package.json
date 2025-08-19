@@ -80,25 +80,33 @@
     "commands": [
       {
         "command": "urdf-editor.create",
-        "title": "Preview"
+        "title": "Preview",
+        "category": "URDF"
       },
       {
         "command": "urdf-editor.createXR",
-        "title": "Preview in WebXR"
+        "title": "Preview in WebXR",
+        "category": "URDF"
       },
       {
         "command": "urdf-editor.export",
-        "title": "Export"
+        "title": "Export",
+        "category": "URDF"
+      },
+      {
+        "command": "urdf-editor.takeScreenshot",
+        "title": "Take Screenshot",
+        "category": "URDF"
       },
       {
         "command": "urdf-editor.startMcpServer",
-        "title": "Start URDF MCP Server",
-        "category": "urdf"
+        "title": "Start MCP Server",
+        "category": "URDF"
       },
       {
         "command": "urdf-editor.stopMcpServer",
-        "title": "Stop URDF MCP Server",
-        "category": "urdf"
+        "title": "Stop MCP Server",
+        "category": "URDF"
       }
     ],
     "menus": {
@@ -145,6 +153,21 @@
         {
           "command": "urdf-editor.export",
           "when": "resourceExtname == .xacro",
+          "group": "urdf"
+        },
+        {
+          "command": "urdf-editor.takeScreenshot",
+          "when": "resourceExtname == .urdf",
+          "group": "urdf"
+        },
+        {
+          "command": "urdf-editor.takeScreenshot",
+          "when": "resourceExtname == .xacro",
+          "group": "urdf"
+        },
+        {
+          "command": "urdf-editor.takeScreenshot",
+          "when": "resourceExtname == .scad",
           "group": "urdf"
         }
       ]

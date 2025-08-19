@@ -1,4 +1,11 @@
 // Place your settings in this file to overwrite default and user settings.
 {
-    "ROS2.distro": "kilted"
+    "ROS2.distro": "kilted",
+    "python.autoComplete.extraPaths": [
+        "/opt/ros/kilted/lib/python3.12/site-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "/opt/ros/kilted/lib/python3.12/site-packages"
+    ],
+    "github.copilot.chat.codeGeneration.useInstructionFiles": true
 }

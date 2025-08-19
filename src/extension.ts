@@ -9,10 +9,70 @@ import { Viewer3DProvider } from './3DViewerProvider';
 
 export var tracing: vscode.OutputChannel = vscode.window.createOutputChannel("URDF Editor");
 
-var urdfManager: URDFPreviewManager | null = null;
-var urdfXRManager: WebXRPreviewManager | null = null;
+export var urdfManager: URDFPreviewManager | null = null;
+export var urdfXRManager: WebXRPreviewManager | null = null;
 var viewProvider: Viewer3DProvider | null = null;
 var mcpServer: UrdfMcpServer | null = null;
+
+async function startMcpServer(context: vscode.ExtensionContext): Promise<void> {
+  if (mcpServer && mcpServer.getStatus().isRunning) {
+    return; // Already running
+  }
+
+  try {
+    const config = vscode.workspace.getConfiguration('urdf-editor');
+    const port = config.get<number>('mcpServerPort', 3005);
+    
+    mcpServer = new UrdfMcpServer(port);
+    await mcpServer.start();
+    tracing.appendLine('MCP Server started automatically with first preview');
+
+    // Check if the MCP API is available (only in VS Code, not Cursor)
+    if ('lm' in vscode && vscode.lm && 'registerMcpServerDefinitionProvider' in vscode.lm) {
+      try {
+        // Use type assertion to handle the API that might not be available in all environments
+        const lm = vscode.lm as any;
+        context.subscriptions.push(lm.registerMcpServerDefinitionProvider('URDF', {
+          provideMcpServerDefinitions: async () => {
+            let output: any[] = [];
+
+            // Use the configured port for the MCP server
+            // Note: McpHttpServerDefinition might not be available in all environments
+            if ('McpHttpServerDefinition' in vscode) {
+              const McpHttpServerDefinition = (vscode as any).McpHttpServerDefinition;
+              output.push( 
+                new McpHttpServerDefinition(
+                  "URDF",
+                  vscode.Uri.parse(`http://localhost:${port}/mcp`)
+                )
+              );
+            }
+
+            return output;
+          }
+        }));
+      } catch (error) {
+        tracing.appendLine(`Failed to register MCP server definition provider: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+  } catch (error) {
+    tracing.appendLine(`Failed to auto-start MCP server: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+async function stopMcpServer(): Promise<void> {
+  if (!mcpServer || !mcpServer.getStatus().isRunning) {
+    return; // Not running
+  }
+
+  try {
+    await mcpServer.stop();
+    mcpServer = null;
+    tracing.appendLine('MCP Server stopped automatically with last preview');
+  } catch (error) {
+    tracing.appendLine(`Failed to auto-stop MCP server: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
 
 export function activate(context: vscode.ExtensionContext) {
 
@@ -21,6 +81,12 @@ export function activate(context: vscode.ExtensionContext) {
   urdfXRManager = new WebXRPreviewManager(context, tracing);
   viewProvider = new Viewer3DProvider(context, tracing);
   vscode.window.registerWebviewPanelSerializer('urdfPreview_standalone', urdfManager);
+
+  // Set up MCP server lifecycle callbacks for the preview manager
+  urdfManager.setMcpServerCallbacks({
+    onStartServer: () => startMcpServer(context),
+    onStopServer: () => stopMcpServer()
+  });
 
   vscode.window.registerCustomEditorProvider('urdf-editor.Viewer3D', viewProvider, 
     {
@@ -132,53 +198,62 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(exportURDFCommand);
 
-  // Register MCP Server commands
-  const startMcpServerCommand = vscode.commands.registerCommand("urdf-editor.startMcpServer", async () => {
-    try {
-      if (mcpServer && mcpServer.getStatus().isRunning) {
-        vscode.window.showWarningMessage('URDF MCP Server is already running');
-        return;
-      }
+  const takeScreenshotCommand = vscode.commands.registerCommand("urdf-editor.takeScreenshot", async (uri?: vscode.Uri) => {
+    if (!urdfManager) {
+      vscode.window.showErrorMessage('URDF preview manager not available');
+      return;
+    }
 
-      const config = vscode.workspace.getConfiguration('urdf-editor');
-      const port = config.get<number>('mcpServerPort', 3005);
+    // Get the active preview
+    const preview = urdfManager.activePreview;
+    if (!preview) {
+      vscode.window.showErrorMessage('No active URDF preview found. Please open a preview first.');
+      return;
+    }
+
+    try {
+      // Take screenshot with default dimensions
+      const base64Image = await preview.takeScreenshot(1024, 1024);
       
-      mcpServer = new UrdfMcpServer(port);
-      await mcpServer.start();
-    } catch (error) {
-      const message = `Failed to start URDF MCP Server: ${error instanceof Error ? error.message : String(error)}`;
-      vscode.window.showErrorMessage(message);
-      tracing.appendLine(message);
-    }
-  });
-
-  const stopMcpServerCommand = vscode.commands.registerCommand("urdf-editor.stopMcpServer", async () => {
-    try {
-      if (!mcpServer || !mcpServer.getStatus().isRunning) {
-        vscode.window.showWarningMessage('URDF MCP Server is not running');
-        return;
+      // Determine default filename based on the preview resource
+      let defaultFilename = 'screenshot';
+      if (preview.resource) {
+        const basename = path.basename(preview.resource.fsPath);
+        const nameWithoutExt = basename.split('.').slice(0, -1).join('.');
+        const directory = path.dirname(preview.resource.fsPath);
+        defaultFilename = path.join(directory, `${nameWithoutExt}_screenshot`);
       }
 
-      await mcpServer.stop();
-      mcpServer = null;
+      // Show save dialog
+      const saveUri = await vscode.window.showSaveDialog({
+        filters: {
+          'PNG Images': ['png']
+        },
+        saveLabel: 'Save Screenshot',
+        title: 'Save Screenshot as PNG',
+        defaultUri: vscode.Uri.file(defaultFilename + '.png'),
+      });
+
+      if (saveUri) {
+        // Convert base64 to buffer and save
+        const imageBuffer = Buffer.from(base64Image, 'base64');
+        await vscode.workspace.fs.writeFile(saveUri, imageBuffer);
+        
+        vscode.window.showInformationMessage(`Screenshot saved to ${saveUri.fsPath}`);
+      }
     } catch (error) {
-      const message = `Failed to stop URDF MCP Server: ${error instanceof Error ? error.message : String(error)}`;
+      const message = `Failed to take screenshot: ${error instanceof Error ? error.message : String(error)}`;
       vscode.window.showErrorMessage(message);
       tracing.appendLine(message);
     }
   });
 
-  context.subscriptions.push(startMcpServerCommand);
-  context.subscriptions.push(stopMcpServerCommand);
+  context.subscriptions.push(takeScreenshotCommand);
 }
 
 export async function deactivate() {
-  // Stop MCP server if running
-  if (mcpServer && mcpServer.getStatus().isRunning) {
-    try {
-      await mcpServer.stop();
-    } catch (error) {
-      tracing.appendLine(`Error stopping MCP server during deactivation: ${error instanceof Error ? error.message : String(error)}`);
-    }
+  // Dispose of preview managers which will clean up MCP servers
+  if (urdfManager) {
+    await urdfManager.dispose();
   }
 }
