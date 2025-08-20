@@ -51,8 +51,8 @@ export class UrdfMcpServer {
   private setupTools(): void {
     // Register the screenshot tool using McpServer's tool registration
     this.server.registerTool('take_screenshot', {
-        title: 'Takes a Screenshot of the active URDF, Xacro or OpenSCAD File',
-        description: 'When you update a URDF, Xacro, or OpenSCAD file, use this to capture an image and verify your work.',
+        title: 'Returns a Screenshot of the active URDF, Xacro or OpenSCAD File',
+        description: 'When you update a URDF, Xacro, or OpenSCAD file, use this to capture an image and verify that the rendered file matches the user\'s expectations.',
         inputSchema: {}
     }, async (args) => {
       try {
