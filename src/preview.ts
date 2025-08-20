@@ -446,7 +446,7 @@ export default class URDFPreview
                         if (message.success) {
                             pending.resolve(message.base64Image);
                         } else {
-                            pending.reject(message.error || 'Screenshot failed');
+                            pending.reject(message.text || 'Screenshot failed');
                         }
                         return false; // Remove from array
                     }
