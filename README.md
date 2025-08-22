@@ -15,8 +15,9 @@ This extension provides developer tooling for Unified Robot Description Files (U
 - Collision Visualization
 - Schema Validation
 - AI Assisted Coding prompts for Github Copilot
-- Virtual Reality preview of the model you are editing.
-- Supports OpenSCAD Rendering and syntax Highlighting for programatically creating robot parts.
+- [Virtual Reality preview](https://ranchhandrobotics.com/rde-urdf/WebXRPreview.html) of the model you are editing.
+- (New!) (Preview) [Supports OpenSCAD Rendering](https://ranchhandrobotics.com/rde-urdf/OpenSCAD.html) and syntax Highlighting for programatically creating robot parts.
+- (New!) (Preview) [Exposes an MCP Server](https://ranchhandrobotics.com/rde-urdf/mcp.html) allowing AI to check its work visually. 
 
 
 ## Coming Soon
