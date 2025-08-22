@@ -15,6 +15,7 @@ The editor includes a preview feature for OpenSCAD files. When a `.scad` file is
 ## OpenSCAD Language Features
 
 The editor provides several language features for OpenSCAD:
+
 - **Syntax Highlighting**: Basic syntax highlighting is available for OpenSCAD code.
 - **Code Snippets**: Common OpenSCAD patterns are available as code snippets.
 - **Error Reporting**: The editor reports syntax errors in OpenSCAD code.
