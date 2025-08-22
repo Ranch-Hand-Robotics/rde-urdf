@@ -3,7 +3,7 @@ This extension implements a Model Context Protocol server which helps AI build U
 
 Before engaging with the AI, start a preview window by using the command palette (Ctrl+Shift+P) and selecting "URDF: Preview". This will open a new tab where the AI can send model updates to be rendered.
 
-!![MCP Server interaciton](./MCP.png)
+![MCP Server interaciton](./MCP.png)
 
 ## Things to try
 
