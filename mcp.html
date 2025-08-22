@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="img/favicon.ico" />
+    <title>Model Context Protocol - Robot Developer Extensions for URDF editing</title>
+    <link rel="stylesheet" href="css/theme.css" />
+    <link rel="stylesheet" href="css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Model Context Protocol";
+        var mkdocs_page_input_path = "mcp.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="index.html" class="icon icon-home"> Robot Developer Extensions for URDF editing
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="./search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="index.html">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="WebXRPreview.html">WebXR Preview</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="OpenSCAD.html">OpenSCAD</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Model Context Protocol</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#things-to-try">Things to try</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#simple-robot-arm">Simple Robot Arm</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#xacro-car">Xacro Car</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#notes">Notes</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="Support.html">Support</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Robot Developer Extensions for URDF editing</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html" class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Model Context Protocol</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/ranch-hand-robotics/rde-urdf/edit/main/docs/mcp.md" class="icon icon-github"> Edit on GitHub</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="model-context-protocol-support">Model Context Protocol Support</h1>
+<p>This extension implements a Model Context Protocol server which helps AI build URDF, Xacro and OpenSCAD models based on a high level description - by allowing it to check it's work visually when it makes modifications.</p>
+<p>Before engaging with the AI, start a preview window by using the command palette (Ctrl+Shift+P) and selecting "URDF: Preview". This will open a new tab where the AI can send model updates to be rendered.</p>
+<p><img alt="MCP Server interaciton" src="MCP.png" /></p>
+<h2 id="things-to-try">Things to try</h2>
+<h3 id="simple-robot-arm">Simple Robot Arm</h3>
+<p>Create a new file with a <code>.urdf</code> extension. (Ctrl+Shift+P) and selecting "URDF: Preview". Now open the AI Chat Window and enter the following prompt:</p>
+<p>```Create a simple robot arm URDF model
+The robot arm should have a base, a shoulder joint, an elbow joint, and a wrist joint
+Each joint should have a range of motion
+The robot arm should be able to reach out and pick up objects
+The robot arm should be colored blue and white
+Make sure to include appropriate links and joints between the parts
+<div class="highlight"><pre><span></span><code>### OpenScad Solar System
+Create a new file with a `.scad` extension. (Ctrl+Shift+P) and selecting &quot;URDF: Preview&quot;. Now open the AI Chat Window and enter the following prompt:
+
+```Create a simple solar system model in OpenSCAD. Since OpenSCAD is unitless, assume 1 unit = is 1mm for previewing, but internally scale such that 1 unit is 1 million kilometers.
+The model should include the sun, earth, and moon
+The sun should be a large yellow sphere
+The earth should be a smaller blue and green sphere orbiting the sun
+The moon should be a small gray sphere orbiting the earth
+Make sure to include appropriate scaling and positioning for the celestial bodies
+</code></pre></div></p>
+<h3 id="xacro-car">Xacro Car</h3>
+<p>Create a new file with a <code>.xacro</code> extension. (Ctrl+Shift+P) and selecting "URDF: Preview". Now open the AI Chat Window and enter the following prompt: </p>
+<p><code>Create a simple car model in Xacro
+The car should have a body, four wheels, and a steering mechanism
+The car body should be red with black windows
+The wheels should be black with silver rims
+Make sure to include appropriate links and joints between the parts</code></p>
+<h2 id="notes">Notes</h2>
+<ul>
+<li>The MCP server currently supports URDF, Xacro, and OpenSCAD file formats.</li>
+<li>The AI may need to iterate on the model multiple times to get it right. Feel free to ask it to make changes or fix issues.</li>
+<li>The preview window will automatically update whenever the AI sends a new model.</li>
+<li>If the AI generates invalid syntax, it may not be able to render the model. In this case, ask the AI to fix the syntax errors.</li>
+<li>The MCP server is a powerful tool, but it may not always produce perfect results. Use it as a starting point and refine the models as needed.</li>
+<li>The MCP server is still under development, so expect some rough edges. Feedback is welcome!</li>
+</ul>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="OpenSCAD.html" class="btn btn-neutral float-left" title="OpenSCAD"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="Support.html" class="btn btn-neutral float-right" title="Support">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/ranch-hand-robotics/rde-urdf" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
+    
+      <span><a href="OpenSCAD.html" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="Support.html" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = ".";</script>
+    <script src="js/theme_extra.js"></script>
+    <script src="js/theme.js"></script>
+      <script src="search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
