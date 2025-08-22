@@ -189,7 +189,6 @@ export class UrdfMcpServer {
       this.httpServer = this.app.listen(this.port, () => {
         this.isRunning = true;
         tracing.appendLine(`URDF MCP Server started on port ${this.port}`);
-        vscode.window.showInformationMessage(`URDF MCP Server started on port ${this.port}`);
       });
     } catch (error) {
       const message = `Failed to start MCP server: ${error instanceof Error ? error.message : String(error)}`;
@@ -232,7 +231,6 @@ export class UrdfMcpServer {
       
       this.isRunning = false;
       tracing.appendLine('URDF MCP Server stopped');
-      vscode.window.showInformationMessage('URDF MCP Server stopped');
     } catch (error) {
       const message = `Failed to stop MCP server: ${error instanceof Error ? error.message : String(error)}`;
       tracing.appendLine(message);
