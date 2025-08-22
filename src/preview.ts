@@ -41,6 +41,13 @@ export default class URDFPreview
     private _trace: vscode.OutputChannel;
     private _convertedSTLPath: string | undefined = undefined;
 
+    private _pendingScreenshots: Array<{
+        width: number;
+        height: number;
+        resolve: (value: string) => void;
+        reject: (reason?: any) => void;
+    }> = [];
+
     public get state() {
         return {
             resource: this.resource.toString()
@@ -82,7 +89,29 @@ export default class URDFPreview
         );
 
         return new URDFPreview(editor, context, resource, trace);
-    } 
+    }
+
+    public takeScreenshot(width: number, height: number): Promise<string> {
+        return new Promise((resolve, reject) => {
+            if (!this._webview) {
+                reject('Webview is not initialized');
+                return;
+            }
+
+            this._pendingScreenshots.push({
+                width,
+                height,
+                resolve,
+                reject
+            });
+
+            this._webview.webview.postMessage({
+                command: 'takeScreenshot',
+                width,
+                height
+            });
+        });
+    }
 
     private constructor(
         webview: vscode.WebviewPanel,
@@ -409,6 +438,20 @@ export default class URDFPreview
             case "ready":
                 this.refresh();
                 return;
+
+            case "screenshotResult":
+                // Find and resolve matching screenshot requests
+                this._pendingScreenshots = this._pendingScreenshots.filter(pending => {
+                    if (pending.width === message.width && pending.height === message.height) {
+                        if (message.success) {
+                            pending.resolve(message.base64Image);
+                        } else {
+                            pending.reject(message.text || 'Screenshot failed');
+                        }
+                        return false; // Remove from array
+                    }
+                    return true; // Keep in array
+                });
             }
         },
         undefined,

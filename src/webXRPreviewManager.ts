@@ -20,6 +20,7 @@ export default class WebXRPreviewManager {
     this._context = context;
     this._trace = trace;
     this._port = 3000;
+    this._app = express();
   }
 
   public preview(
@@ -31,7 +32,6 @@ export default class WebXRPreviewManager {
   }
 
   private startServer() {
-    this._app = express();
     this._app.get('/', async (req, res) => {
       res.send(await this._getWebviewContent());
     });
@@ -42,13 +42,11 @@ export default class WebXRPreviewManager {
     this._app.use(express.static(this._context.asAbsolutePath("node_modules/@polyhobbyist/babylon_ros/dist")));
     this._app.use(express.static(this._context.asAbsolutePath("node_modules/babylonjs")));
 
-    var paths : vscode.Uri[] = [];
-
-    // Create paths from workspace folders to vscode uri, and add extensions
+    // Create paths from workspace folders and serve them as static content
     var workspaceFolders = vscode.workspace.workspaceFolders;
     if (workspaceFolders) {
         workspaceFolders.forEach((folder) => {
-            paths.push(this._app.use(express.static(folder.uri.fsPath)));
+            this._app.use(express.static(folder.uri.fsPath));
         });
     }
 

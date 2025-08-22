@@ -46,8 +46,13 @@
     "languages": [
       {
         "id": "openscad",
-        "aliases": ["OpenSCAD", "openscad"],
-        "extensions": [".scad"],
+        "aliases": [
+          "OpenSCAD",
+          "openscad"
+        ],
+        "extensions": [
+          ".scad"
+        ],
         "configuration": "./language-configuration.json"
       }
     ],
@@ -75,15 +80,33 @@
     "commands": [
       {
         "command": "urdf-editor.create",
-        "title": "Preview"
+        "title": "Preview",
+        "category": "URDF"
       },
       {
         "command": "urdf-editor.createXR",
-        "title": "Preview in WebXR"
+        "title": "Preview in WebXR",
+        "category": "URDF"
       },
       {
         "command": "urdf-editor.export",
-        "title": "Export"
+        "title": "Export",
+        "category": "URDF"
+      },
+      {
+        "command": "urdf-editor.takeScreenshot",
+        "title": "Take Screenshot",
+        "category": "URDF"
+      },
+      {
+        "command": "urdf-editor.startMcpServer",
+        "title": "Start MCP Server",
+        "category": "URDF"
+      },
+      {
+        "command": "urdf-editor.stopMcpServer",
+        "title": "Stop MCP Server",
+        "category": "URDF"
       }
     ],
     "menus": {
@@ -131,9 +154,30 @@
           "command": "urdf-editor.export",
           "when": "resourceExtname == .xacro",
           "group": "urdf"
+        },
+        {
+          "command": "urdf-editor.takeScreenshot",
+          "when": "resourceExtname == .urdf",
+          "group": "urdf"
+        },
+        {
+          "command": "urdf-editor.takeScreenshot",
+          "when": "resourceExtname == .xacro",
+          "group": "urdf"
+        },
+        {
+          "command": "urdf-editor.takeScreenshot",
+          "when": "resourceExtname == .scad",
+          "group": "urdf"
         }
       ]
     },
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "URDF",
+        "label": "URDF"
+      }
+    ],
     "configuration": {
       "type": "object",
       "title": "URDF",
@@ -185,6 +229,11 @@
           "title": "Debug User Interface",
           "default": false,
           "description": "Display the Diagnostics and Debug User interface elements in the URDF Editor."
+        },
+        "urdf-editor.mcpServerPort": {
+          "type": "integer",
+          "default": 3005,
+          "description": "(Preview) The port to use for the MCP Server."
         }
       }
     },
@@ -221,6 +270,7 @@
     "test": "vscode-test"
   },
   "devDependencies": {
+    "@types/express": "^5.0.3",
     "@types/mocha": "^10.0.6",
     "@types/node": "18.x",
     "@types/vscode": "^1.91.0",
@@ -250,7 +300,8 @@
     "babylonjs-viewer": "~7.16.0"
   },
   "dependencies": {
-    "@polyhobbyist/babylon_ros": "^0.1.4",
+    "@modelcontextprotocol/sdk": "^1.17.3",
+    "@polyhobbyist/babylon_ros": "^0.1.6",
     "@polyhobbyist/babylon-collada-loader": "^0.0.8",
     "@types/xmldom": "^0.1.34",
     "@vscode/debugadapter": "^1.66.0",

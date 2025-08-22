@@ -1,14 +1,11 @@
 // Place your settings in this file to overwrite default and user settings.
 {
-    // Turn off tsc task auto detection since we have the necessary tasks as npm scripts
+    "ROS2.distro": "kilted",
     "python.autoComplete.extraPaths": [
-        "C:\\opt\\ros\\humble\\x64\\Lib\\site-packages",
-        "C:\\opt\\ros\\humble\\x64\\lib\\python3.10\\dist-packages",
-        "c:\\opt\\ros\\humble\\x64\\Lib\\site-packages"
+        "/opt/ros/kilted/lib/python3.12/site-packages"
     ],
     "python.analysis.extraPaths": [
-        "C:\\opt\\ros\\humble\\x64\\Lib\\site-packages",
-        "C:\\opt\\ros\\humble\\x64\\lib\\python3.10\\dist-packages",
-        "c:\\opt\\ros\\humble\\x64\\Lib\\site-packages"
-    ]
+        "/opt/ros/kilted/lib/python3.12/site-packages"
+    ],
+    "github.copilot.chat.codeGeneration.useInstructionFiles": true
 }
