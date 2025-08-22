@@ -1,4 +1,4 @@
-# WebXR URDF (https://img.shields.io/badge/Preview-8A2BE2)
+# WebXR URDF 
 
 The Robot Developer Extension for URDF allows previewing a URDF file in Virtual Reality. This feature has been tested with a Meta Quest 3 headset and provides a way to visualize robot models in a 3D environment. 
 
