@@ -36,21 +36,31 @@ Packages are discovered by scanning workspace for `package.xml` files. The `getP
 ### OpenSCAD Processing
 OpenSCAD (.scad) files are processed in `preview.ts`:
 1. File is detected as OpenSCAD by extension
-2. `openscad-wasm-prebuilt` module converts .scad code to STL format
-3. Generated STL is written to the same directory as the .scad file
-4. Existing STL viewer renders the converted file through webview
-5. File watching triggers re-conversion on .scad file changes
+2. OpenSCAD libraries are loaded from OS-specific and user-configured paths
+3. `openscad-wasm-prebuilt` module converts .scad code to STL format with library support
+4. Generated STL is written to the same directory as the .scad file
+5. Existing STL viewer renders the converted file through webview
+6. File watching triggers re-conversion on .scad file changes
+
+#### Library Support
+OpenSCAD library loading supports:
+- **OS-specific default paths**:
+  - Windows: `%USERPROFILE%\Documents\OpenSCAD\libraries`
+  - Linux: `$HOME/.local/share/OpenSCAD/libraries`
+  - macOS: `$HOME/Documents/OpenSCAD/libraries`
+- **User-configured paths**: Via `urdf-editor.OpenSCADLibraryPaths` setting
+- **Workspace variables**: `${workspace}` resolves to workspace root
+- **Automatic discovery**: Only existing directories are included
+- **Recursive loading**: Subdirectories and files (.scad, .stl, .dxf) loaded into virtual filesystem
 
 Example from `preview.ts`:
 ```typescript
-// Convert OpenSCAD to STL and display as 3D model
-const stlPath = await this.convertOpenSCADToSTL(this._resource.fsPath);
-if (stlPath) {
-    this._webview.webview.postMessage({
-        command: 'view3DFile',
-        filename: this._webview.webview.asWebviewUri(vscode.Uri.file(stlPath)).toString()
-    });
-}
+// Load libraries and convert OpenSCAD to STL
+const libraryPaths = await getAllOpenSCADLibraryPaths(workspaceRoot);
+await loadLibraryFiles(instance, libraryPaths, this._trace);
+instance.FS.writeFile('/input.scad', scadText);
+instance.callMain(['-L', '/libraries', '-o', '/output.stl', '/input.scad']);
+````
 ```
 
 ### OpenSCAD Processing
@@ -134,7 +144,8 @@ parser.rospackCommands = {
 ```
 
 ### Configuration Settings
-Extension settings are defined in `package.json` under `contributes.configuration`. All settings prefixed with `urdf-editor.` and include visual appearance, camera, and debug options.
+Extension settings are defined in `package.json` under `contributes.configuration`. All settings prefixed with `urdf-editor.` and include visual appearance, camera, debug options, and OpenSCAD library paths. Key settings:
+- `urdf-editor.OpenSCADLibraryPaths`: Array of additional library paths for OpenSCAD files. Supports `${workspace}` variable substitution.
 
 ## Geometry Guidelines
 Per `prompts/urdf-instructions.md`:

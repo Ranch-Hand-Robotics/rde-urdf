@@ -15,9 +15,15 @@ This extension provides developer tooling for Unified Robot Description Files (U
 - Collision Visualization
 - Schema Validation
 - AI Assisted Coding prompts for Github Copilot
+<<<<<<< Updated upstream
 - [Virtual Reality preview](https://ranchhandrobotics.com/rde-urdf/WebXRPreview.html) of the model you are editing.
 - (New!) (Preview) [Supports OpenSCAD Rendering](https://ranchhandrobotics.com/rde-urdf/OpenSCAD.html) and syntax Highlighting for programatically creating robot parts.
 - (New!) (Preview) [Exposes an MCP Server](https://ranchhandrobotics.com/rde-urdf/mcp.html) allowing AI to check its work visually. 
+=======
+- Virtual Reality preview of the model you are editing.
+- Supports OpenSCAD Rendering and syntax Highlighting for programatically creating robot parts.
+- OpenSCAD Library Support with automatic loading from OS-specific locations and user-configured paths.
+>>>>>>> Stashed changes
 
 
 ## Coming Soon
@@ -28,6 +34,28 @@ This extension provides developer tooling for Unified Robot Description Files (U
 ## Usage
 1. Open a URDF, .xacro, or OpenSCAD file.
 2. Right click on the file and select "Preview", or press `Ctrl+Shift+P` and select "Preview"
+
+### OpenSCAD Library Configuration
+The extension automatically loads OpenSCAD libraries from OS-specific default locations:
+- **Windows**: `%USERPROFILE%\Documents\OpenSCAD\libraries`
+- **Linux**: `$HOME/.local/share/OpenSCAD/libraries` 
+- **macOS**: `$HOME/Documents/OpenSCAD/libraries`
+
+To add custom library paths:
+1. Open VS Code settings (`Ctrl+,`)
+2. Search for "urdf-editor.OpenSCADLibraryPaths"
+3. Add additional library directories (supports `${workspace}` variable)
+
+Example settings.json:
+```json
+{
+  "urdf-editor.OpenSCADLibraryPaths": [
+    "${workspace}/scad_libs",
+    "C:\\MyLibraries\\OpenSCAD",
+    "/usr/local/share/openscad/libraries"
+  ]
+}
+```
 
 
 ## Support

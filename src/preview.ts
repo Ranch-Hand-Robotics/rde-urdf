@@ -13,7 +13,7 @@ import {createOpenSCAD} from 'openscad-wasm-prebuilt';
 // Type declaration for openscad-wasm
 interface OpenSCADInstance {
   FS: {
-    writeFile(path: string, data: string): void;
+    writeFile(path: string, data: string | Uint8Array): void;
     readFile(path: string, options: { encoding: string }): string;
   };
   callMain(args: string[]): void;
@@ -28,6 +28,118 @@ interface OpenSCADModule {
     print?: (text: string) => void;
     printErr?: (text: string) => void;
   }): Promise<OpenSCAD>;
+}
+
+// Helper functions for OpenSCAD library support
+function getDefaultOpenSCADLibraryPaths(): string[] {
+  const platform = os.platform();
+  const homeDir = os.homedir();
+  const paths: string[] = [];
+
+  switch (platform) {
+    case 'win32':
+      // Windows: My Documents\OpenSCAD\libraries
+      const documentsPath = path.join(homeDir, 'Documents', 'OpenSCAD', 'libraries');
+      paths.push(documentsPath);
+      break;
+    case 'linux':
+      // Linux: $HOME/.local/share/OpenSCAD/libraries
+      const linuxLibPath = path.join(homeDir, '.local', 'share', 'OpenSCAD', 'libraries');
+      paths.push(linuxLibPath);
+      break;
+    case 'darwin':
+      // macOS: $HOME/Documents/OpenSCAD/libraries
+      const macLibPath = path.join(homeDir, 'Documents', 'OpenSCAD', 'libraries');
+      paths.push(macLibPath);
+      break;
+  }
+
+  return paths;
+}
+
+function resolveWorkspaceVariables(libraryPath: string, workspaceRoot?: string): string {
+  if (workspaceRoot && libraryPath.includes('${workspace}')) {
+    return libraryPath.replace(/\$\{workspace\}/g, workspaceRoot);
+  }
+  return libraryPath;
+}
+
+async function getAllOpenSCADLibraryPaths(workspaceRoot?: string): Promise<string[]> {
+  const config = vscode.workspace.getConfiguration('urdf-editor');
+  const userLibraryPaths: string[] = config.get('OpenSCADLibraryPaths', []);
+  
+  // Get default OS-specific paths
+  const defaultPaths = getDefaultOpenSCADLibraryPaths();
+  
+  // Resolve workspace variables in user paths
+  const resolvedUserPaths = userLibraryPaths.map(p => resolveWorkspaceVariables(p, workspaceRoot));
+  
+  // Combine all paths
+  const allPaths = [...defaultPaths, ...resolvedUserPaths];
+  
+  // Filter to only existing directories
+  const existingPaths: string[] = [];
+  for (const libPath of allPaths) {
+    try {
+      const stat = await fs.promises.stat(libPath);
+      if (stat.isDirectory()) {
+        existingPaths.push(libPath);
+      }
+    } catch {
+      // Directory doesn't exist, skip it
+    }
+  }
+  
+  return existingPaths;
+}
+
+async function loadLibraryFiles(instance: OpenSCADInstance, libraryPaths: string[], trace: vscode.OutputChannel): Promise<void> {
+  for (const libPath of libraryPaths) {
+    try {
+      trace.appendLine(`Loading OpenSCAD library from: ${libPath}`);
+      await loadLibraryDirectory(instance, libPath, '', trace);
+    } catch (error) {
+      trace.appendLine(`Failed to load library from ${libPath}: ${error}`);
+    }
+  }
+}
+
+async function loadLibraryDirectory(instance: OpenSCADInstance, basePath: string, relativePath: string, trace: vscode.OutputChannel): Promise<void> {
+  const fullPath = path.join(basePath, relativePath);
+  
+  try {
+    const entries = await fs.promises.readdir(fullPath, { withFileTypes: true });
+    
+    for (const entry of entries) {
+      const entryPath = path.join(relativePath, entry.name);
+      const fullEntryPath = path.join(fullPath, entry.name);
+      
+      if (entry.isDirectory()) {
+        // Recursively load subdirectories
+        await loadLibraryDirectory(instance, basePath, entryPath, trace);
+      } else if (entry.isFile() && (entry.name.endsWith('.scad') || entry.name.endsWith('.stl') || entry.name.endsWith('.dxf'))) {
+        // Load library files into the virtual filesystem
+        try {
+          if (entry.name.endsWith('.scad')) {
+            const content = await fs.promises.readFile(fullEntryPath, 'utf8');
+            const virtualPath = `/libraries/${entryPath}`;
+            instance.FS.writeFile(virtualPath, content);
+            trace.appendLine(`Loaded library file: ${virtualPath}`);
+          } else {
+            // For binary files like STL, DXF
+            const content = await fs.promises.readFile(fullEntryPath);
+            const virtualPath = `/libraries/${entryPath}`;
+            instance.FS.writeFile(virtualPath, new Uint8Array(content));
+            trace.appendLine(`Loaded binary library file: ${virtualPath}`);
+          }
+        } catch (error) {
+          trace.appendLine(`Failed to load library file ${entryPath}: ${error}`);
+        }
+      }
+    }
+  } catch (error) {
+    trace.appendLine(`Failed to read directory ${fullPath}: ${error}`);
+  }
 }
 
 export default class URDFPreview 
@@ -166,6 +278,19 @@ export default class URDFPreview
             // Get direct access to the WASM module
             const instance = openscad.getInstance();
 
+            // Get workspace root for variable resolution
+            const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+            
+            // Load OpenSCAD libraries
+            this._trace.appendLine(`Loading OpenSCAD libraries...`);
+            const libraryPaths = await getAllOpenSCADLibraryPaths(workspaceRoot);
+            if (libraryPaths.length > 0) {
+                this._trace.appendLine(`Found ${libraryPaths.length} library paths: ${libraryPaths.join(', ')}`);
+                await loadLibraryFiles(instance, libraryPaths, this._trace);
+            } else {
+                this._trace.appendLine(`No OpenSCAD library paths found`);
+            }
+
             const basename = path.basename(scadFilePath, '.scad');
             const dir = path.dirname(scadFilePath);
             const stlPath = path.join(dir, `${basename}.stl`);
@@ -173,10 +298,27 @@ export default class URDFPreview
             this._trace.appendLine(`Converting OpenSCAD to STL: ${stlPath}`);
 
             const scadText = await fs.promises.readFile(scadFilePath, 'utf8');
-            const stl = await openscad.renderToStl(scadText);
+            
+            // Write the main SCAD file to the virtual filesystem
+            instance.FS.writeFile('/input.scad', scadText);
+            
+            // Add library search paths to OpenSCAD arguments
+            const args = ['-o', '/output.stl', '/input.scad'];
+            if (libraryPaths.length > 0) {
+                // Add each library path as a -L option
+                for (const libPath of libraryPaths) {
+                    args.unshift('-L', '/libraries');
+                }
+            }
+            
+            // Run OpenSCAD with library paths
+            instance.callMain(args);
+            
+            // Read the output STL from the virtual filesystem
+            const stlContent = instance.FS.readFile('/output.stl', { encoding: 'binary' });
 
             // Use the filesystem API directly
-            await fs.promises.writeFile(stlPath, stl, {flag: 'w'});
+            await fs.promises.writeFile(stlPath, stlContent, 'binary');
 
             this._convertedSTLPath = stlPath;
             
