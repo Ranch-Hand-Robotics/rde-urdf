@@ -69,6 +69,17 @@ The extension can automatically generate documentation for your OpenSCAD librari
 
 This documentation is also available to AI assistants via the Model Context Protocol (MCP) for intelligent code completion and suggestions.
 
+### Model Context Protocol (MCP) Server
+The extension includes an MCP server that provides AI assistants with powerful capabilities:
+
+- **Screenshot Tools**: AI can capture and verify visual output of URDF/Xacro/OpenSCAD files
+  - `take_screenshot`: Screenshot of currently active preview
+  - `take_screenshot_by_filename`: Screenshot any file by path (opens preview if needed)
+- **Library Documentation**: AI can access comprehensive OpenSCAD library information
+  - `get_openscad_libraries`: Returns markdown documentation of all available libraries
+
+The MCP server starts automatically when you open a preview and is accessible via HTTP on port 3005 (configurable).
+
 
 ## Support
 If you encounter any issues with this extension, the following resources are provided:

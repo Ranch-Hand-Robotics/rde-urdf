@@ -161,6 +161,7 @@ The extension includes a Model Context Protocol (MCP) server (`src/mcp.ts`) that
 
 ### Available MCP Tools
 - **`take_screenshot`**: Captures screenshots of active URDF/Xacro/OpenSCAD previews for visual verification
+- **`take_screenshot_by_filename`**: Takes screenshot of a specific file by filename, opening a preview if needed
 - **`get_openscad_libraries`**: Provides comprehensive documentation of available OpenSCAD libraries, modules, and functions
 
 ### MCP Server Features
