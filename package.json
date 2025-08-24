@@ -230,12 +230,11 @@
           "default": false,
           "description": "Display the Diagnostics and Debug User interface elements in the URDF Editor."
         },
-<<<<<<< Updated upstream
         "urdf-editor.mcpServerPort": {
           "type": "integer",
           "default": 3005,
           "description": "(Preview) The port to use for the MCP Server."
-=======
+        },
         "urdf-editor.OpenSCADLibraryPaths": {
           "type": "array",
           "items": {
@@ -244,7 +243,6 @@
           "title": "OpenSCAD Library Paths",
           "default": [],
           "description": "Additional library paths for OpenSCAD files. Use ${workspace} to reference the workspace root. OS-specific default locations are automatically included."
->>>>>>> Stashed changes
         }
       }
     },
