@@ -4,6 +4,7 @@ import URDFPreviewManager from "./previewManager";
 import WebXRPreviewManager from "./webXRPreviewManager";
 import * as util from "./utils";
 import { UrdfMcpServer } from './mcp';
+import { generateAndSaveLibrariesDocumentation } from './openscad';
 
 import { Viewer3DProvider } from './3DViewerProvider';
 
@@ -248,7 +249,59 @@ export function activate(context: vscode.ExtensionContext) {
     }
   });
 
+  const generateOpenSCADDocsCommand = vscode.commands.registerCommand("urdf-editor.generateOpenSCADDocs", async () => {
+    try {
+      // Get workspace root
+      const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+      if (!workspaceRoot) {
+        vscode.window.showErrorMessage('No workspace folder open');
+        return;
+      }
+
+      // Show save dialog for output location
+      const defaultPath = path.join(workspaceRoot, 'openscad-libraries.md');
+      const saveUri = await vscode.window.showSaveDialog({
+        filters: {
+          'Markdown Files': ['md']
+        },
+        saveLabel: 'Save OpenSCAD Documentation',
+        title: 'Save OpenSCAD Libraries Documentation',
+        defaultUri: vscode.Uri.file(defaultPath),
+      });
+
+      if (!saveUri) {
+        return; // User cancelled
+      }
+
+      // Show progress indicator
+      await vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: "Generating OpenSCAD documentation...",
+        cancellable: false
+      }, async (progress) => {
+        progress.report({ increment: 0, message: "Scanning libraries..." });
+        
+        await generateAndSaveLibrariesDocumentation(saveUri.fsPath, workspaceRoot);
+        
+        progress.report({ increment: 100, message: "Documentation generated!" });
+      });
+
+      // Open the generated file
+      const doc = await vscode.workspace.openTextDocument(saveUri);
+      await vscode.window.showTextDocument(doc);
+      
+      vscode.window.showInformationMessage(`OpenSCAD libraries documentation saved to ${saveUri.fsPath}`);
+      tracing.appendLine(`Generated OpenSCAD documentation: ${saveUri.fsPath}`);
+      
+    } catch (error) {
+      const message = `Failed to generate OpenSCAD documentation: ${error instanceof Error ? error.message : String(error)}`;
+      vscode.window.showErrorMessage(message);
+      tracing.appendLine(message);
+    }
+  });
+
   context.subscriptions.push(takeScreenshotCommand);
+  context.subscriptions.push(generateOpenSCADDocsCommand);
 }
 
 export async function deactivate() {

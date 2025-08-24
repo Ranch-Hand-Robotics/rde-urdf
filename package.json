@@ -99,6 +99,11 @@
         "category": "URDF"
       },
       {
+        "command": "urdf-editor.generateOpenSCADDocs",
+        "title": "Generate OpenSCAD Libraries Documentation",
+        "category": "URDF"
+      },
+      {
         "command": "urdf-editor.startMcpServer",
         "title": "Start MCP Server",
         "category": "URDF"

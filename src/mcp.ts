@@ -11,6 +11,7 @@ import { tracing } from './extension';
 import * as express from 'express';
 import { randomUUID } from 'node:crypto';
 import {urdfManager} from "./extension";
+import { generateOpenSCADLibrariesDocumentation, convertLibrariesDocumentationToMarkdown } from './openscad';
 
 /**
  * URDF MCP Server Implementation
@@ -103,6 +104,63 @@ export class UrdfMcpServer {
         throw new McpError(
           ErrorCode.InternalError,
           `Failed to take screenshot: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+    });
+
+    // Register the OpenSCAD libraries documentation tool
+    this.server.registerTool('get_openscad_libraries', {
+        title: 'Get OpenSCAD Libraries Documentation',
+        description: 'Retrieves comprehensive documentation of all available OpenSCAD libraries, including modules, functions, and their parameters. Use this to understand what OpenSCAD utilities are available when creating or updating OpenSCAD files.',
+        inputSchema: {}
+    }, async (args) => {
+      try {
+        tracing.appendLine(`MCP Server: Generating OpenSCAD libraries documentation`);
+
+        // Get workspace root
+        const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+        if (!workspaceRoot) {
+          return { 
+            content: [{ 
+              type: 'text', 
+              text: 'No workspace folder is open. Please open a workspace to scan for OpenSCAD libraries.'
+            }] 
+          };
+        }
+
+        // Generate documentation
+        const documentation = await generateOpenSCADLibrariesDocumentation(workspaceRoot);
+        const markdown = convertLibrariesDocumentationToMarkdown(documentation);
+
+        if (documentation.libraries.length === 0) {
+          return { 
+            content: [{ 
+              type: 'text', 
+              text: 'No OpenSCAD libraries found in the current workspace. You can add library paths in the extension settings (urdf-editor.OpenSCADLibraryPaths) or place .scad files in the default OS-specific library locations.'
+            }] 
+          };
+        }
+
+        tracing.appendLine(`MCP Server: Found ${documentation.libraries.length} OpenSCAD libraries`);
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: markdown,
+            },
+          ],
+        };
+      } catch (error) {
+        tracing.appendLine(`MCP Server error generating OpenSCAD docs: ${error instanceof Error ? error.message : String(error)}`);
+        
+        if (error instanceof McpError) {
+          throw error;
+        }
+        
+        throw new McpError(
+          ErrorCode.InternalError,
+          `Failed to generate OpenSCAD libraries documentation: ${error instanceof Error ? error.message : String(error)}`
         );
       }
     });

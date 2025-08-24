@@ -6,6 +6,7 @@ This is a VS Code extension for editing, previewing, and validating URDF (Unifie
 ## Architecture
 - **Extension Entry**: `src/extension.ts` - Main activation point, registers commands and providers
 - **Preview System**: `src/previewManager.ts` + `src/preview.ts` - Manages URDF/Xacro/OpenSCAD 3D preview webviews
+- **OpenSCAD Processing**: `src/openscad.ts` - OpenSCAD conversion utilities and library management
 - **3D Viewer**: `src/3DViewerProvider.ts` + `src/3DViewerDocument.ts` - Custom editor for STL/DAE mesh files
 - **Webview Frontend**: `src/webview/webview.ts` - BabylonJS-based 3D rendering in webview
 - **URDF Processing**: `src/utils.ts` - Core Xacro parsing and package resolution logic
@@ -34,7 +35,7 @@ export function convertFindToPackageUri(text: string): string {
 Packages are discovered by scanning workspace for `package.xml` files. The `getPackages()` function in `utils.ts` builds a map of package names to filesystem paths, enabling resolution of ROS package references.
 
 ### OpenSCAD Processing
-OpenSCAD (.scad) files are processed in `preview.ts`:
+OpenSCAD (.scad) files are processed using dedicated utilities in `src/openscad.ts`:
 1. File is detected as OpenSCAD by extension
 2. OpenSCAD libraries are loaded from OS-specific and user-configured paths
 3. `openscad-wasm-prebuilt` module converts .scad code to STL format with library support
@@ -53,13 +54,24 @@ OpenSCAD library loading supports:
 - **Automatic discovery**: Only existing directories are included
 - **Recursive loading**: Subdirectories and files (.scad, .stl, .dxf) loaded into virtual filesystem
 
-Example from `preview.ts`:
+#### Library Documentation
+The extension can generate comprehensive documentation of available OpenSCAD libraries:
+- **Command**: `urdf-editor.generateOpenSCADDocs` - Generate markdown documentation
+- **MCP Tool**: `get_openscad_libraries` - Expose library info to AI assistants
+- **Extraction**: Header comments, module signatures, function parameters, and inline documentation
+- **Format**: Structured markdown suitable for AI consumption
+
+Example from `src/openscad.ts`:
 ```typescript
 // Load libraries and convert OpenSCAD to STL
 const libraryPaths = await getAllOpenSCADLibraryPaths(workspaceRoot);
 await loadLibraryFiles(instance, libraryPaths, this._trace);
 instance.FS.writeFile('/input.scad', scadText);
 instance.callMain(['-L', '/libraries', '-o', '/output.stl', '/input.scad']);
+
+// Generate documentation for MCP
+const documentation = await generateOpenSCADLibrariesDocumentation(workspaceRoot);
+const markdown = convertLibrariesDocumentationToMarkdown(documentation);
 ````
 ```
 
@@ -142,6 +154,20 @@ parser.rospackCommands = {
   // Add new commands here
 };
 ```
+
+## MCP Server Integration
+
+The extension includes a Model Context Protocol (MCP) server (`src/mcp.ts`) that exposes tools for AI assistants:
+
+### Available MCP Tools
+- **`take_screenshot`**: Captures screenshots of active URDF/Xacro/OpenSCAD previews for visual verification
+- **`get_openscad_libraries`**: Provides comprehensive documentation of available OpenSCAD libraries, modules, and functions
+
+### MCP Server Features
+- **Auto-start**: Starts automatically when first preview is opened
+- **HTTP Transport**: Uses HTTP transport on configurable port (default: 3005)
+- **Session Management**: Supports multiple concurrent AI assistant sessions
+- **Error Handling**: Robust error handling with detailed logging to output channel
 
 ### Configuration Settings
 Extension settings are defined in `package.json` under `contributes.configuration`. All settings prefixed with `urdf-editor.` and include visual appearance, camera, debug options, and OpenSCAD library paths. Key settings:

@@ -15,15 +15,13 @@ This extension provides developer tooling for Unified Robot Description Files (U
 - Collision Visualization
 - Schema Validation
 - AI Assisted Coding prompts for Github Copilot
-<<<<<<< Updated upstream
 - [Virtual Reality preview](https://ranchhandrobotics.com/rde-urdf/WebXRPreview.html) of the model you are editing.
 - (New!) (Preview) [Supports OpenSCAD Rendering](https://ranchhandrobotics.com/rde-urdf/OpenSCAD.html) and syntax Highlighting for programatically creating robot parts.
 - (New!) (Preview) [Exposes an MCP Server](https://ranchhandrobotics.com/rde-urdf/mcp.html) allowing AI to check its work visually. 
-=======
 - Virtual Reality preview of the model you are editing.
 - Supports OpenSCAD Rendering and syntax Highlighting for programatically creating robot parts.
 - OpenSCAD Library Support with automatic loading from OS-specific locations and user-configured paths.
->>>>>>> Stashed changes
+- OpenSCAD Libraries Documentation Generation for AI-assisted development.
 
 
 ## Coming Soon
@@ -56,6 +54,20 @@ Example settings.json:
   ]
 }
 ```
+
+### OpenSCAD Documentation Generation
+The extension can automatically generate documentation for your OpenSCAD libraries:
+
+1. Open the command palette (`Ctrl+Shift+P`)
+2. Run "URDF: Generate OpenSCAD Libraries Documentation"
+3. Choose where to save the markdown file
+4. The extension will scan all library paths and extract:
+   - Header comments from library files
+   - Module and function signatures
+   - Parameter documentation
+   - Usage examples
+
+This documentation is also available to AI assistants via the Model Context Protocol (MCP) for intelligent code completion and suggestions.
 
 
 ## Support
