@@ -21,8 +21,11 @@ This Visual Studio Code extension helps you buid Universal Robot Description For
 - Collision Visualization
 - Schema Validation
 - AI Assisted Coding prompts fpr Github Copilot
+- [Virtual Reality preview](https://ranchhandrobotics.com/rde-urdf/WebXRPreview.html) of the model you are editing.
+- (New!) (Preview) [Supports OpenSCAD Rendering](https://ranchhandrobotics.com/rde-urdf/OpenSCAD.html) and syntax Highlighting for programatically creating robot parts.
+- (New!) (Preview) [Exposes an MCP Server](https://ranchhandrobotics.com/rde-urdf/mcp.html) allowing AI to check its work visually. 
 - Virtual Reality preview of the model you are editing.
-- 
+
 ## Coming soon
 - [Physics Emulation](https://github.com/ranchhandrobotics/vscode_urdf/issues/4)
 - [Kinematics Visualization](https://github.com/ranchhandrobotics/vscode_urdf/issues/5)

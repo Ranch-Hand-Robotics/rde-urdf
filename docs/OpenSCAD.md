@@ -21,6 +21,41 @@ The editor provides several language features for OpenSCAD:
 - **Error Reporting**: The editor reports syntax errors in OpenSCAD code.
 - **OpenSCAD Library Support**: The editor recognizes and provides support for standard OpenSCAD libraries.
 
+### OpenSCAD Library Configuration
+The extension automatically loads OpenSCAD libraries from OS-specific default locations:
+- **Windows**: `%USERPROFILE%\Documents\OpenSCAD\libraries`
+- **Linux**: `$HOME/.local/share/OpenSCAD/libraries` 
+- **macOS**: `$HOME/Documents/OpenSCAD/libraries`
+
+To add custom library paths:
+1. Open VS Code settings (`Ctrl+,`)
+2. Search for "urdf-editor.OpenSCADLibraryPaths"
+3. Add additional library directories (supports `${workspace}` variable)
+
+Example settings.json:
+```json
+{
+  "urdf-editor.OpenSCADLibraryPaths": [
+    "${workspace}/scad_libs",
+    "C:\\MyLibraries\\OpenSCAD",
+    "/usr/local/share/openscad/libraries"
+  ]
+}
+```
+
+### OpenSCAD Documentation Generation
+The extension can automatically generate documentation for your OpenSCAD libraries:
+
+1. Open the command palette (`Ctrl+Shift+P`)
+2. Run "URDF: Generate OpenSCAD Libraries Documentation"
+3. Choose where to save the markdown file
+4. The extension will scan all library paths and extract:
+   - Header comments from library files
+   - Module and function signatures
+   - Parameter documentation
+   - Usage examples
+
+This documentation is also available to AI assistants via the Model Context Protocol (MCP) for intelligent code completion and suggestions.
 
 ## AI-Assisted Development Features
 

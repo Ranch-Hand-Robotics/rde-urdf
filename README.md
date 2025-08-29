@@ -1,5 +1,5 @@
 # Robot Developer Extensions for URDF
-This extension provides developer tooling for Unified Robot Description Files (URDF) and Xacro Editing and Preview. 
+This extension provides developer tooling for Unified Robot Description Format (URDF) and Xacro Editing and Preview. 
 
 ![URDF Preview](https://raw.githubusercontent.com/Ranch-Hand-Robotics/rde-urdf/refs/heads/main/docs/URDF_Preview.png)
 
@@ -19,9 +19,6 @@ This extension provides developer tooling for Unified Robot Description Files (U
 - (New!) (Preview) [Supports OpenSCAD Rendering](https://ranchhandrobotics.com/rde-urdf/OpenSCAD.html) and syntax Highlighting for programatically creating robot parts.
 - (New!) (Preview) [Exposes an MCP Server](https://ranchhandrobotics.com/rde-urdf/mcp.html) allowing AI to check its work visually. 
 - Virtual Reality preview of the model you are editing.
-- Supports OpenSCAD Rendering and syntax Highlighting for programatically creating robot parts.
-- OpenSCAD Library Support with automatic loading from OS-specific locations and user-configured paths.
-- OpenSCAD Libraries Documentation Generation for AI-assisted development.
 
 
 ## Coming Soon
@@ -92,11 +89,8 @@ Please provide as much details as possible, including an isolated reproduction o
 ### Discussions
 [Github Discussions](https://github.com/orgs/Ranch-Hand-Robotics/discussions) are provided for community driven general guidance, walkthroughs, or support.
 
-### Sponsored Support
-
-![Coming Soon](https://img.shields.io/badge/Coming%20Soon-8A2BE2)
-
-One on one support, mentoring and consulting will be available through Github Sponsors and Patreon. 
+## Sponsor
+If you find this extension useful, please consider [sponsoring Ranch Hand Robotics](https://github.com/sponsors/Ranch-Hand-Robotics) to help support the development of this extension and other open source projects.
 
 ## Acknowledgements
 I was the maintainer of Microsoft's [Visual Studio Code ROS Extension](http://aka.ms/ros/vscode). It is no longer maintained, and I've been given permission to externalize the components. The URDF editor was built on work done in my private personal time, and not associated with Microsoft. This extension is a stand alone implementation and will be maintained moving forward.
