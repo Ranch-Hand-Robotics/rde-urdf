@@ -10,7 +10,7 @@ OpenScad libraries can be loaded automatically from standard locations, or you c
 
 Minimize the number of joints in a URDF.
 
-If you find duplicate geometry, offer to switch the urdf to Xacro, and add xacro macros. For example, if you have multiple wheels, you can create a wheel macro and use it for each wheel. Rename the urdf to xacro and reformat if you do this. Ask the user before doing this, as it can be distruptive.
+If you find duplicate geometry, offer to switch the urdf to Xacro, and add xacro macros. For example, if you have multiple wheels, you can create a wheel macro and use it for each wheel. Rename the urdf to xacro and reformat if you do this. Ask the user before doing this, as it can be disruptive.
 
 Do not add unnessesary transforms to a node.
 
