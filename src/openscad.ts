@@ -169,7 +169,7 @@ export function isOpenSCADFile(filePath: string): boolean {
 }
 
 /**
- * Convert an OpenSCAD file to STL format using openscad-wasm
+ * Convert an OpenSCAD file to STL format using openscad-wasm (original implementation)
  */
 export async function convertOpenSCADToSTL(scadFilePath: string, trace: vscode.OutputChannel): Promise<string | null> {
   try {
@@ -226,6 +226,209 @@ export async function convertOpenSCADToSTL(scadFilePath: string, trace: vscode.O
     trace.appendLine(`OpenSCAD conversion failed`);
     vscode.window.showErrorMessage(`Failed to convert OpenSCAD file, check output for more info`);
     return null;
+  }
+}
+
+/**
+ * Convert an OpenSCAD file to STL format using a killable child process
+ */
+export async function convertOpenSCADToSTLCancellable(
+  scadFilePath: string, 
+  trace: vscode.OutputChannel, 
+  token?: vscode.CancellationToken,
+  options?: {
+    previewMode?: boolean;  // Use faster preview mode
+    timeout?: number;       // Custom timeout in milliseconds (default: 5 minutes)
+  }
+): Promise<string | null> {
+  return new Promise(async (resolve, reject) => {
+    let childProcess: any = null;
+    let cancelled = false;
+    
+    // Set up cancellation handling
+    const cancellationListener = token?.onCancellationRequested(() => {
+      cancelled = true;
+      trace.appendLine(`OpenSCAD conversion cancelled: ${scadFilePath}`);
+      if (childProcess) {
+        trace.appendLine('Killing OpenSCAD worker process...');
+        childProcess.kill('SIGTERM');
+        // Force kill if it doesn't respond to SIGTERM
+        setTimeout(() => {
+          if (childProcess && !childProcess.killed) {
+            childProcess.kill('SIGKILL');
+          }
+        }, 5000);
+      }
+      resolve(null);
+    });
+
+    try {
+      // Check if already cancelled
+      if (token?.isCancellationRequested) {
+        resolve(null);
+        return;
+      }
+
+      trace.appendLine(`Starting process-based OpenSCAD conversion for: ${scadFilePath}`);
+      
+      // Get workspace root for variable resolution
+      const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+      
+      // Load OpenSCAD libraries and encode them as base64
+      trace.appendLine(`Loading OpenSCAD libraries...`);
+      const libraryPaths = await getAllOpenSCADLibraryPaths(workspaceRoot);
+      const libraryFiles: { [virtualPath: string]: string } = {};
+      
+      if (cancelled) {
+        resolve(null);
+        return;
+      }
+
+      if (libraryPaths.length > 0) {
+        trace.appendLine(`Found ${libraryPaths.length} library paths: ${libraryPaths.join(', ')}`);
+        await loadLibraryFilesBase64(libraryPaths, libraryFiles, trace);
+      } else {
+        trace.appendLine(`No OpenSCAD library paths found`);
+      }
+
+      if (cancelled) {
+        resolve(null);
+        return;
+      }
+
+      // Spawn the worker process
+      const { spawn } = await import('child_process');
+      const workerPath = path.join(__dirname, 'workers', 'openscadWorker.js');
+      
+      childProcess = spawn(process.execPath, [workerPath], {
+        stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
+        detached: false
+      });
+
+      if (cancelled) {
+        if (childProcess) {
+          childProcess.kill('SIGTERM');
+        }
+        resolve(null);
+        return;
+      }
+
+      // Handle process events
+      childProcess.on('error', (error: Error) => {
+        if (!cancelled) {
+          trace.appendLine(`Worker process error: ${error.message}`);
+          reject(error);
+        }
+      });
+
+      childProcess.on('exit', (code: number, signal: string) => {
+        if (!cancelled) {
+          if (code === 0) {
+            // Success case is handled by the message handler
+          } else {
+            trace.appendLine(`Worker process exited with code ${code}, signal ${signal}`);
+            resolve(null);
+          }
+        }
+      });
+
+      // Handle messages from worker
+      childProcess.on('message', (response: any) => {
+        if (cancelled) {
+          return;
+        }
+
+        if (response.progress) {
+          trace.appendLine(response.progress);
+        } else if (response.success && response.stlPath) {
+          trace.appendLine(`OpenSCAD conversion completed successfully: ${response.stlPath}`);
+          resolve(response.stlPath);
+        } else if (!response.success && response.error) {
+          trace.appendLine(`OpenSCAD conversion failed: ${response.error}`);
+          vscode.window.showErrorMessage(`Failed to convert OpenSCAD file: ${response.error}`);
+          resolve(null);
+        }
+      });
+
+      // Send conversion request to worker
+      const request = {
+        scadFilePath,
+        libraryFiles,
+        workspaceRoot,
+        previewMode: options?.previewMode || false,
+        timeout: options?.timeout || 300000  // Default 5 minutes
+      };
+
+      childProcess.send(request);
+      
+    } catch (error) {
+      if (!cancelled) {
+        trace.appendLine(`OpenSCAD conversion failed: ${error}`);
+        vscode.window.showErrorMessage(`Failed to convert OpenSCAD file, check output for more info`);
+        reject(error);
+      } else {
+        resolve(null);
+      }
+    } finally {
+      cancellationListener?.dispose();
+    }
+  });
+}
+
+/**
+ * Load library files and encode them as base64 for transmission to worker process
+ */
+async function loadLibraryFilesBase64(
+  libraryPaths: string[], 
+  libraryFiles: { [virtualPath: string]: string },
+  trace: vscode.OutputChannel
+): Promise<void> {
+  for (const libPath of libraryPaths) {
+    try {
+      trace.appendLine(`Loading OpenSCAD library from: ${libPath}`);
+      await loadLibraryDirectoryBase64(libPath, '', '/', libraryFiles, trace);
+    } catch (error) {
+      trace.appendLine(`Failed to load library from ${libPath}: ${error}`);
+    }
+  }
+}
+
+/**
+ * Recursively load files from a library directory and encode as base64
+ */
+async function loadLibraryDirectoryBase64(
+  basePath: string, 
+  relativePath: string, 
+  virtualRoot: string,
+  libraryFiles: { [virtualPath: string]: string },
+  trace: vscode.OutputChannel
+): Promise<void> {
+  const fullPath = path.join(basePath, relativePath);
+  
+  try {
+    const entries = await fs.promises.readdir(fullPath, { withFileTypes: true });
+    
+    for (const entry of entries) {
+      const entryPath = path.join(relativePath, entry.name);
+      const entryPathUnix = path.posix.join(relativePath, entry.name);
+      const fullEntryPath = path.join(fullPath, entry.name);
+      const virtualPath = path.posix.join(virtualRoot, entryPathUnix);
+      
+      if (entry.isDirectory()) {
+        // Recursively load subdirectories
+        await loadLibraryDirectoryBase64(basePath, entryPath, virtualRoot, libraryFiles, trace);
+      } else if (entry.isFile()) {
+        try {
+          const content = await fs.promises.readFile(fullEntryPath);
+          // Encode as base64 for transmission to worker process
+          libraryFiles[virtualPath] = content.toString('base64');
+        } catch {
+          trace.appendLine(`Failed to load file ${entryPath}`);
+        }
+      }
+    }
+  } catch (error) {
+    trace.appendLine(`Failed to read directory ${fullPath}: ${error}`);
   }
 }
 

@@ -339,7 +339,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.3",
-    "@polyhobbyist/babylon_ros": "^0.1.6",
+    "@polyhobbyist/babylon_ros": "^0.1.7",
     "@polyhobbyist/babylon-collada-loader": "^0.0.8",
     "@types/xmldom": "^0.1.34",
     "@vscode/debugadapter": "^1.66.0",

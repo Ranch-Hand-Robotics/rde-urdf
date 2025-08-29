@@ -8,7 +8,7 @@ import * as util from './utils';
 import { trace } from 'console';
 import * as fs from 'fs';
 import * as os from 'os';
-import { convertOpenSCADToSTL, isOpenSCADFile } from './openscad';
+import { convertOpenSCADToSTL, convertOpenSCADToSTLCancellable, isOpenSCADFile } from './openscad';
 
 export default class URDFPreview 
 {
@@ -20,6 +20,7 @@ export default class URDFPreview
     _webview: vscode.WebviewPanel | undefined = undefined;
     private _trace: vscode.OutputChannel;
     private _convertedSTLPath: string | undefined = undefined;
+    private _cancellationTokenSource: vscode.CancellationTokenSource | undefined = undefined;
 
     private _pendingScreenshots: Array<{
         width: number;
@@ -128,17 +129,44 @@ export default class URDFPreview
             this.updateColors();
         }, this, this._context.subscriptions);
 
+        this.updateColors();
 
         this._disposables = subscriptions;
     }
 
-    // Convert OpenSCAD file to STL
+    // Convert OpenSCAD file to STL with cancellation support
     private async convertOpenSCADToSTL(scadFilePath: string): Promise<string | null> {
-        const result = await convertOpenSCADToSTL(scadFilePath, this._trace);
-        if (result) {
-            this._convertedSTLPath = result;
+        // Cancel any existing conversion
+        if (this._cancellationTokenSource) {
+            this._trace.appendLine("Cancelling Previous Conversion for " + scadFilePath);
+            this._cancellationTokenSource.cancel();
         }
-        return result;
+        
+        // Create new cancellation token
+        this._cancellationTokenSource = new vscode.CancellationTokenSource();
+        
+        try {
+            const result = await convertOpenSCADToSTLCancellable(
+                scadFilePath, 
+                this._trace, 
+                this._cancellationTokenSource.token,
+                {
+                    previewMode: true,        // Always use preview mode for speed
+                    timeout: 60000           // 1 minute timeout for fast feedback
+                }
+            );
+            
+            if (result) {
+                this._convertedSTLPath = result;
+            }
+            return result;
+        } finally {
+            // Clean up cancellation token
+            if (this._cancellationTokenSource) {
+                this._cancellationTokenSource.dispose();
+                this._cancellationTokenSource = undefined;
+            }
+        }
     }
 
     // Check if file is OpenSCAD
@@ -192,8 +220,6 @@ export default class URDFPreview
                     
                     this._trace.appendLine("OpenSCAD file previewing: " + this._resource.toString());
                     
-                    this.updateColors();
-                    
                     this._webview.webview.postMessage({ command: 'previewFile', previewFile: this._resource.path});
                     this._webview.webview.postMessage({
                         command: 'view3DFile',
@@ -215,9 +241,6 @@ export default class URDFPreview
 
                 this._trace.appendLine("URDF previewing: " + previewFile);
                 this._trace.append(urdfText);
-
-                this.updateColors();        
-
                 this._webview.webview.postMessage({ command: 'previewFile', previewFile: this._resource.path});
                 this._webview.webview.postMessage({ command: 'urdf', urdf: urdfText });
 
@@ -292,6 +315,13 @@ export default class URDFPreview
     }
     
     public dispose() {
+        // Cancel any ongoing OpenSCAD conversion
+        if (this._cancellationTokenSource) {
+            this._cancellationTokenSource.cancel();
+            this._cancellationTokenSource.dispose();
+            this._cancellationTokenSource = undefined;
+        }
+
         while (this._disposables.length) {
             const disposable = this._disposables.pop();
             if (disposable) {
