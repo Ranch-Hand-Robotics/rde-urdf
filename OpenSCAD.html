@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="img/favicon.ico" />
+    <title>OpenSCAD - Robot Developer Extensions for URDF editing</title>
+    <link rel="stylesheet" href="css/theme.css" />
+    <link rel="stylesheet" href="css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "OpenSCAD";
+        var mkdocs_page_input_path = "OpenSCAD.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="index.html" class="icon icon-home"> Robot Developer Extensions for URDF editing
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="./search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="index.html">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="WebXRPreview.html">WebXR Preview</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">OpenSCAD</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#openscad-file-handling">OpenSCAD File Handling</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#openscad-preview">OpenSCAD Preview</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#openscad-language-features">OpenSCAD Language Features</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#openscad-library-configuration">OpenSCAD Library Configuration</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#openscad-documentation-generation">OpenSCAD Documentation Generation</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#ai-assisted-development-features">AI-Assisted Development Features</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#visual-feedback-loop">Visual Feedback Loop</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#model-context-protocol-mcp-integration">Model Context Protocol (MCP) Integration</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#ai-powered-development-workflow">AI-Powered Development Workflow</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#performance-optimizations-for-ai-workflow">Performance Optimizations for AI Workflow</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#acknowledgements">Acknowledgements</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="mcp.html">Model Context Protocol</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="Support.html">Support</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Robot Developer Extensions for URDF editing</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html" class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">OpenSCAD</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/ranch-hand-robotics/rde-urdf/edit/main/docs/OpenSCAD.md" class="icon icon-github"> Edit on GitHub</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="openscad-preview-and-language-support">OpenSCAD Preview and Language Support</h1>
+<p>OpenSCAD is a powerful tool for creating 3D models programmatically. This section covers how the URDF editor integrates OpenSCAD support, including file handling, previewing, and language features.</p>
+<p><img alt="OpenSCAD Preview" src="VSCodeOpenScad.png" /></p>
+<h2 id="openscad-file-handling">OpenSCAD File Handling</h2>
+<p>The URDF editor can open and edit <code>.scad</code> files directly. When a <code>.scad</code> file is opened, the editor provides syntax highlighting and basic editing features.</p>
+<h2 id="openscad-preview">OpenSCAD Preview</h2>
+<p>The editor includes a preview feature for OpenSCAD files. When a <code>.scad</code> file is saved, the editor automatically converts it to STL format using the <code>openscad-wasm-prebuilt</code> module. The generated STL file is then displayed in the 3D viewer.</p>
+<h2 id="openscad-language-features">OpenSCAD Language Features</h2>
+<p>The editor provides several language features for OpenSCAD:</p>
+<ul>
+<li><strong>Syntax Highlighting</strong>: Basic syntax highlighting is available for OpenSCAD code.</li>
+<li><strong>Code Snippets</strong>: Common OpenSCAD patterns are available as code snippets.</li>
+<li><strong>Error Reporting</strong>: The editor reports syntax errors in OpenSCAD code.</li>
+<li><strong>OpenSCAD Library Support</strong>: The editor recognizes and provides support for standard OpenSCAD libraries.</li>
+</ul>
+<h3 id="openscad-library-configuration">OpenSCAD Library Configuration</h3>
+<p>The extension automatically loads OpenSCAD libraries from OS-specific default locations:
+- <strong>Windows</strong>: <code>%USERPROFILE%\Documents\OpenSCAD\libraries</code>
+- <strong>Linux</strong>: <code>$HOME/.local/share/OpenSCAD/libraries</code> 
+- <strong>macOS</strong>: <code>$HOME/Documents/OpenSCAD/libraries</code></p>
+<p>To add custom library paths:
+1. Open VS Code settings (<code>Ctrl+,</code>)
+2. Search for "urdf-editor.OpenSCADLibraryPaths"
+3. Add additional library directories (supports <code>${workspace}</code> variable)</p>
+<p>Example settings.json:
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;urdf-editor.OpenSCADLibraryPaths&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;${workspace}/scad_libs&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;C:\\MyLibraries\\OpenSCAD&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;/usr/local/share/openscad/libraries&quot;</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div></p>
+<h3 id="openscad-documentation-generation">OpenSCAD Documentation Generation</h3>
+<p>The extension can automatically generate documentation for your OpenSCAD libraries:</p>
+<ol>
+<li>Open the command palette (<code>Ctrl+Shift+P</code>)</li>
+<li>Run "URDF: Generate OpenSCAD Libraries Documentation"</li>
+<li>Choose where to save the markdown file</li>
+<li>The extension will scan all library paths and extract:</li>
+<li>Header comments from library files</li>
+<li>Module and function signatures</li>
+<li>Parameter documentation</li>
+<li>Usage examples</li>
+</ol>
+<p>This documentation is also available to AI assistants via the Model Context Protocol (MCP) for intelligent code completion and suggestions.</p>
+<h2 id="ai-assisted-development-features">AI-Assisted Development Features</h2>
+<p>The URDF Editor provides advanced AI integration to enhance your OpenSCAD development workflow. These features leverage modern AI capabilities to make 3D modeling more intuitive and efficient.</p>
+<h3 id="visual-feedback-loop">Visual Feedback Loop</h3>
+<ul>
+<li><strong>Screenshot Integration</strong>: The editor can automatically capture screenshots of your 3D models and provide them to AI assistants for visual analysis</li>
+<li><strong>Real-time Preview</strong>: AI can see exactly what your OpenSCAD code produces, enabling contextual suggestions and corrections</li>
+<li><strong>Visual Debugging</strong>: When your model doesn't look right, AI can analyze the rendered output and suggest code improvements</li>
+</ul>
+<h3 id="model-context-protocol-mcp-integration">Model Context Protocol (MCP) Integration</h3>
+<p>The editor includes a built-in MCP server that exposes powerful tools for AI assistants:</p>
+<ul>
+<li><strong><code>take_screenshot</code></strong>: Captures high-quality screenshots of active OpenSCAD previews for AI analysis</li>
+<li><strong><code>take_screenshot_by_filename</code></strong>: Takes targeted screenshots of specific files, automatically opening previews as needed</li>
+<li><strong><code>get_openscad_libraries</code></strong>: Provides comprehensive documentation of available OpenSCAD libraries, modules, and functions</li>
+</ul>
+<h3 id="ai-powered-development-workflow">AI-Powered Development Workflow</h3>
+<ol>
+<li><strong>Write or describe</strong> your 3D model requirements in natural language</li>
+<li><strong>Generate code</strong> using AI assistance with full library context</li>
+<li><strong>Preview instantly</strong> with optimized fast rendering (preview mode)</li>
+<li><strong>Get visual feedback</strong> through automatic screenshot analysis</li>
+<li><strong>Iterate rapidly</strong> with AI suggestions based on rendered output</li>
+</ol>
+<h3 id="performance-optimizations-for-ai-workflow">Performance Optimizations for AI Workflow</h3>
+<ul>
+<li><strong>Fast Preview Mode</strong>: All OpenSCAD files render in optimized preview mode by default (10x faster)</li>
+<li><strong>Automatic Performance Settings</strong>: Injected optimization settings (<code>$fn=8</code>, <code>$fa=12</code>, <code>$fs=2</code>) for quick iteration</li>
+<li><strong>Cancellable Operations</strong>: Long-running renders can be interrupted instantly</li>
+<li><strong>1-minute Timeout</strong>: Quick feedback prevents workflow interruption</li>
+</ul>
+<p>This integrated approach enables a new style of "visual programming" where AI can understand both your code intent and the actual 3D output, creating a powerful feedback loop for rapid prototyping and design iteration.</p>
+<h2 id="acknowledgements">Acknowledgements</h2>
+<p>Special thanks to the OpenSCAD community for their work.</p>
+<p>Thank you to <a href="https://github.com/lorenzowritescode">@lorenzowritescode</a> for the the prebuilt OpenSCAD WASM module.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="WebXRPreview.html" class="btn btn-neutral float-left" title="WebXR Preview"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="mcp.html" class="btn btn-neutral float-right" title="Model Context Protocol">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/ranch-hand-robotics/rde-urdf" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
+    
+      <span><a href="WebXRPreview.html" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="mcp.html" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = ".";</script>
+    <script src="js/theme_extra.js"></script>
+    <script src="js/theme.js"></script>
+      <script src="search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
