@@ -95,7 +95,7 @@ async function convertOpenSCADToSTL(request: ConversionRequest): Promise<void> {
       // Preview mode: faster but lower quality
       args = args.concat([
         '--preview',                // Use preview mode (faster)
-        '--backend=Manifold',    // Use Manifold backend for speed
+        '--backend=Manifold', // Use Manifold backend for speed
         '--export-format=binstl',   // Binary STL for smaller size
       ]);
       sendProgress('Using preview mode for faster rendering...');
