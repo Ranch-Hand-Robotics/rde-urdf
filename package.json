@@ -81,37 +81,44 @@
       {
         "command": "urdf-editor.create",
         "title": "Preview",
-        "category": "URDF"
+        "category": "URDF",
+        "icon": "$(package)"
       },
       {
         "command": "urdf-editor.createXR",
         "title": "Preview in WebXR",
-        "category": "URDF"
+        "category": "URDF",
+        "icon": "$(vr)"
       },
       {
         "command": "urdf-editor.export",
         "title": "Export",
-        "category": "URDF"
+        "category": "URDF",
+        "icon": "$(export)"
       },
       {
         "command": "urdf-editor.takeScreenshot",
         "title": "Take Screenshot",
-        "category": "URDF"
+        "category": "URDF",
+        "icon": "$(device-camera)"
       },
       {
         "command": "urdf-editor.generateOpenSCADDocs",
         "title": "Generate OpenSCAD Libraries Documentation",
-        "category": "URDF"
+        "category": "URDF",
+        "icon": "$(book)"
       },
       {
         "command": "urdf-editor.startMcpServer",
         "title": "Start MCP Server",
-        "category": "URDF"
+        "category": "URDF",
+        "icon": "$(play)"
       },
       {
         "command": "urdf-editor.stopMcpServer",
         "title": "Stop MCP Server",
-        "category": "URDF"
+        "category": "URDF",
+        "icon": "$(stop)"
       }
     ],
     "menus": {
@@ -174,6 +181,23 @@
           "command": "urdf-editor.takeScreenshot",
           "when": "resourceExtname == .scad",
           "group": "urdf"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "urdf-editor.create",
+          "when": "resourceExtname == .urdf",
+          "group": "navigation@1"
+        },
+        {
+          "command": "urdf-editor.create",
+          "when": "resourceExtname == .xacro", 
+          "group": "navigation@1"
+        },
+        {
+          "command": "urdf-editor.create",
+          "when": "resourceExtname == .scad",
+          "group": "navigation@1"
         }
       ]
     },

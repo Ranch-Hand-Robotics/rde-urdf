@@ -13,6 +13,7 @@ export interface OpenSCADInstance {
   FS: {
     writeFile(path: string, data: string | Uint8Array): void;
     readFile(path: string, options: { encoding: string }): string;
+    mkdir(path: string): void;
   };
   callMain(args: string[]): void;
 }
@@ -106,7 +107,10 @@ export async function loadLibraryFiles(instance: OpenSCADInstance, libraryPaths:
   for (const libPath of libraryPaths) {
     try {
       trace.appendLine(`Loading OpenSCAD library from: ${libPath}`);
-      await loadLibraryDirectory(instance, libPath, '', trace);
+      // Mirror the actual filesystem structure in the virtual filesystem
+      const libraryName = path.basename(libPath);
+      const virtualLibraryRoot = `/`;  // put them all in the same place
+      await loadLibraryDirectory(instance, libPath, '', virtualLibraryRoot, trace);
     } catch (error) {
       trace.appendLine(`Failed to load library from ${libPath}: ${error}`);
     }
@@ -116,7 +120,13 @@ export async function loadLibraryFiles(instance: OpenSCADInstance, libraryPaths:
 /**
  * Recursively load files from a library directory into the OpenSCAD virtual filesystem
  */
-export async function loadLibraryDirectory(instance: OpenSCADInstance, basePath: string, relativePath: string, trace: vscode.OutputChannel): Promise<void> {
+export async function loadLibraryDirectory(
+  instance: OpenSCADInstance, 
+  basePath: string, 
+  relativePath: string, 
+  virtualRoot: string,
+  trace: vscode.OutputChannel
+): Promise<void> {
   const fullPath = path.join(basePath, relativePath);
   
   try {
@@ -124,28 +134,25 @@ export async function loadLibraryDirectory(instance: OpenSCADInstance, basePath:
     
     for (const entry of entries) {
       const entryPath = path.join(relativePath, entry.name);
+      const entryPathUnix = path.posix.join(relativePath, entry.name);
       const fullEntryPath = path.join(fullPath, entry.name);
+      const virtualPath = path.posix.join(virtualRoot, entryPathUnix);
       
       if (entry.isDirectory()) {
         // Recursively load subdirectories
-        await loadLibraryDirectory(instance, basePath, entryPath, trace);
-      } else if (entry.isFile() && (entry.name.endsWith('.scad') || entry.name.endsWith('.stl') || entry.name.endsWith('.dxf'))) {
-        // Load library files into the virtual filesystem
+        await loadLibraryDirectory(instance, basePath, entryPath, virtualRoot, trace);
+      } else if (entry.isFile()) {
         try {
-          if (entry.name.endsWith('.scad')) {
-            const content = await fs.promises.readFile(fullEntryPath, 'utf8');
-            const virtualPath = `/libraries/${entryPath}`;
-            instance.FS.writeFile(virtualPath, content);
-            trace.appendLine(`Loaded library file: ${virtualPath}`);
-          } else {
-            // For binary files like STL, DXF
-            const content = await fs.promises.readFile(fullEntryPath);
-            const virtualPath = `/libraries/${entryPath}`;
-            instance.FS.writeFile(virtualPath, new Uint8Array(content));
-            trace.appendLine(`Loaded binary library file: ${virtualPath}`);
-          }
-        } catch (error) {
-          trace.appendLine(`Failed to load library file ${entryPath}: ${error}`);
+          instance.FS.mkdir(path.dirname(virtualPath));
+        } catch {
+          // ignore
+        }
+
+        try {
+          const content = await fs.promises.readFile(fullEntryPath);
+          instance.FS.writeFile(virtualPath, content);
+        } catch {
+          trace.appendLine(`Failed to load file ${entryPath}`);
         }
       }
     }
@@ -203,13 +210,7 @@ export async function convertOpenSCADToSTL(scadFilePath: string, trace: vscode.O
     
     // Add library search paths to OpenSCAD arguments
     const args = ['-o', '/output.stl', '/input.scad'];
-    if (libraryPaths.length > 0) {
-      // Add each library path as a -L option
-      for (const libPath of libraryPaths) {
-        args.unshift('-L', '/libraries');
-      }
-    }
-    
+
     // Run OpenSCAD with library paths
     instance.callMain(args);
     
@@ -222,8 +223,8 @@ export async function convertOpenSCADToSTL(scadFilePath: string, trace: vscode.O
     trace.appendLine(`OpenSCAD conversion completed successfully: ${stlPath}`);
     return stlPath;
   } catch (error) {
-    trace.appendLine(`OpenSCAD conversion failed: ${error}`);
-    vscode.window.showErrorMessage(`Failed to convert OpenSCAD file: ${error}`);
+    trace.appendLine(`OpenSCAD conversion failed`);
+    vscode.window.showErrorMessage(`Failed to convert OpenSCAD file, check output for more info`);
     return null;
   }
 }
