@@ -20,7 +20,15 @@ The editor provides several language features for OpenSCAD:
 - **Code Snippets**: Common OpenSCAD patterns are available as code snippets.
 - **Error Reporting**: The editor reports syntax errors in OpenSCAD code.
 
+## AI Assisted Features (aka Vibe Coding)
+
+The URDF Editor supports AI-assisted coding features for OpenSCAD, including:
+- **Prompt-based Code Generation**: Generate OpenSCAD code snippets based on natural language prompts.
+- **Code Completion**: Get AI-powered suggestions for completing OpenSCAD code.
+- **Model Context Protocol (MCP)**: Provides rendered output to AI so it can correct things that do not look correct.
+
 ## Acknowledgements
 
-Special thanks to the OpenSCAD community for their contributions and support.
+Special thanks to the OpenSCAD community for their work.
+
 Thank you to [@lorenzowritescode](https://github.com/lorenzowritescode) for the the prebuilt OpenSCAD WASM module.

@@ -663,14 +663,13 @@ async function processLibraryDirectory(basePath: string, relativePath: string, l
             headerComment,
             modules
           });
-        } catch (error) {
-          // Skip files that can't be read
-          console.warn(`Failed to process ${fullEntryPath}: ${error}`);
+        } catch {
+          // ignore since this is doc generation
         }
       }
     }
-  } catch (error) {
-    console.warn(`Failed to read directory ${fullPath}: ${error}`);
+  } catch  {
+    // ignore since this is doc generation
   }
 }
 
