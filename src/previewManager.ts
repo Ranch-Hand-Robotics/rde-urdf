@@ -94,7 +94,7 @@ export default class URDFPreviewManager implements vscode.WebviewPanelSerializer
         }
     }
 
-    private getExistingPreview(
+    public getExistingPreview(
         resource: vscode.Uri
     ): URDFPreview | undefined {
         return this._previews.find(preview =>

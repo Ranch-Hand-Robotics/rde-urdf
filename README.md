@@ -18,6 +18,10 @@ This extension provides developer tooling for Unified Robot Description Files (U
 - [Virtual Reality preview](https://ranchhandrobotics.com/rde-urdf/WebXRPreview.html) of the model you are editing.
 - (New!) (Preview) [Supports OpenSCAD Rendering](https://ranchhandrobotics.com/rde-urdf/OpenSCAD.html) and syntax Highlighting for programatically creating robot parts.
 - (New!) (Preview) [Exposes an MCP Server](https://ranchhandrobotics.com/rde-urdf/mcp.html) allowing AI to check its work visually. 
+- Virtual Reality preview of the model you are editing.
+- Supports OpenSCAD Rendering and syntax Highlighting for programatically creating robot parts.
+- OpenSCAD Library Support with automatic loading from OS-specific locations and user-configured paths.
+- OpenSCAD Libraries Documentation Generation for AI-assisted development.
 
 
 ## Coming Soon
@@ -28,6 +32,53 @@ This extension provides developer tooling for Unified Robot Description Files (U
 ## Usage
 1. Open a URDF, .xacro, or OpenSCAD file.
 2. Right click on the file and select "Preview", or press `Ctrl+Shift+P` and select "Preview"
+
+### OpenSCAD Library Configuration
+The extension automatically loads OpenSCAD libraries from OS-specific default locations:
+- **Windows**: `%USERPROFILE%\Documents\OpenSCAD\libraries`
+- **Linux**: `$HOME/.local/share/OpenSCAD/libraries` 
+- **macOS**: `$HOME/Documents/OpenSCAD/libraries`
+
+To add custom library paths:
+1. Open VS Code settings (`Ctrl+,`)
+2. Search for "urdf-editor.OpenSCADLibraryPaths"
+3. Add additional library directories (supports `${workspace}` variable)
+
+Example settings.json:
+```json
+{
+  "urdf-editor.OpenSCADLibraryPaths": [
+    "${workspace}/scad_libs",
+    "C:\\MyLibraries\\OpenSCAD",
+    "/usr/local/share/openscad/libraries"
+  ]
+}
+```
+
+### OpenSCAD Documentation Generation
+The extension can automatically generate documentation for your OpenSCAD libraries:
+
+1. Open the command palette (`Ctrl+Shift+P`)
+2. Run "URDF: Generate OpenSCAD Libraries Documentation"
+3. Choose where to save the markdown file
+4. The extension will scan all library paths and extract:
+   - Header comments from library files
+   - Module and function signatures
+   - Parameter documentation
+   - Usage examples
+
+This documentation is also available to AI assistants via the Model Context Protocol (MCP) for intelligent code completion and suggestions.
+
+### Model Context Protocol (MCP) Server
+The extension includes an MCP server that provides AI assistants with powerful capabilities:
+
+- **Screenshot Tools**: AI can capture and verify visual output of URDF/Xacro/OpenSCAD files
+  - `take_screenshot`: Screenshot of currently active preview
+  - `take_screenshot_by_filename`: Screenshot any file by path (opens preview if needed)
+- **Library Documentation**: AI can access comprehensive OpenSCAD library information
+  - `get_openscad_libraries`: Returns markdown documentation of all available libraries
+
+The MCP server starts automatically when you open a preview and is accessible via HTTP on port 3005 (configurable).
 
 
 ## Support

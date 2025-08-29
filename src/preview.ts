@@ -8,27 +8,7 @@ import * as util from './utils';
 import { trace } from 'console';
 import * as fs from 'fs';
 import * as os from 'os';
-import {createOpenSCAD} from 'openscad-wasm-prebuilt';
-
-// Type declaration for openscad-wasm
-interface OpenSCADInstance {
-  FS: {
-    writeFile(path: string, data: string): void;
-    readFile(path: string, options: { encoding: string }): string;
-  };
-  callMain(args: string[]): void;
-}
-
-interface OpenSCAD {
-  getInstance(): OpenSCADInstance;
-}
-
-interface OpenSCADModule {
-  createOpenSCAD(options?: {
-    print?: (text: string) => void;
-    printErr?: (text: string) => void;
-  }): Promise<OpenSCAD>;
-}
+import { convertOpenSCADToSTL, convertOpenSCADToSTLCancellable, isOpenSCADFile } from './openscad';
 
 export default class URDFPreview 
 {
@@ -40,6 +20,7 @@ export default class URDFPreview
     _webview: vscode.WebviewPanel | undefined = undefined;
     private _trace: vscode.OutputChannel;
     private _convertedSTLPath: string | undefined = undefined;
+    private _cancellationTokenSource: vscode.CancellationTokenSource | undefined = undefined;
 
     private _pendingScreenshots: Array<{
         width: number;
@@ -148,50 +129,49 @@ export default class URDFPreview
             this.updateColors();
         }, this, this._context.subscriptions);
 
+        this.updateColors();
 
         this._disposables = subscriptions;
     }
 
-    // Convert OpenSCAD file to STL
+    // Convert OpenSCAD file to STL with cancellation support
     private async convertOpenSCADToSTL(scadFilePath: string): Promise<string | null> {
+        // Cancel any existing conversion
+        if (this._cancellationTokenSource) {
+            this._trace.appendLine("Cancelling Previous Conversion for " + scadFilePath);
+            this._cancellationTokenSource.cancel();
+        }
+        
+        // Create new cancellation token
+        this._cancellationTokenSource = new vscode.CancellationTokenSource();
+        
         try {
-            this._trace.appendLine(`Starting OpenSCAD conversion for: ${scadFilePath}`);
+            const result = await convertOpenSCADToSTLCancellable(
+                scadFilePath, 
+                this._trace, 
+                this._cancellationTokenSource.token,
+                {
+                    previewMode: true,        // Always use preview mode for speed
+                    timeout: 60000           // 1 minute timeout for fast feedback
+                }
+            );
             
-            const openscad = await createOpenSCAD({
-                // Optional callbacks for stdout/stderr
-                print: (text: string) => this._trace.appendLine(`OpenSCAD: ${text}`),
-                printErr: (text: string) => this._trace.appendLine(`OpenSCAD Error: ${text}`),
-            });
-
-            // Get direct access to the WASM module
-            const instance = openscad.getInstance();
-
-            const basename = path.basename(scadFilePath, '.scad');
-            const dir = path.dirname(scadFilePath);
-            const stlPath = path.join(dir, `${basename}.stl`);
-            
-            this._trace.appendLine(`Converting OpenSCAD to STL: ${stlPath}`);
-
-            const scadText = await fs.promises.readFile(scadFilePath, 'utf8');
-            const stl = await openscad.renderToStl(scadText);
-
-            // Use the filesystem API directly
-            await fs.promises.writeFile(stlPath, stl, {flag: 'w'});
-
-            this._convertedSTLPath = stlPath;
-            
-            this._trace.appendLine(`OpenSCAD conversion completed successfully: ${stlPath}`);
-            return stlPath;
-        } catch (error) {
-            this._trace.appendLine(`OpenSCAD conversion failed: ${error}`);
-            vscode.window.showErrorMessage(`Failed to convert OpenSCAD file: ${error}`);
-            return null;
+            if (result) {
+                this._convertedSTLPath = result;
+            }
+            return result;
+        } finally {
+            // Clean up cancellation token
+            if (this._cancellationTokenSource) {
+                this._cancellationTokenSource.dispose();
+                this._cancellationTokenSource = undefined;
+            }
         }
     }
 
     // Check if file is OpenSCAD
     private isOpenSCADFile(filePath: string): boolean {
-        return path.extname(filePath).toLowerCase() === '.scad';
+        return isOpenSCADFile(filePath);
     }
 
     public get resource(): vscode.Uri {
@@ -240,8 +220,6 @@ export default class URDFPreview
                     
                     this._trace.appendLine("OpenSCAD file previewing: " + this._resource.toString());
                     
-                    this.updateColors();
-                    
                     this._webview.webview.postMessage({ command: 'previewFile', previewFile: this._resource.path});
                     this._webview.webview.postMessage({
                         command: 'view3DFile',
@@ -263,9 +241,6 @@ export default class URDFPreview
 
                 this._trace.appendLine("URDF previewing: " + previewFile);
                 this._trace.append(urdfText);
-
-                this.updateColors();        
-
                 this._webview.webview.postMessage({ command: 'previewFile', previewFile: this._resource.path});
                 this._webview.webview.postMessage({ command: 'urdf', urdf: urdfText });
 
@@ -340,6 +315,13 @@ export default class URDFPreview
     }
     
     public dispose() {
+        // Cancel any ongoing OpenSCAD conversion
+        if (this._cancellationTokenSource) {
+            this._cancellationTokenSource.cancel();
+            this._cancellationTokenSource.dispose();
+            this._cancellationTokenSource = undefined;
+        }
+
         while (this._disposables.length) {
             const disposable = this._disposables.pop();
             if (disposable) {

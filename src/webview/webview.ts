@@ -21,7 +21,6 @@ async function apply3DFile(filename: string) {
   currentRobotScene.clearAxisGizmos();
   currentRobotScene.clearRotationGizmos();
   currentRobotScene.clearStatus();
-  currentRobotScene.resetCamera();
 
   if (currentRobotScene.currentRobot) {
     currentRobotScene.currentRobot.dispose();
