@@ -1,7 +1,6 @@
 import * as BABYLON from 'babylonjs';
 import * as Materials from 'babylonjs-materials';
-import * as urdf from '@polyhobbyist/babylon_ros';
-import {Robot} from '@polyhobbyist/babylon_ros';
+import * as urdf from '@ranchhandrobotics/babylon_ros';
 import * as ColladaFileLoader from '@polyhobbyist/babylon-collada-loader';
 import * as GUI from 'babylonjs-gui';
 
@@ -115,16 +114,40 @@ async function main() {
         break;
         case 'colors':
           if (currentRobotScene.camera && currentRobotScene.ground && currentRobotScene.scene) {
-            currentRobotScene.camera.radius = message.cameraRadius;
-            currentRobotScene.scene.clearColor = BABYLON.Color4.FromHexString(message.backgroundColor);
-            let gm = currentRobotScene.ground.material as Materials.GridMaterial;
+            // Use new API methods if available, otherwise fall back to direct property access
+            const robotSceneAny = currentRobotScene as any;
             
-            // These are flipped on purpose
-            gm.lineColor = BABYLON.Color3.FromHexString(message.gridMainColor);
-            gm.mainColor = BABYLON.Color3.FromHexString(message.gridLineColor);
-            gm.minorUnitVisibility = parseFloat(message.gridMinorOpacity);
-            gm.gridRatio = parseFloat(message.gridRatio);
-            gm.majorUnitFrequency = parseFloat(message.majorUnitFrequency);
+            if (typeof robotSceneAny.setCameraRadius === 'function') {
+              robotSceneAny.setCameraRadius(message.cameraRadius);
+            } else {
+              currentRobotScene.camera.radius = message.cameraRadius;
+            }
+
+            if (typeof robotSceneAny.setBackgroundColor === 'function') {
+              robotSceneAny.setBackgroundColor(message.backgroundColor);
+            } else {
+              currentRobotScene.scene.clearColor = BABYLON.Color4.FromHexString(message.backgroundColor);
+            }
+            
+            if (typeof robotSceneAny.setGridProperties === 'function') {
+              // Grid colors are flipped on purpose in the original implementation
+              robotSceneAny.setGridProperties({
+                lineColor: message.gridMainColor,
+                mainColor: message.gridLineColor,
+                minorOpacity: parseFloat(message.gridMinorOpacity),
+                gridRatio: parseFloat(message.gridRatio),
+                majorUnitFrequency: parseFloat(message.majorUnitFrequency)
+              });
+            } else {
+              // Fallback to direct material property access
+              let gm = currentRobotScene.ground.material as Materials.GridMaterial;
+              // These are flipped on purpose
+              gm.lineColor = BABYLON.Color3.FromHexString(message.gridMainColor);
+              gm.mainColor = BABYLON.Color3.FromHexString(message.gridLineColor);
+              gm.minorUnitVisibility = parseFloat(message.gridMinorOpacity);
+              gm.gridRatio = parseFloat(message.gridRatio);
+              gm.majorUnitFrequency = parseFloat(message.majorUnitFrequency);
+            }
 
             if (message.debugUI) {
               currentRobotScene.scene.debugLayer.show();

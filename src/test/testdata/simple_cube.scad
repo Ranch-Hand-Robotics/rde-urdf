@@ -1,4 +1,4 @@
 // Simple OpenSCAD test file
 // Creates a basic cube
 
-cube([.05, .05, .05]);
+cube([100, 100, 100]);
