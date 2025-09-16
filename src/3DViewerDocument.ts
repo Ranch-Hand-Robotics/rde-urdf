@@ -98,6 +98,7 @@ export class Viewer3DDocument implements vscode.CustomDocument {
             majorUnitFrequency: config.get("GridFrequency", "5"),
             gridRatio: config.get("GridRatio", "0.1"),
             debugUI: config.get("DebugUI", "false"),
+            mirrorReflectivity: config.get("MirrorReflectivity", 0),
         });
     }
 }

@@ -17,4 +17,5 @@ module robot_base() {
 }
 
 // Create the robot
+translate([0, 0, 260])
 robot_base();

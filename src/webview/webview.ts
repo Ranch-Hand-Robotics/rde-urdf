@@ -149,6 +149,50 @@ async function main() {
               gm.majorUnitFrequency = parseFloat(message.majorUnitFrequency);
             }
 
+            // Configure mirror properties based on reflectivity setting
+            const mirrorReflectivity = parseFloat(message.mirrorReflectivity) || 0;
+            
+            if (typeof robotSceneAny.setMirrorProperties === 'function') {
+              if (mirrorReflectivity > 0) {
+                // Create toned-down color from grid main color
+                const gridMainColor = BABYLON.Color3.FromHexString(message.gridMainColor);
+                const tonedDownColor = gridMainColor.scale(0.3); // Reduce intensity by 70%
+                const tintColorHex = tonedDownColor.toHexString();
+                
+                vscode?.postMessage({
+                  command: "trace",
+                  text: `Setting mirror properties: reflectivity=${mirrorReflectivity}, tintColor=${tintColorHex}`,
+                });
+                
+                robotSceneAny.setMirrorProperties({
+                  reflectionLevel: 0.3,
+                  alpha: 0.4,
+                  tintColor: tintColorHex,
+                  blurKernel: 16,
+                  roughness: 0.6,
+                  enabled: true
+                });
+              } else {
+                // Disable mirror when reflectivity is 0
+                vscode?.postMessage({
+                  command: "trace",
+                  text: "Disabling mirror (reflectivity is 0)",
+                });
+                
+                robotSceneAny.setMirrorProperties({
+                  enabled: false
+                });
+              }
+            } else {
+              // API not available yet
+              if (mirrorReflectivity > 0) {
+                vscode?.postMessage({
+                  command: "trace",
+                  text: `Mirror reflectivity setting (${mirrorReflectivity}) received but setMirrorProperties API not available in RobotScene yet`,
+                });
+              }
+            }
+
             if (message.debugUI) {
               currentRobotScene.scene.debugLayer.show();
             } else {
