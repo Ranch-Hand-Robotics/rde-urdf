@@ -49,6 +49,15 @@ export class Viewer3DDocument implements vscode.CustomDocument {
       }
     }, null, this._disposables);
 
+    webviewPanel.onDidDispose(() => {
+        this.dispose();
+    }, null, this._context.subscriptions);        
+
+
+    vscode.workspace.onDidChangeConfiguration(event => {
+        this.updateColors();
+    }, this, this._context.subscriptions);
+
     webviewPanel.webview.onDidReceiveMessage(
       (message: any) => {
           const command = message.command;
@@ -98,6 +107,7 @@ export class Viewer3DDocument implements vscode.CustomDocument {
             majorUnitFrequency: config.get("GridFrequency", "5"),
             gridRatio: config.get("GridRatio", "0.1"),
             debugUI: config.get("DebugUI", "false"),
+            mirrorReflectivity: config.get("MirrorReflectivity", 0),
         });
     }
 }

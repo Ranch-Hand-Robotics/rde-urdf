@@ -3,7 +3,7 @@
   <!-- Simple box robot with basic link and visual -->
   <link name="base_link">
     <visual>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <origin xyz="0 0 1" rpy="0 0 0"/>
       <geometry>
         <box size="1 1 1"/>
       </geometry>

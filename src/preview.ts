@@ -197,6 +197,7 @@ export default class URDFPreview
                 majorUnitFrequency: config.get("GridFrequency", "5"),
                 gridRatio: config.get("GridRatio", "0.1"),
                 debugUI: config.get("DebugUI", "false"),
+                mirrorReflectivity: config.get("MirrorReflectivity", 0),
             });
         }
     }
@@ -326,15 +327,6 @@ export default class URDFPreview
             const disposable = this._disposables.pop();
             if (disposable) {
                 disposable.dispose();
-            }
-        }
-
-        // Clean up temporary STL file if it exists
-        if (this._convertedSTLPath && fs.existsSync(this._convertedSTLPath)) {
-            try {
-                fs.unlinkSync(this._convertedSTLPath);
-            } catch (error) {
-                this._trace.appendLine(`Failed to clean up temporary STL file: ${error}`);
             }
         }
 
