@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="simple_xacro">
+  <!-- Simple xacro with properties -->
+  <xacro:include filename="$(find pkg2)/urdf/pkg2.xacro"/>
+  <xacro:include filename="$(find pkg3)/urdf/pkg3.xacro"/>
+  
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="${box_size} ${box_size} ${box_size}"/>
+      </geometry>
+      <material name="green">
+        <color rgba="${box_color}"/>
+      </material>
+    </visual>
+  </link>
+</robot>
