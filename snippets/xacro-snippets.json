@@ -1,4 +1,14 @@
 {
+  "XACRO Robot": {
+    "prefix": "xacro-robot",
+    "body": [
+        "<?xml version=\"1.0\"?>",
+        "<robot name=\"${1:name}\" xmlns:xacro=\"http://www.ros.org/wiki/xacro\">",
+        "\t",
+        "</robot>"
+    ],
+    "description": "Initialize robot base"
+  },
   "XACRO Property": {
     "prefix": "xacro-property",
     "body": [
