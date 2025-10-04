@@ -1,0 +1,4 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="complex_robot">
+  <xacro:property name="box_color" value="0 1 0 1"/>
+</robot>

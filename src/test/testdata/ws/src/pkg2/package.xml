@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>pkg2</name>
+  <version>1.0.0</version>
+  <description>Robot description package for testing $(find) idiom</description>
+  
+  <maintainer email="test@example.com">Test Maintainer</maintainer>
+  <license>MIT</license>
+  
+  <buildtool_depend>catkin</buildtool_depend>
+  
+  <export></export>
+</package>
