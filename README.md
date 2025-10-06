@@ -30,6 +30,8 @@ This extension provides developer tooling for Unified Robot Description Format (
 1. Open a URDF, .xacro, or OpenSCAD file.
 2. Right click on the file and select "Preview", or press `Ctrl+Shift+P` and select "Preview"
 
+For detailed configuration options, see the [Configuration Guide](https://ranchhandrobotics.com/rde-urdf/Configuration.html).
+
 ### OpenSCAD Library Configuration
 The extension automatically loads OpenSCAD libraries from OS-specific default locations:
 - **Windows**: `%USERPROFILE%\Documents\OpenSCAD\libraries`
@@ -51,6 +53,49 @@ Example settings.json:
   ]
 }
 ```
+
+### Package Search Paths Configuration
+The extension automatically discovers ROS packages from:
+1. **Workspace folders**: Current VS Code workspace directories
+2. **ROS distro directory**: System-installed ROS packages (configured via `ROS2.distro` and `ROS2.pixiRoot`)
+3. **User-specified search paths**: Additional directories you configure
+
+**How it works:** The extension scans for `package.xml` files and extracts package names from the `<name>` element to build a package-to-path mapping.
+
+To add custom package search paths:
+1. Open VS Code settings (`Ctrl+,`)
+2. Search for "urdf-editor.PackageSearchPaths"
+3. Add additional directories to search for ROS packages
+
+Example settings.json:
+```json
+{
+  "urdf-editor.PackageSearchPaths": [
+    "${workspace}/../other_ws/src",
+    "/opt/ros/custom_distro/share",
+    "/home/user/ros_packages"
+  ]
+}
+```
+
+**Variable Substitution:**
+- `${workspace}` is replaced with your workspace root directory
+
+**Package Precedence:**
+- Workspace packages take precedence over ROS distro packages
+- This allows you to override system packages with local development versions
+
+**ROS Distro Configuration:**
+The extension also supports ROS2 extension settings for automatic ROS distro discovery:
+```json
+{
+  "ROS2.distro": "kilted",
+  "ROS2.pixiRoot": "/path/to/pixi/ros/installation"
+}
+```
+
+If `pixiRoot` is set, the extension uses `${pixiRoot}/share` for ROS packages. Otherwise, it defaults to `/opt/ros/${distro}/share`.
+
 
 ### OpenSCAD Documentation Generation
 The extension can automatically generate documentation for your OpenSCAD libraries:
