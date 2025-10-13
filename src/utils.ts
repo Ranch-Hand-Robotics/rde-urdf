@@ -73,29 +73,106 @@ export async function convertFindToPackageUriInFile(filePath: string): Promise<s
   }
 }
 
+/**
+ * Discovers ROS packages from multiple sources and returns a map of package names to their filesystem paths.
+ * 
+ * This function searches for ROS packages in the following order of precedence:
+ * 1. **Workspace folders**: Current VS Code workspace directories (highest precedence)
+ * 2. **ROS distro directory**: System-installed ROS packages from configured distro
+ * 3. **User-specified search paths**: Additional directories configured via `urdf-editor.PackageSearchPaths`
+ * 
+ * Package discovery works by scanning each source directory for `package.xml` files and extracting
+ * the package name from the `<name>` element. Workspace packages take precedence over ROS distro
+ * packages to allow for local development overrides.
+ * 
+ * **Configuration Settings Used:**
+ * - `ROS2.distro`: ROS distribution name (e.g., "kilted", "humble")
+ * - `ROS2.pixiRoot`: Base path for pixi-managed ROS installations
+ * - `urdf-editor.PackageSearchPaths`: Array of additional directories to search
+ * 
+ * **Variable Substitution:**
+ * - `${workspace}` in `PackageSearchPaths` is replaced with the workspace root path
+ * 
+ * @returns Promise resolving to a Map where keys are package names and values are absolute paths
+ *          to the package directories containing the package.xml files
+ * 
+ * @example
+ * ```typescript
+ * const packages = await getPackages();
+ * console.log(packages.get('robot_state_publisher')); // "/opt/ros/kilted/share/robot_state_publisher"
+ * ```
+ */
 export async function getPackages(): Promise<Map<string, string>> {
     var packages = new Map<string, string>();
 
-    // For this project, we're focusing on URDF packages within the same workspace. 
-    // We will not use ros2 cli to list packages
-    // Iterate over the top level directories in the 'src' directory, looking for package.xml
-    // Extract the package name
-    // Identify the package path
-    // assume folders relative to this path are where resources are located.
-    // for example if you have a package called 'robot1', with a directory called 'meshes' containing a file called 'robot1.stl', then 
-    // the return from this function will be the root of robot1's package directory
-
     // Get the workspace path from vscode api:
-
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders) {
       return packages;
     }
 
-    // for each workspace folder, look for package.xml files
-    for (const workspaceFolder of workspaceFolders) {
+    // Collect all directories to scan (workspace folders + ROS distro if configured)
+    const directoriesToScan: vscode.WorkspaceFolder[] = [...workspaceFolders];
+
+    // === ROS Distro Package Discovery ===
+    // Check for ROS distro configuration
+    const rosConfig = vscode.workspace.getConfiguration('ROS2');
+    const distro = rosConfig.get<string>('distro');
+    const pixiRoot = rosConfig.get<string>('pixiRoot');
+    
+    if (distro) {
+      let rosSharePath: string;
+      
+      if (pixiRoot) {
+        // Use pixiRoot directly as the base path
+        rosSharePath = path.join(pixiRoot, 'share');
+      } else {
+        // Fall back to standard ROS installation path
+        rosSharePath = path.join('/opt/ros', distro, 'share');
+      }
+      
+      // Check if the ROS share directory exists
+      if (fs.existsSync(rosSharePath)) {
+        // Create a virtual workspace folder for the ROS distro
+        const rosWorkspaceFolder: vscode.WorkspaceFolder = {
+          uri: vscode.Uri.file(rosSharePath),
+          name: `ROS ${distro}`,
+          index: workspaceFolders.length
+        };
+        directoriesToScan.push(rosWorkspaceFolder);
+      }
+    }
+
+    // === User-Specified Package Search Paths ===
+    // Add user-specified package search paths
+    const urdfConfig = vscode.workspace.getConfiguration('urdf-editor');
+    const packageSearchPaths = urdfConfig.get<string[]>('PackageSearchPaths') || [];
+    
+    for (const searchPath of packageSearchPaths) {
+      // Resolve ${workspace} variable if present
+      let resolvedPath = searchPath;
+      if (resolvedPath.includes('${workspace}')) {
+        const workspaceRoot = workspaceFolders[0]?.uri.fsPath || '';
+        resolvedPath = resolvedPath.replace('${workspace}', workspaceRoot);
+      }
+      
+      // Check if the directory exists
+      if (fs.existsSync(resolvedPath)) {
+        // Create a virtual workspace folder for the search path
+        const searchFolder: vscode.WorkspaceFolder = {
+          uri: vscode.Uri.file(resolvedPath),
+          name: `Package Search: ${path.basename(resolvedPath)}`,
+          index: directoriesToScan.length
+        };
+        directoriesToScan.push(searchFolder);
+      }
+    }
+
+    // === Package Discovery ===
+    // Scan all directories (workspace + ROS distro) for package.xml files
+    for (const folder of directoriesToScan) {
       const packageXmlFiles = await vscode.workspace.findFiles(
-        new vscode.RelativePattern(workspaceFolder, "**/package.xml")
+        new vscode.RelativePattern(folder, "**/package.xml")
       );
 
       for (const packageXmlFile of packageXmlFiles) {
@@ -109,9 +186,13 @@ export async function getPackages(): Promise<Map<string, string>> {
           continue;
         }
 
-        packages.set(packageName, path.dirname(packageXmlFile.fsPath));
-        };
+        // For ROS distro packages, only add if not already found in workspace
+        const isRosDistroPackage = folder.name.startsWith('ROS ');
+        if (!isRosDistroPackage || !packages.has(packageName)) {
+          packages.set(packageName, path.dirname(packageXmlFile.fsPath));
+        }
       }
+    }
 
     return packages;
 }

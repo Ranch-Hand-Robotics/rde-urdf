@@ -295,6 +295,15 @@
           "default": 0,
           "title": "Mirror Reflectivity",
           "description": "Reflectivity level of the ground mirror. 0 disables the mirror, any value above 0 enables it with full opacity. The mirror color is derived from the grid main color."
+        },
+        "urdf-editor.PackageSearchPaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Package Search Paths",
+          "default": [],
+          "description": "Additional directories to search for ROS packages. These paths will be scanned recursively for package.xml files, and package names will be extracted from the <name> element in each package.xml file. Use absolute paths or ${workspace} for workspace-relative paths. Example: [\"${workspace}/../other_ws/src\", \"/opt/ros/custom/share\"]"
         }
       }
     },
