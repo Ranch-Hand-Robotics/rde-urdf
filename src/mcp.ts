@@ -1,16 +1,53 @@
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { 
-  ErrorCode,
-  McpError,
-  isInitializeRequest,
-} from '@modelcontextprotocol/sdk/types.js';
+// Handle MCP SDK imports - these will only be used in desktop environments
+let StreamableHTTPServerTransport: any;
+let McpServer: any;
+let ErrorCode: any;
+let McpError: any;
+let isInitializeRequest: any;
+
+try {
+  const streamableHttp = require('@modelcontextprotocol/sdk/server/streamableHttp.js');
+  StreamableHTTPServerTransport = streamableHttp.StreamableHTTPServerTransport;
+} catch (e) {
+  StreamableHTTPServerTransport = class {
+    constructor() {
+      throw new Error('MCP SDK not available');
+    }
+  };
+}
+
+try {
+  const mcp = require('@modelcontextprotocol/sdk/server/mcp.js');
+  McpServer = mcp.McpServer;
+} catch (e) {
+  McpServer = class {
+    constructor() {
+      throw new Error('MCP SDK not available');
+    }
+  };
+}
+
+try {
+  const types = require('@modelcontextprotocol/sdk/types.js');
+  ErrorCode = types.ErrorCode;
+  McpError = types.McpError;
+  isInitializeRequest = types.isInitializeRequest;
+} catch (e) {
+  ErrorCode = { InternalError: -32603 };
+  McpError = class extends Error {
+    constructor(code: number, message: string) {
+      super(message);
+      this.name = 'McpError';
+    }
+  };
+  isInitializeRequest = () => false;
+}
+
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { tracing } from './extension';
 import * as express from 'express';
-import { randomUUID } from 'node:crypto';
-import {urdfManager} from "./extension";
+import { urdfManager } from "./extension";
 import { generateOpenSCADLibrariesDocumentation, convertLibrariesDocumentationToMarkdown } from './openscad';
 
 /**
@@ -20,9 +57,9 @@ import { generateOpenSCADLibrariesDocumentation, convertLibrariesDocumentationTo
  * It uses BabylonJS and the babylon_ros library to render 3D scenes and capture screenshots.
  */
 export class UrdfMcpServer {
-  private server: McpServer;
+  private server: any;
   private app: express.Application;
-  private transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
+  private transports: { [sessionId: string]: any } = {};
   private isRunning = false;
   private port: number;
   private httpServer: any;
@@ -118,7 +155,7 @@ export class UrdfMcpServer {
         tracing.appendLine(`MCP Server: Generating OpenSCAD libraries documentation`);
 
         // Get workspace root
-        const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+        const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.path;
         if (!workspaceRoot) {
           return { 
             content: [{ 
@@ -203,7 +240,7 @@ export class UrdfMcpServer {
             fileUri = vscode.Uri.file(filename);
           } else {
             // Try to resolve relative to workspace
-            const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+            const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.path;
             if (!workspaceRoot) {
               return { 
                 content: [{ 
@@ -230,13 +267,13 @@ export class UrdfMcpServer {
           return { 
             content: [{ 
               type: 'text', 
-              text: `File not found: "${fileUri.fsPath}". Please check the path and try again.`
+              text: `File not found: "${fileUri.path}". Please check the path and try again.`
             }] 
           };
         }
 
         // Check if it's a supported file type
-        const ext = path.extname(fileUri.fsPath).toLowerCase();
+        const ext = fileUri.path.substring(fileUri.path.lastIndexOf('.')).toLowerCase();
         if (ext !== '.urdf' && ext !== '.xacro' && ext !== '.scad') {
           return { 
             content: [{ 
@@ -246,14 +283,14 @@ export class UrdfMcpServer {
           };
         }
 
-        tracing.appendLine(`MCP Server: Taking screenshot of ${fileUri.fsPath} (${width}x${height})`);
+        tracing.appendLine(`MCP Server: Taking screenshot of ${fileUri.path} (${width}x${height})`);
 
         // Check if there's already an existing preview for this file
         let preview = urdfManager.getExistingPreview(fileUri);
         
         if (!preview) {
           // No existing preview, create a new one
-          tracing.appendLine(`MCP Server: Creating new preview for ${fileUri.fsPath}`);
+          tracing.appendLine(`MCP Server: Creating new preview for ${fileUri.path}`);
           urdfManager.preview(fileUri);
           
           // Get the newly created preview
@@ -263,7 +300,7 @@ export class UrdfMcpServer {
             return { 
               content: [{ 
                 type: 'text', 
-                text: `Failed to create preview for "${fileUri.fsPath}". The file may have errors or be unsupported.`
+                text: `Failed to create preview for "${fileUri.path}". The file may have errors or be unsupported.`
               }] 
             };
           }
@@ -271,7 +308,7 @@ export class UrdfMcpServer {
           // Wait a bit for the preview to load
           await new Promise(resolve => setTimeout(resolve, 2000));
         } else {
-          tracing.appendLine(`MCP Server: Using existing preview for ${fileUri.fsPath}`);
+          tracing.appendLine(`MCP Server: Using existing preview for ${fileUri.path}`);
           // Make sure the existing preview is revealed/active
           preview.reveal();
           // Wait a bit to ensure it's fully loaded
@@ -281,7 +318,7 @@ export class UrdfMcpServer {
         // Take the screenshot
         const base64Image = await preview.takeScreenshot(width, height);
 
-        tracing.appendLine(`MCP Server: Successfully captured screenshot of ${fileUri.fsPath}`);
+        tracing.appendLine(`MCP Server: Successfully captured screenshot of ${fileUri.path}`);
 
         return {
           content: [
@@ -312,7 +349,7 @@ export class UrdfMcpServer {
     this.app.post('/mcp', async (req, res) => {
       // Check for existing session ID
       const sessionId = req.headers['mcp-session-id'] as string | undefined;
-      let transport: StreamableHTTPServerTransport;
+      let transport: any;
 
       if (sessionId && this.transports[sessionId]) {
         // Reuse existing transport
@@ -320,7 +357,7 @@ export class UrdfMcpServer {
       } else if (!sessionId && isInitializeRequest(req.body)) {
         // New initialization request
         transport = new StreamableHTTPServerTransport({
-          sessionIdGenerator: () => randomUUID(),
+          sessionIdGenerator: () => crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2),
           onsessioninitialized: (sessionId) => {
             // Store the transport by session ID
             this.transports[sessionId] = transport;

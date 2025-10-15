@@ -88,8 +88,8 @@ export async function getAllOpenSCADLibraryPaths(workspaceRoot?: string): Promis
   const existingPaths: string[] = [];
   for (const libPath of allPaths) {
     try {
-      const stat = await fs.promises.stat(libPath);
-      if (stat.isDirectory()) {
+      const stat = await vscode.workspace.fs.stat(vscode.Uri.file(libPath));
+      if (stat.type === vscode.FileType.Directory) {
         existingPaths.push(libPath);
       }
     } catch {
@@ -127,33 +127,35 @@ export async function loadLibraryDirectory(
   virtualRoot: string,
   trace: vscode.OutputChannel
 ): Promise<void> {
-  const fullPath = path.join(basePath, relativePath);
+  const fullPath = `${basePath}/${relativePath}`;
   
   try {
-    const entries = await fs.promises.readdir(fullPath, { withFileTypes: true });
+    // Use vscode.workspace.findFiles to find all files in the directory
+    const pattern = new vscode.RelativePattern(fullPath, '**/*');
+    const files = await vscode.workspace.findFiles(pattern);
     
-    for (const entry of entries) {
-      const entryPath = path.join(relativePath, entry.name);
-      const entryPathUnix = path.posix.join(relativePath, entry.name);
-      const fullEntryPath = path.join(fullPath, entry.name);
-      const virtualPath = path.posix.join(virtualRoot, entryPathUnix);
+    for (const fileUri of files) {
+      // Get relative path from base path
+      const filePath = fileUri.path;
+      const relativeFilePath = filePath.substring(fullPath.length + 1);
+      const virtualPath = `${virtualRoot}/${relativeFilePath}`;
       
-      if (entry.isDirectory()) {
-        // Recursively load subdirectories
-        await loadLibraryDirectory(instance, basePath, entryPath, virtualRoot, trace);
-      } else if (entry.isFile()) {
-        try {
-          instance.FS.mkdir(path.dirname(virtualPath));
-        } catch {
-          // ignore
+      try {
+        // Create directory in virtual filesystem
+        const dirPath = virtualPath.substring(0, virtualPath.lastIndexOf('/'));
+        if (dirPath) {
+          try {
+            instance.FS.mkdir(dirPath);
+          } catch {
+            // ignore if directory already exists
+          }
         }
 
-        try {
-          const content = await fs.promises.readFile(fullEntryPath);
-          instance.FS.writeFile(virtualPath, content);
-        } catch {
-          trace.appendLine(`Failed to load file ${entryPath}`);
-        }
+        // Read and write file
+        const content = await vscode.workspace.fs.readFile(fileUri);
+        instance.FS.writeFile(virtualPath, content);
+      } catch {
+        trace.appendLine(`Failed to load file ${relativeFilePath}`);
       }
     }
   } catch (error) {
@@ -185,7 +187,7 @@ export async function convertOpenSCADToSTL(scadFilePath: string, trace: vscode.O
     const instance = openscad.getInstance();
 
     // Get workspace root for variable resolution
-    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.path;
     
     // Load OpenSCAD libraries
     trace.appendLine(`Loading OpenSCAD libraries...`);
@@ -197,13 +199,14 @@ export async function convertOpenSCADToSTL(scadFilePath: string, trace: vscode.O
       trace.appendLine(`No OpenSCAD library paths found`);
     }
 
-    const basename = path.basename(scadFilePath, '.scad');
-    const dir = path.dirname(scadFilePath);
-    const stlPath = path.join(dir, `${basename}.stl`);
+    const basename = scadFilePath.substring(scadFilePath.lastIndexOf('/') + 1, scadFilePath.lastIndexOf('.scad'));
+    const dir = scadFilePath.substring(0, scadFilePath.lastIndexOf('/'));
+    const stlPath = `${dir}/${basename}.stl`;
     
     trace.appendLine(`Converting OpenSCAD to STL: ${stlPath}`);
 
-    const scadText = await fs.promises.readFile(scadFilePath, 'utf8');
+    const scadUri = vscode.Uri.file(scadFilePath);
+    const scadText = new TextDecoder().decode(await vscode.workspace.fs.readFile(scadUri));
     
     // Write the main SCAD file to the virtual filesystem
     instance.FS.writeFile('/input.scad', scadText);
@@ -218,7 +221,7 @@ export async function convertOpenSCADToSTL(scadFilePath: string, trace: vscode.O
     const stlContent = instance.FS.readFile('/output.stl', { encoding: 'binary' });
 
     // Use the filesystem API directly
-    await fs.promises.writeFile(stlPath, stlContent, 'binary');
+    await vscode.workspace.fs.writeFile(vscode.Uri.file(stlPath), new Uint8Array(stlContent));
     
     trace.appendLine(`OpenSCAD conversion completed successfully: ${stlPath}`);
     return stlPath;
@@ -272,7 +275,7 @@ export async function convertOpenSCADToSTLCancellable(
       trace.appendLine(`Starting process-based OpenSCAD conversion for: ${scadFilePath}`);
       
       // Get workspace root for variable resolution
-      const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+      const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.path;
       
       // Load OpenSCAD libraries and encode them as base64
       trace.appendLine(`Loading OpenSCAD libraries...`);
@@ -403,28 +406,24 @@ async function loadLibraryDirectoryBase64(
   libraryFiles: { [virtualPath: string]: string },
   trace: vscode.OutputChannel
 ): Promise<void> {
-  const fullPath = path.join(basePath, relativePath);
+  const fullPath = `${basePath}/${relativePath}`;
   
   try {
-    const entries = await fs.promises.readdir(fullPath, { withFileTypes: true });
+    // Use vscode.workspace.findFiles to find all files
+    const pattern = new vscode.RelativePattern(fullPath, '**/*');
+    const files = await vscode.workspace.findFiles(pattern);
     
-    for (const entry of entries) {
-      const entryPath = path.join(relativePath, entry.name);
-      const entryPathUnix = path.posix.join(relativePath, entry.name);
-      const fullEntryPath = path.join(fullPath, entry.name);
-      const virtualPath = path.posix.join(virtualRoot, entryPathUnix);
+    for (const fileUri of files) {
+      const filePath = fileUri.path;
+      const relativeFilePath = filePath.substring(fullPath.length + 1);
+      const virtualPath = `${virtualRoot}/${relativeFilePath}`;
       
-      if (entry.isDirectory()) {
-        // Recursively load subdirectories
-        await loadLibraryDirectoryBase64(basePath, entryPath, virtualRoot, libraryFiles, trace);
-      } else if (entry.isFile()) {
-        try {
-          const content = await fs.promises.readFile(fullEntryPath);
-          // Encode as base64 for transmission to worker process
-          libraryFiles[virtualPath] = content.toString('base64');
-        } catch {
-          trace.appendLine(`Failed to load file ${entryPath}`);
-        }
+      try {
+        const content = await vscode.workspace.fs.readFile(fileUri);
+        // Encode as base64 for transmission to worker process
+        libraryFiles[virtualPath] = btoa(String.fromCharCode(...content));
+      } catch {
+        trace.appendLine(`Failed to load file ${relativeFilePath}`);
       }
     }
   } catch (error) {
@@ -639,33 +638,31 @@ export async function generateOpenSCADLibrariesDocumentation(workspaceRoot?: str
  * Recursively process a library directory to extract documentation
  */
 async function processLibraryDirectory(basePath: string, relativePath: string, libraries: OpenSCADLibraryInfo[]): Promise<void> {
-  const fullPath = path.join(basePath, relativePath);
+  const fullPath = `${basePath}/${relativePath}`;
   
   try {
-    const entries = await fs.promises.readdir(fullPath, { withFileTypes: true });
+    // Use vscode.workspace.findFiles to find all .scad files
+    const pattern = new vscode.RelativePattern(fullPath, '**/*.scad');
+    const files = await vscode.workspace.findFiles(pattern);
     
-    for (const entry of entries) {
-      const entryRelativePath = path.join(relativePath, entry.name);
-      const fullEntryPath = path.join(fullPath, entry.name);
+    for (const fileUri of files) {
+      const filePath = fileUri.path;
+      const entryRelativePath = filePath.substring(fullPath.length + 1);
       
-      if (entry.isDirectory()) {
-        // Recursively process subdirectories
-        await processLibraryDirectory(basePath, entryRelativePath, libraries);
-      } else if (entry.isFile() && entry.name.endsWith('.scad')) {
-        try {
-          const content = await fs.promises.readFile(fullEntryPath, 'utf8');
-          const headerComment = extractHeaderComment(content);
-          const modules = extractModules(content);
-          
-          libraries.push({
-            filePath: fullEntryPath,
-            relativePath: entryRelativePath,
-            headerComment,
-            modules
-          });
-        } catch {
-          // ignore since this is doc generation
-        }
+      try {
+        const contentBuffer = await vscode.workspace.fs.readFile(fileUri);
+        const content = new TextDecoder().decode(contentBuffer);
+        const headerComment = extractHeaderComment(content);
+        const modules = extractModules(content);
+        
+        libraries.push({
+          filePath,
+          relativePath: entryRelativePath,
+          headerComment,
+          modules
+        });
+      } catch {
+        // ignore since this is doc generation
       }
     }
   } catch  {
@@ -757,5 +754,6 @@ export function convertLibrariesDocumentationToMarkdown(doc: OpenSCADLibrariesDo
 export async function generateAndSaveLibrariesDocumentation(outputPath: string, workspaceRoot?: string): Promise<void> {
   const doc = await generateOpenSCADLibrariesDocumentation(workspaceRoot);
   const markdown = convertLibrariesDocumentationToMarkdown(doc);
-  await fs.promises.writeFile(outputPath, markdown, 'utf8');
+  const outputUri = vscode.Uri.file(outputPath);
+  await vscode.workspace.fs.writeFile(outputUri, new TextEncoder().encode(markdown));
 }

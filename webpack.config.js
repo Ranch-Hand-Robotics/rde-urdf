@@ -4,13 +4,14 @@
 
 const path = require('path');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
+const webpack = require('webpack');
 
 //@ts-check
 /** @typedef {import('webpack').Configuration} WebpackConfig **/
 
 /** @type WebpackConfig */
 const extensionConfig = {
-  target: 'node', // VS Code extensions run in a Node.js-context 📖 -> https://webpack.js.org/configuration/node/
+  target: ['web', 'es2022'], // VS Code extensions run in web context for VS Code Web support 📖 -> https://webpack.js.org/configuration/node/
 	mode: 'none', // this leaves the source code as close as possible to the original (when packaging we set this to 'production')
 
   entry: './src/extension.ts', // the entry point of this extension, 📖 -> https://webpack.js.org/configuration/entry-context/
@@ -18,10 +19,14 @@ const extensionConfig = {
     // the bundle is stored in the 'dist' folder (check package.json), 📖 -> https://webpack.js.org/configuration/output/
     path: path.resolve(__dirname, 'dist'),
     filename: 'extension.js',
-    libraryTarget: 'commonjs2'
+    libraryTarget: 'commonjs2',
+    library: {
+      type: 'commonjs2'
+    }
   },
   externals: {
-    vscode: 'commonjs vscode' // the vscode-module is created on-the-fly and must be excluded. Add other modules that cannot be webpack'ed, 📖 -> https://webpack.js.org/configuration/externals/
+    vscode: 'commonjs vscode', // the vscode-module is created on-the-fly and must be excluded. Add other modules that cannot be webpack'ed, 📖 -> https://webpack.js.org/configuration/externals/
+    '@modelcontextprotocol/sdk': 'commonjs @modelcontextprotocol/sdk'
     // modules added here also need to be added in the .vscodeignore file
   },
   resolve: {
@@ -29,6 +34,27 @@ const extensionConfig = {
     extensions: ['.ts', '.js'],
     alias: {
       'handlebars' : 'handlebars/dist/handlebars.js'
+    },
+    fallback: {
+      "path": require.resolve("path-browserify"),
+      "os": require.resolve("os-browserify/browser"),
+      "fs": false,
+      "crypto": require.resolve("crypto-browserify"),
+      "node:crypto": require.resolve("crypto-browserify"),
+      "stream": require.resolve("stream-browserify"),
+      "util": require.resolve("util/"),
+      "url": require.resolve("url/"),
+      "querystring": require.resolve("querystring-es3"),
+      "http": require.resolve("stream-http"),
+      "https": require.resolve("https-browserify"),
+      "zlib": require.resolve("browserify-zlib"),
+      "assert": require.resolve("assert/"),
+      "async_hooks": false,
+      "canvas": false,
+      "vm": false,
+      "child_process": false,
+      "net": false,
+      "tls": false
     }
   },
   module: {
@@ -49,6 +75,17 @@ const extensionConfig = {
     level: "log", // enables logging required for problem matchers
   },
   plugins: [
+    new webpack.DefinePlugin({
+      // Removed WEB_BUILD flag as we're using runtime detection now
+    }),
+    new webpack.IgnorePlugin({
+      resourceRegExp: /^@modelcontextprotocol\/sdk$/,
+      contextRegExp: /./
+    }),
+    new webpack.IgnorePlugin({
+      resourceRegExp: /^@modelcontextprotocol\/sdk\/.*/,
+      contextRegExp: /./
+    }),
     new CopyWebpackPlugin({
       patterns: [
         { from: 'snippets', to: 'snippets' },

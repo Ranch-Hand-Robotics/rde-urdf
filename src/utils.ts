@@ -1,16 +1,8 @@
-import * as os from "os";
 import * as vscode from "vscode";
 //import * as child_process from "child_process";
 import { XacroParser } from 'xacro-parser';
 import {XMLSerializer} from 'xmldom';
 import { JSDOM } from 'jsdom';
-import * as path from "path";
-import * as fs from "fs";
-import { string } from "yaml/dist/schema/common/string";
-import { rejects } from "assert";
-import { tracing } from "./extension";
-import { env } from "process";
-
 
 
 
@@ -66,8 +58,9 @@ export function convertFindToPackageUri(text: string): string {
  */
 export async function convertFindToPackageUriInFile(filePath: string): Promise<string> {
   try {
-    const fileContent = fs.readFileSync(filePath, { encoding: 'utf8' });
-    return convertFindToPackageUri(fileContent);
+    const fileUri = vscode.Uri.file(filePath);
+    const fileContent = await vscode.workspace.fs.readFile(fileUri);
+    return convertFindToPackageUri(new TextDecoder().decode(fileContent));
   } catch (error) {
     throw new Error(`Failed to process file ${filePath}: ${error}`);
   }
@@ -109,7 +102,7 @@ export async function getPackages(): Promise<Map<string, string>> {
           continue;
         }
 
-        packages.set(packageName, path.dirname(packageXmlFile.fsPath));
+        packages.set(packageName, vscode.Uri.joinPath(packageXmlFile, '..').path);
         };
       }
 
@@ -166,11 +159,9 @@ function resolvePackageUris(
         normalizedPath = normalizedPath.substring(1);
       }
       
-      // Normalize path and convert backslashes to forward slashes on Windows
-      normalizedPath = path.normalize(normalizedPath);
-      if (os.platform() === 'win32') {
-        normalizedPath = normalizedPath.replace(/\\/g, '/');
-      }
+      // Normalize path and convert backslashes to forward slashes
+      const normalizedUri = vscode.Uri.file(normalizedPath);
+      normalizedPath = normalizedUri.path;
       
       const vsPath = vscode.Uri.file(normalizedPath);
       const newUri = resolvePackagesFxn(vsPath);
@@ -197,14 +188,16 @@ function resolvePackageUris(
  * @param resolvePackagesFxn Function to resolve package URIs to webview URIs
  * @returns Promise resolving to [urdfText, packagesNotFound]
  */
-export async function processXacro(filename: string, resolvePackagesFxn: (packageName: vscode.Uri) => string): Promise<[string, string[]]> {
+export async function processXacro(filename: string | vscode.Uri, resolvePackagesFxn: (packageName: vscode.Uri) => string): Promise<[string, string[]]> {
   return new Promise(async (resolve, reject) => {
     const packagesNotFound: string[] = [];
     let urdfText = "";
 
     try {
       // Read the file content
-      const xacroContents = fs.readFileSync(filename, { encoding: 'utf8' });
+      const fileUri = typeof filename === 'string' ? vscode.Uri.file(filename) : filename;
+      const xacroContentsBuffer = await vscode.workspace.fs.readFile(fileUri);
+      const xacroContents = new TextDecoder().decode(xacroContentsBuffer);
       
       // Get package map for resolving package:// URIs and $(find) idioms
       const packageMap = await getPackages();
@@ -243,16 +236,18 @@ export async function processXacro(filename: string, resolvePackagesFxn: (packag
               }
               
               const packageBasePath = packageMap.get(packageName)!;
-              resolvedPath = path.join(packageBasePath, resourcePath);
+              resolvedPath = vscode.Uri.joinPath(vscode.Uri.file(packageBasePath), resourcePath).path;
             }
           }
 
           // Normalize and decode the file path
-          let normalizedPath = path.normalize(resolvedPath);
-          normalizedPath = decodeURIComponent(normalizedPath);
-
+          const normalizedUri = vscode.Uri.file(decodeURIComponent(resolvedPath));
+          const normalizedPath = normalizedUri.path;
+          
           // Read and return file contents (not parsed as xacro)
-          return fs.readFileSync(normalizedPath, { encoding: 'utf8' });
+          const fileUri = vscode.Uri.file(normalizedPath);
+          const fileBuffer = await vscode.workspace.fs.readFile(fileUri);
+          return new TextDecoder().decode(fileBuffer);
           
         } catch (error) {
           throw new Error(`File not found: ${filePath}`);
@@ -280,7 +275,7 @@ export async function processXacro(filename: string, resolvePackagesFxn: (packag
           // This function is not used in the current implementation
           // but can be extended to handle other rospack commands if needed
 
-          tracing.appendLine(`rospack eval is not supported currently, called with args: ${args.join(', ')}. If you'd like to see this implemented, +1 https://github.com/Ranch-Hand-Robotics/rde-urdf/issues/43, or submit a pull request.`);
+          console.log(`rospack eval is not supported currently, called with args: ${args.join(', ')}. If you'd like to see this implemented, +1 https://github.com/Ranch-Hand-Robotics/rde-urdf/issues/43, or submit a pull request.`);
 
           return "";
         },
@@ -289,7 +284,7 @@ export async function processXacro(filename: string, resolvePackagesFxn: (packag
           if (!filePath || filePath.trim() === "") {
             return "";
           }
-          return path.dirname(filePath);
+          return vscode.Uri.file(filePath).with({ path: filePath.substring(0, filePath.lastIndexOf('/')) }).path;
         },
 
         anon: (arg: string): string => {
@@ -301,7 +296,7 @@ export async function processXacro(filename: string, resolvePackagesFxn: (packag
           // This function is not used in the current implementation
           // but can be extended to handle other rospack commands if needed
 
-          tracing.appendLine(`rospack optenv is not supported currently. If you'd like to see this implemented, +1 https://github.com/Ranch-Hand-Robotics/rde-urdf/issues/45`);
+          console.log(`rospack optenv is not supported currently. If you'd like to see this implemented, +1 https://github.com/Ranch-Hand-Robotics/rde-urdf/issues/45`);
           if (args.length < 2) {
             return "";
           }
@@ -316,7 +311,7 @@ export async function processXacro(filename: string, resolvePackagesFxn: (packag
 
       // Add XML declaration if missing
       if (urdfText.indexOf("<?xml") === -1) {
-        urdfText = '<?xml version="1.0"?>' + os.EOL + urdfText;
+        urdfText = '<?xml version="1.0"?>\n' + urdfText;
       }
 
       // Parse the xacro content

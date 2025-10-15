@@ -48,13 +48,13 @@ export default class URDFPreview
         var workspaceFolders = vscode.workspace.workspaceFolders;
         if (workspaceFolders) {
             workspaceFolders.forEach((folder) => {
-                paths.push(vscode.Uri.file(folder.uri.fsPath));
+                paths.push(folder.uri);
             });
         }
 
-        paths.push(vscode.Uri.file(path.join(context.extensionPath, 'dist')));
-        paths.push(vscode.Uri.file(path.join(context.extensionPath, 'node_modules/@polyhobbyist/babylon_ros/dist')));
-        paths.push(vscode.Uri.file(path.join(context.extensionPath, 'node_modules/babylonjs')));
+        paths.push(vscode.Uri.joinPath(context.extensionUri, 'dist'));
+        paths.push(vscode.Uri.joinPath(context.extensionUri, 'node_modules/@polyhobbyist/babylon_ros/dist'));
+        paths.push(vscode.Uri.joinPath(context.extensionUri, 'node_modules/babylonjs'));
 
         
         // Create and show a new webview
@@ -213,9 +213,9 @@ export default class URDFPreview
 
         try {
             // Check if this is an OpenSCAD file
-            if (this.isOpenSCADFile(this._resource.fsPath)) {
+            if (this.isOpenSCADFile(this._resource.path)) {
                 // Handle OpenSCAD file - convert to STL and display as 3D model
-                const stlPath = await this.convertOpenSCADToSTL(this._resource.fsPath);
+                const stlPath = await this.convertOpenSCADToSTL(this._resource.path);
                 if (stlPath) {
                     const stlUri = vscode.Uri.file(stlPath);
                     
@@ -229,10 +229,10 @@ export default class URDFPreview
                 }
             } else {
                 // Handle URDF/Xacro files
-                var [urdfText, packagesNotFound] = await util.processXacro(this._resource.fsPath.toString(), 
+                var [urdfText, packagesNotFound] = await util.processXacro(this._resource, 
                     (packageName :vscode.Uri) => {
                         if (!this._webview) {
-                            return packageName.fsPath.toString();
+                            return packageName.path;
                         }
                         // Convert the package name to a webview URI
                         return this._webview.webview.asWebviewUri(packageName).toString();
@@ -296,7 +296,7 @@ export default class URDFPreview
     }    
 
     private isPreviewOf(resource: vscode.Uri): boolean {
-        return this._resource.fsPath === resource.fsPath;
+        return this._resource.toString() === resource.toString();
     }
 
     private readonly _onDisposeEmitter = new vscode.EventEmitter<void>();
@@ -309,7 +309,7 @@ export default class URDFPreview
         const editor = vscode.window.activeTextEditor;
 
         // If we have changed resources, cancel any pending updates
-        const isResourceChange = resource.fsPath !== this._resource.fsPath;
+        const isResourceChange = resource.toString() !== this._resource.toString();
         this._resource = resource;
         // Schedule update if none is pending
         this.refresh();

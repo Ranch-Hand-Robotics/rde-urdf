@@ -66,7 +66,7 @@ async function convertOpenSCADToSTL(request: ConversionRequest): Promise<void> {
         }
         
         // Decode base64 content and write to virtual filesystem
-        const content = Buffer.from(base64Content, 'base64');
+        const content = Uint8Array.from(atob(base64Content), c => c.charCodeAt(0));
         instance.FS.writeFile(virtualPath, content);
       } catch (error) {
         sendProgress(`Failed to load library file ${virtualPath}: ${error}`);

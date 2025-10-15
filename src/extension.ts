@@ -1,9 +1,8 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
+import * as path from "path";
 import URDFPreviewManager from "./previewManager";
 import WebXRPreviewManager from "./webXRPreviewManager";
 import * as util from "./utils";
-import { UrdfMcpServer } from './mcp';
 import { generateAndSaveLibrariesDocumentation } from './openscad';
 
 import { Viewer3DProvider } from './3DViewerProvider';
@@ -13,14 +12,20 @@ export var tracing: vscode.OutputChannel = vscode.window.createOutputChannel("UR
 export var urdfManager: URDFPreviewManager | null = null;
 export var urdfXRManager: WebXRPreviewManager | null = null;
 var viewProvider: Viewer3DProvider | null = null;
-var mcpServer: UrdfMcpServer | null = null;
+var mcpServer: any = null;
 
 async function startMcpServer(context: vscode.ExtensionContext): Promise<void> {
-  if (mcpServer && mcpServer.getStatus().isRunning) {
-    return; // Already running
+  // Skip MCP server in web environment as it requires server functionality
+  if (vscode.env.uiKind === vscode.UIKind.Web) {
+    tracing.appendLine('Skipping MCP server in web environment');
+    return;
   }
 
   try {
+    // Dynamically import MCP only when needed and available (not in web builds)
+    const mcpModule = await import('./mcp');
+    const { UrdfMcpServer } = mcpModule;
+    
     const config = vscode.workspace.getConfiguration('urdf-editor');
     const port = config.get<number>('mcpServerPort', 3005);
     
@@ -151,7 +156,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     if (documentUri) {
       // default filename should be urdf, but with the same name as the current file without xacro if it is there.
-      var defaultFilename = documentUri.fsPath;
+      var defaultFilename = documentUri.path;
       var ext = path.extname(defaultFilename);
       if (ext === ".xacro") {
         defaultFilename = defaultFilename.slice(0, -6);
@@ -174,11 +179,11 @@ export function activate(context: vscode.ExtensionContext) {
         if (saveUri && documentUri) {
           // Write the contents of the file to the export location
           try {
-            var [urdfText, packagesNotFound] = await util.processXacro(documentUri.fsPath, (packageName: vscode.Uri) => {
-              return packageName.fsPath;
+            var [urdfText, packagesNotFound] = await util.processXacro(documentUri, (packageName: vscode.Uri) => {
+              return packageName.path;
             });
 
-            var saveBuffer = Buffer.from(urdfText);
+            var saveBuffer = new TextEncoder().encode(urdfText);
             
             await vscode.workspace.fs.writeFile(saveUri, saveBuffer);
 
@@ -219,10 +224,9 @@ export function activate(context: vscode.ExtensionContext) {
       // Determine default filename based on the preview resource
       let defaultFilename = 'screenshot';
       if (preview.resource) {
-        const basename = path.basename(preview.resource.fsPath);
-        const nameWithoutExt = basename.split('.').slice(0, -1).join('.');
-        const directory = path.dirname(preview.resource.fsPath);
-        defaultFilename = path.join(directory, `${nameWithoutExt}_screenshot`);
+        const basename = preview.resource.path.split('/').pop() || 'screenshot';
+        const directory = preview.resource.path.substring(0, preview.resource.path.lastIndexOf('/')) || '.';
+        defaultFilename = path.join(directory, `${basename}_screenshot`);
       }
 
       // Show save dialog
@@ -237,10 +241,10 @@ export function activate(context: vscode.ExtensionContext) {
 
       if (saveUri) {
         // Convert base64 to buffer and save
-        const imageBuffer = Buffer.from(base64Image, 'base64');
+        const imageBuffer = Uint8Array.from(atob(base64Image), c => c.charCodeAt(0));
         await vscode.workspace.fs.writeFile(saveUri, imageBuffer);
         
-        vscode.window.showInformationMessage(`Screenshot saved to ${saveUri.fsPath}`);
+        vscode.window.showInformationMessage(`Screenshot saved to ${saveUri.path}`);
       }
     } catch (error) {
       const message = `Failed to take screenshot: ${error instanceof Error ? error.message : String(error)}`;
@@ -252,7 +256,7 @@ export function activate(context: vscode.ExtensionContext) {
   const generateOpenSCADDocsCommand = vscode.commands.registerCommand("urdf-editor.generateOpenSCADDocs", async () => {
     try {
       // Get workspace root
-      const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+      const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.path;
       if (!workspaceRoot) {
         vscode.window.showErrorMessage('No workspace folder open');
         return;
@@ -281,7 +285,7 @@ export function activate(context: vscode.ExtensionContext) {
       }, async (progress) => {
         progress.report({ increment: 0, message: "Scanning libraries..." });
         
-        await generateAndSaveLibrariesDocumentation(saveUri.fsPath, workspaceRoot);
+        await generateAndSaveLibrariesDocumentation(saveUri.path, workspaceRoot);
         
         progress.report({ increment: 100, message: "Documentation generated!" });
       });
@@ -290,8 +294,8 @@ export function activate(context: vscode.ExtensionContext) {
       const doc = await vscode.workspace.openTextDocument(saveUri);
       await vscode.window.showTextDocument(doc);
       
-      vscode.window.showInformationMessage(`OpenSCAD libraries documentation saved to ${saveUri.fsPath}`);
-      tracing.appendLine(`Generated OpenSCAD documentation: ${saveUri.fsPath}`);
+      vscode.window.showInformationMessage(`OpenSCAD libraries documentation saved to ${saveUri.path}`);
+      tracing.appendLine(`Generated OpenSCAD documentation: ${saveUri.path}`);
       
     } catch (error) {
       const message = `Failed to generate OpenSCAD documentation: ${error instanceof Error ? error.message : String(error)}`;

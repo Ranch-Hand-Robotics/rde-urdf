@@ -46,7 +46,7 @@ export default class WebXRPreviewManager {
     var workspaceFolders = vscode.workspace.workspaceFolders;
     if (workspaceFolders) {
         workspaceFolders.forEach((folder) => {
-            this._app.use(express.static(folder.uri.fsPath));
+            this._app.use(express.static(folder.uri.path));
         });
     }
 
@@ -64,8 +64,8 @@ export default class WebXRPreviewManager {
     }
 
     try {
-      var [urdfText, packagesNotFound] = await util.processXacro(this.uri.fsPath, (packageName: vscode.Uri) => {
-        return packageName.fsPath.toString();
+      var [urdfText, packagesNotFound] = await util.processXacro(this.uri, (packageName: vscode.Uri) => {
+        return packageName.path;
       });
 
 
