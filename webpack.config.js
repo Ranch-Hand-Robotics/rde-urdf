@@ -56,6 +56,8 @@ const extensionConfig = {
         { from: 'prompts', to: 'prompts' },
         { from: 'syntaxes', to: 'syntaxes' },
         { from: 'language-configuration.json', to: 'language-configuration.json' },
+        { from: 'CHANGELOG.md', to: 'CHANGELOG.md' },
+        { from: 'README.md', to: 'README.md' },
         // If you need to copy any other assets, add them here
       ],
     }),
