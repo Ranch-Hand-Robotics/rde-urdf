@@ -17,3 +17,5 @@ vsc-extension-quickstart.md
 !dist/snippets/**
 !dist/schemas/**
 !dist/prompts/**
+!dist/CHANGELOG.md
+!dist/README.md
