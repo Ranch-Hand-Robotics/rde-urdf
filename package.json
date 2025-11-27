@@ -290,7 +290,7 @@
           },
           "title": "OpenSCAD Library Paths",
           "default": [],
-          "description": "Additional library paths for OpenSCAD files. Use ${workspace} to reference the workspace root. OS-specific default locations are automatically included."
+          "description": "Additional library paths for OpenSCAD files. Use ${workspace} to reference subdirectories. The SCAD file's directory, workspace root, and OS-specific default locations are automatically included."
         },
         "urdf-editor.MirrorReflectivity": {
           "type": "number",
@@ -307,7 +307,7 @@
           },
           "title": "Package Search Paths",
           "default": [],
-          "description": "Additional directories to search for ROS packages. These paths will be scanned recursively for package.xml files, and package names will be extracted from the <name> element in each package.xml file. Use absolute paths or ${workspace} for workspace-relative paths. Example: [\"${workspace}/../other_ws/src\", \"/opt/ros/custom/share\"]"
+          "description": "Additional directories to search for ROS packages. These paths will be scanned recursively for package.xml files, and package names will be extracted from the <name> element in each package.xml file. Use absolute paths or ${workspaceFolder} for workspace-relative paths. Example: [\"${workspaceFolder}/../other_ws/src\", \"/opt/ros/custom/share\"]"
         }
       }
     },

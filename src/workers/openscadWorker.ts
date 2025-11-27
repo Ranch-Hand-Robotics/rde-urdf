@@ -44,7 +44,25 @@ async function convertOpenSCADToSTL(request: ConversionRequest): Promise<void> {
     
     const openscad = await createOpenSCAD({
       print: (text: string) => sendProgress(`OpenSCAD: ${text}`),
-      printErr: (text: string) => sendProgress(`OpenSCAD Error: ${text}`),
+      printErr: (text: any) => {
+        let errorText = text;
+        // Check if the error is an object that was toString'd incorrectly
+        if (typeof text === 'string' && text.includes('[object Object]')) {
+          // Try to access it as an error object
+          try {
+            const errorObj = text as any;
+            if (errorObj && typeof errorObj === 'object') {
+              errorText = errorObj.message || errorObj.toString() || text;
+            }
+          } catch {
+            errorText = text;
+          }
+        } else if (typeof text === 'object' && text !== null) {
+          // If it's actually an object, extract the message
+          errorText = (text as any).message || JSON.stringify(text);
+        }
+        sendProgress(`OpenSCAD Error: ${errorText}`);
+      },
     });
 
     // Get direct access to the WASM module
@@ -68,8 +86,9 @@ async function convertOpenSCADToSTL(request: ConversionRequest): Promise<void> {
         // Decode base64 content and write to virtual filesystem
         const content = Buffer.from(base64Content, 'base64');
         instance.FS.writeFile(virtualPath, content);
-      } catch (error) {
-        sendProgress(`Failed to load library file ${virtualPath}: ${error}`);
+      } catch (error:any) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        sendProgress(`Failed to load library file ${virtualPath}: ${errorMsg}`);
       }
     }
 
@@ -124,26 +143,62 @@ async function convertOpenSCADToSTL(request: ConversionRequest): Promise<void> {
       throw error;
     }
     
-    // Read the output STL from the virtual filesystem
-    const stlContent = instance.FS.readFile('/output.stl', { encoding: 'binary' });
+    const stat: any = instance.FS.stat('/output.stl');
+    if (stat) {
+      sendProgress(`Output file created: ${stat.size || 'unknown'} bytes`);
+      
+      // Read and verify the output STL from the virtual filesystem
+      let stlContent = instance.FS.readFile('/output.stl', { encoding: 'binary' });
+      if (stlContent && stlContent.length !== 0) {
 
-    // Write the STL file to the filesystem
-    await fs.promises.writeFile(stlPath, stlContent, 'binary');
-    
-    sendProgress(`OpenSCAD conversion completed successfully: ${stlPath}`);
-    
-    // Send success response
-    const response: ConversionResponse = {
-      success: true,
-      stlPath
-    };
-    process.send?.(response);
-    process.exit(0);
-    
-  } catch (error) {
+        // Write the STL file to the filesystem
+        await fs.promises.writeFile(stlPath, stlContent, 'binary');
+        
+        sendProgress(`OpenSCAD conversion completed successfully: ${stlPath}`);
+        
+        // Send success response
+        const response: ConversionResponse = {
+          success: true,
+          stlPath
+        };
+        process.send?.(response);
+        process.exit(0);
+      }
+    }
     const response: ConversionResponse = {
       success: false,
-      error: error instanceof Error ? error.message : String(error)
+      error: 'Output file was not created or is empty'
+    };
+    process.send?.(response);
+    process.exit(1);
+  } catch (error:any) {
+    let errorMessage = 'Unknown error occurred';
+    
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (error && typeof error === 'object') {
+      // Handle ErrnoError and other object-based errors
+      if (error.name === 'ErrnoError') {
+        errorMessage = `File system error (errno ${error.errno || 'unknown'})`;
+        if (error.errno === 44) {
+          errorMessage = 'OpenSCAD did not generate valid output - check for syntax errors or rendering issues in the SCAD file';
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      } else {
+        try {
+          errorMessage = JSON.stringify(error);
+        } catch {
+          errorMessage = error.toString?.() || 'Error object could not be serialized';
+        }
+      }
+    } else if (error) {
+      errorMessage = String(error);
+    }
+    
+    const response: ConversionResponse = {
+      success: false,
+      error: errorMessage
     };
     process.send?.(response);
     process.exit(1);
