@@ -91,7 +91,7 @@ export async function convertFindToPackageUriInFile(filePath: string): Promise<s
  * - `urdf-editor.PackageSearchPaths`: Array of additional directories to search
  * 
  * **Variable Substitution:**
- * - `${workspace}` in `PackageSearchPaths` is replaced with the workspace root path
+ * - `${workspaceFolder}` in `PackageSearchPaths` is replaced with the workspace root path
  * 
  * @returns Promise resolving to a Map where keys are package names and values are absolute paths
  *          to the package directories containing the package.xml files
@@ -149,11 +149,11 @@ export async function getPackages(): Promise<Map<string, string>> {
     const packageSearchPaths = urdfConfig.get<string[]>('PackageSearchPaths') || [];
     
     for (const searchPath of packageSearchPaths) {
-      // Resolve ${workspace} variable if present
+      // Resolve ${workspaceFolder} variable if present
       let resolvedPath = searchPath;
-      if (resolvedPath.includes('${workspace}')) {
+      if (resolvedPath.includes('${workspaceFolder}')) {
         const workspaceRoot = workspaceFolders[0]?.uri.fsPath || '';
-        resolvedPath = resolvedPath.replace('${workspace}', workspaceRoot);
+        resolvedPath = resolvedPath.replace('${workspaceFolder}', workspaceRoot);
       }
       
       // Check if the directory exists

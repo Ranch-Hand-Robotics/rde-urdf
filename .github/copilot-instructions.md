@@ -45,12 +45,14 @@ OpenSCAD (.scad) files are processed using dedicated utilities in `src/openscad.
 
 #### Library Support
 OpenSCAD library loading supports:
+- **SCAD file directory**: Automatically included with highest priority (the directory containing the SCAD file being processed)
+- **Workspace root**: Automatically included for all workspaces
 - **OS-specific default paths**:
   - Windows: `%USERPROFILE%\Documents\OpenSCAD\libraries`
   - Linux: `$HOME/.local/share/OpenSCAD/libraries`
   - macOS: `$HOME/Documents/OpenSCAD/libraries`
 - **User-configured paths**: Via `urdf-editor.OpenSCADLibraryPaths` setting
-- **Workspace variables**: `${workspace}` resolves to workspace root
+- **Workspace variables**: `${workspaceFolder}` resolves to workspace root
 - **Automatic discovery**: Only existing directories are included
 - **Recursive loading**: Subdirectories and files (.scad, .stl, .dxf) loaded into virtual filesystem
 
@@ -172,7 +174,7 @@ The extension includes a Model Context Protocol (MCP) server (`src/mcp.ts`) that
 
 ### Configuration Settings
 Extension settings are defined in `package.json` under `contributes.configuration`. All settings prefixed with `urdf-editor.` and include visual appearance, camera, debug options, and OpenSCAD library paths. Key settings:
-- `urdf-editor.OpenSCADLibraryPaths`: Array of additional library paths for OpenSCAD files. Supports `${workspace}` variable substitution.
+- `urdf-editor.OpenSCADLibraryPaths`: Array of additional library paths for OpenSCAD files. Supports `${workspaceFolder}` variable substitution.
 
 ## Geometry Guidelines
 Per `prompts/urdf-instructions.md`:

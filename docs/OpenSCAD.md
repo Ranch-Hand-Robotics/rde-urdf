@@ -22,21 +22,25 @@ The editor provides several language features for OpenSCAD:
 - **OpenSCAD Library Support**: The editor recognizes and provides support for standard OpenSCAD libraries.
 
 ### OpenSCAD Library Configuration
-The extension automatically loads OpenSCAD libraries from OS-specific default locations:
+The extension automatically loads OpenSCAD libraries from:
+- **SCAD file directory**: The directory containing the SCAD file being previewed (highest priority)
+- **Workspace root**: The current workspace folder
 - **Windows**: `%USERPROFILE%\Documents\OpenSCAD\libraries`
 - **Linux**: `$HOME/.local/share/OpenSCAD/libraries` 
 - **macOS**: `$HOME/Documents/OpenSCAD/libraries`
 
-To add custom library paths:
+This means SCAD files in the same directory or subdirectories can reference each other without any configuration.
+
+To add additional custom library paths:
 1. Open VS Code settings (`Ctrl+,`)
 2. Search for "urdf-editor.OpenSCADLibraryPaths"
-3. Add additional library directories (supports `${workspace}` variable)
+3. Add additional library directories (supports `${workspaceFolder}` variable)
 
 Example settings.json:
 ```json
 {
   "urdf-editor.OpenSCADLibraryPaths": [
-    "${workspace}/scad_libs",
+    "${workspaceFolder}/scad_libs",
     "C:\\MyLibraries\\OpenSCAD",
     "/usr/local/share/openscad/libraries"
   ]

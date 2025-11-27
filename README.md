@@ -33,21 +33,25 @@ This extension provides developer tooling for Unified Robot Description Format (
 For detailed configuration options, see the [Configuration Guide](https://ranchhandrobotics.com/rde-urdf/Configuration.html).
 
 ### OpenSCAD Library Configuration
-The extension automatically loads OpenSCAD libraries from OS-specific default locations:
+The extension automatically loads OpenSCAD libraries from:
+- **SCAD file directory**: The directory containing the SCAD file being previewed (highest priority)
+- **Workspace root**: The current workspace folder
 - **Windows**: `%USERPROFILE%\Documents\OpenSCAD\libraries`
 - **Linux**: `$HOME/.local/share/OpenSCAD/libraries` 
 - **macOS**: `$HOME/Documents/OpenSCAD/libraries`
 
-To add custom library paths:
+This means SCAD files in the same directory or subdirectories can reference each other without any configuration.
+
+To add additional custom library paths:
 1. Open VS Code settings (`Ctrl+,`)
 2. Search for "urdf-editor.OpenSCADLibraryPaths"
-3. Add additional library directories (supports `${workspace}` variable)
+3. Add additional library directories (supports `${workspaceFolder}` variable)
 
 Example settings.json:
 ```json
 {
   "urdf-editor.OpenSCADLibraryPaths": [
-    "${workspace}/scad_libs",
+    "${workspaceFolder}/scad_libs",
     "C:\\MyLibraries\\OpenSCAD",
     "/usr/local/share/openscad/libraries"
   ]
@@ -71,7 +75,7 @@ Example settings.json:
 ```json
 {
   "urdf-editor.PackageSearchPaths": [
-    "${workspace}/../other_ws/src",
+    "${workspaceFolder}/../other_ws/src",
     "/opt/ros/custom_distro/share",
     "/home/user/ros_packages"
   ]
@@ -79,7 +83,7 @@ Example settings.json:
 ```
 
 **Variable Substitution:**
-- `${workspace}` is replaced with your workspace root directory
+- `${workspaceFolder}` is replaced with your workspace root directory
 
 **Package Precedence:**
 - Workspace packages take precedence over ROS distro packages

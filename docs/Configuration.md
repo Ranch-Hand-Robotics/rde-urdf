@@ -68,7 +68,7 @@ Add additional directories to search for ROS packages:
 ```json
 {
   "urdf-editor.PackageSearchPaths": [
-    "${workspace}/../other_ws/src",
+    "${workspaceFolder}/../other_ws/src",
     "/opt/ros/custom_distro/share",
     "/home/user/ros_packages"
   ]
@@ -76,10 +76,10 @@ Add additional directories to search for ROS packages:
 ```
 
 **Variable Substitution:**
-- `${workspace}` → Your workspace root directory
+- `${workspaceFolder}` → Your workspace root directory
 
 **Use Cases:**
-- Overlay workspaces: `"${workspace}/../overlay_ws/src"`
+- Overlay workspaces: `"${workspaceFolder}/../overlay_ws/src"`
 - Custom ROS installations: `"/opt/ros/my_custom_build/share"`
 - Shared package repositories: `"/shared/ros_packages"`
 
@@ -87,18 +87,22 @@ Add additional directories to search for ROS packages:
 
 ### Library Paths
 
-The extension automatically loads OpenSCAD libraries from OS-specific locations:
+The extension automatically loads OpenSCAD libraries from:
 
+- **SCAD file directory**: The directory containing the SCAD file being previewed (highest priority)
+- **Workspace root**: The current workspace folder
 - **Windows**: `%USERPROFILE%\Documents\OpenSCAD\libraries`
 - **Linux**: `$HOME/.local/share/OpenSCAD/libraries`
 - **macOS**: `$HOME/Documents/OpenSCAD/libraries`
 
-Add custom library paths:
+This means SCAD files in the same directory or subdirectories can reference each other without any configuration.
+
+Add additional custom library paths:
 
 ```json
 {
   "urdf-editor.OpenSCADLibraryPaths": [
-    "${workspace}/scad_libs",
+    "${workspaceFolder}/scad_libs",
     "C:\\MyLibraries\\OpenSCAD",
     "/usr/local/share/openscad/libraries"
   ]
@@ -162,13 +166,13 @@ The generated documentation includes:
 
   // Package Search Paths
   "urdf-editor.PackageSearchPaths": [
-    "${workspace}/../overlay_ws/src",
+    "${workspaceFolder}/../overlay_ws/src",
     "/opt/ros/custom_packages"
   ],
 
   // OpenSCAD Libraries
   "urdf-editor.OpenSCADLibraryPaths": [
-    "${workspace}/scad_libs",
+    "${workspaceFolder}/scad_libs",
     "/usr/local/share/openscad/libraries"
   ],
 
