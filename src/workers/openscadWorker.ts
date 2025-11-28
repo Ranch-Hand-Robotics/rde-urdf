@@ -10,7 +10,6 @@ interface ConversionRequest {
   scadFilePath: string;
   libraryFiles: { [virtualPath: string]: string }; // Base64 encoded content
   workspaceRoot?: string;
-  previewMode?: boolean; // Fast preview with lower quality
   timeout?: number; // Custom timeout in milliseconds
 }
 
@@ -36,7 +35,7 @@ process.on('message', async (message: ConversionRequest) => {
 });
 
 async function convertOpenSCADToSTL(request: ConversionRequest): Promise<void> {
-  const { scadFilePath, libraryFiles, workspaceRoot, previewMode = false, timeout = 300000 } = request;
+  const { scadFilePath, libraryFiles, workspaceRoot, timeout = 300000 } = request;
   
   try {
     // Send progress update
@@ -96,8 +95,8 @@ async function convertOpenSCADToSTL(request: ConversionRequest): Promise<void> {
     const dir = path.dirname(scadFilePath);
     const stlPath = path.join(dir, `${basename}.stl`);
     
-    // Read the SCAD file content and optionally optimize for preview
-    let scadContent = await fs.promises.readFile(scadFilePath, 'utf8');
+    // Read the SCAD file content
+    const scadContent = await fs.promises.readFile(scadFilePath, 'utf8');
     
     sendProgress(`Converting OpenSCAD to STL: ${stlPath}`);
 
@@ -108,24 +107,11 @@ async function convertOpenSCADToSTL(request: ConversionRequest): Promise<void> {
     let args = [
       '-o', '/output.stl',
       '/input.scad',
-    ];
-    
-    if (previewMode) {
-      // Preview mode: faster but lower quality
-      args = args.concat([
         '--preview',                // Use preview mode (faster)
         '--backend=Manifold', // Use Manifold backend for speed
         '--export-format=binstl',   // Binary STL for smaller size
-      ]);
+      ];
       sendProgress('Using preview mode for faster rendering...');
-    } else {
-      // Production mode: higher quality but slower
-      args = args.concat([
-        '--render',                 // Force render mode
-        '--export-format=binstl',   // Binary STL for smaller size
-      ]);
-      sendProgress('Using production mode for high-quality rendering...');
-    }
     
     sendProgress(`Running OpenSCAD with args: ${args.join(' ')}`);
     
@@ -145,21 +131,20 @@ async function convertOpenSCADToSTL(request: ConversionRequest): Promise<void> {
     
     const stat: any = instance.FS.stat('/output.stl');
     if (stat) {
-      sendProgress(`Output file created: ${stat.size || 'unknown'} bytes`);
+      sendProgress(`Output STL file created: ${stat.size || 'unknown'} bytes`);
       
       // Read and verify the output STL from the virtual filesystem
-      let stlContent = instance.FS.readFile('/output.stl', { encoding: 'binary' });
+      const stlContent = instance.FS.readFile('/output.stl', { encoding: 'binary' });
       if (stlContent && stlContent.length !== 0) {
-
         // Write the STL file to the filesystem
         await fs.promises.writeFile(stlPath, stlContent, 'binary');
         
         sendProgress(`OpenSCAD conversion completed successfully: ${stlPath}`);
         
-        // Send success response
+        // Send success response with the STL path
         const response: ConversionResponse = {
           success: true,
-          stlPath
+          stlPath: stlPath
         };
         process.send?.(response);
         process.exit(0);

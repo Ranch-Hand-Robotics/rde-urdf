@@ -151,7 +151,6 @@ export default class URDFPreview
                 this._trace, 
                 this._cancellationTokenSource.token,
                 {
-                    previewMode: true,        // Always use preview mode for speed
                     timeout: 60000           // 1 minute timeout for fast feedback
                 }
             );

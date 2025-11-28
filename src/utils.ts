@@ -6,10 +6,7 @@ import {XMLSerializer} from 'xmldom';
 import { JSDOM } from 'jsdom';
 import * as path from "path";
 import * as fs from "fs";
-import { string } from "yaml/dist/schema/common/string";
-import { rejects } from "assert";
 import { tracing } from "./extension";
-import { env } from "process";
 
 
 
