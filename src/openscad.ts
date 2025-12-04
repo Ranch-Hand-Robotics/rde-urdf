@@ -231,7 +231,7 @@ export async function convertOpenSCADToSTL(scadFilePath: string, trace: vscode.O
     // Write the main SCAD file to the virtual filesystem
     instance.FS.writeFile('/input.scad', scadText);
     
-    // Add library search paths to OpenSCAD arguments
+    // Export to STL format
     const args = ['-o', '/output.stl', '/input.scad'];
 
     // Run OpenSCAD with library paths
@@ -264,7 +264,6 @@ export async function convertOpenSCADToSTLCancellable(
   trace: vscode.OutputChannel, 
   token?: vscode.CancellationToken,
   options?: {
-    previewMode?: boolean;  // Use faster preview mode
     timeout?: number;       // Custom timeout in milliseconds (default: 5 minutes)
   }
 ): Promise<string | null> {
@@ -382,7 +381,6 @@ export async function convertOpenSCADToSTLCancellable(
         scadFilePath,
         libraryFiles,
         workspaceRoot,
-        previewMode: options?.previewMode || false,
         timeout: options?.timeout || 300000  // Default 5 minutes
       };
 

@@ -147,6 +147,16 @@ The generated documentation includes:
 }
 ```
 
+**Mirror Reflectivity:**
+- `0.0` (default): Mirror disabled
+- `> 0.0`: Enable mirror with opacity
+- Mirror color automatically derives from grid main color (toned down by 70%)
+- Provides visual depth and ground reference in 3D preview
+
+**Camera Distance:**
+- Distance in meters from camera to robot origin
+- Adjust based on robot size for optimal viewing
+
 ## Debug Configuration
 
 ```json

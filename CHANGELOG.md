@@ -6,6 +6,46 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+### Added
+- **IntelliSense Features**:
+  - Go to Definition (F12) support for OpenSCAD modules and functions across files
+  - Go to Definition (F12) support for URDF/Xacro links, joints, macros, properties, and file paths
+  - Enhanced hover documentation for OpenSCAD with signatures and parameter descriptions
+  - Enhanced hover documentation for URDF/Xacro with inline XML attributes and types
+  - Hover documentation for xacro property references (${property_name}) showing values and definitions
+  - Property hover searches included files via `<xacro:include>` statements
+  - Support for `$(find package_name)` syntax in xacro includes
+  - Added hover documentation for `inertia` and `mass` elements
+  - Performance optimization: skips getText() on large documents (>10,000 lines)
+  - Smart comment extraction for user-defined OpenSCAD modules (filters decorative headers)
+  - Cross-file symbol resolution via `include` and `use` statements
+  - Package path resolution (package://) for URDF/Xacro files
+- **Visual Configuration API**:
+  - New `setCameraRadius()` method for programmatic camera control
+  - New `setBackgroundColor()` method for scene background customization
+  - New `setGridProperties()` method for grid appearance configuration
+  - New `setVisualConfig()` method for bulk visual property updates
+  - New `setMirrorProperties()` method for ground mirror configuration
+  - Mirror reflectivity setting via `urdf-editor.MirrorReflectivity` (0 = disabled, >0 = enabled with opacity)
+  - Automatic mirror color derivation from grid main color
+- **Documentation Improvements**:
+  - AI-assisted development workflow documentation in OpenSCAD.md
+  - Expanded MCP integration details with tool descriptions
+  - Performance optimization documentation (preview mode, timeout settings)
+  - Visual programming paradigm explanation
+
+### Fixed
+- Definition provider regex patterns using correct word boundaries instead of line-start anchors
+- URDF/Xacro definition provider now works with file patterns regardless of language ID assignment
+- OpenSCAD hover provider made async to support cross-file documentation lookup
+- Comment extraction now skips section headers and decorative comment lines
+
+### Changed
+- Updated webview to use new visual configuration APIs with backward compatibility
+- Improved OpenSCAD documentation extraction to ignore ALL CAPS headers and separator lines
+- Definition providers now properly escape special regex characters in symbol names
+- Enhanced URDF/Xacro hover with full XML signatures showing all attributes inline
+
 ## [1.3.1] - 2025-11-21
 
 ### Added

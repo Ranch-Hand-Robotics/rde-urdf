@@ -12,6 +12,8 @@ The URDF editor can open and edit `.scad` files directly. When a `.scad` file is
 
 The editor includes a preview feature for OpenSCAD files. When a `.scad` file is saved, the editor automatically converts it to STL format using the `openscad-wasm-prebuilt` module. The generated STL file is then displayed in the 3D viewer.
 
+**Note**: STL format does not support colors or textures. OpenSCAD models are rendered as single-color geometry in the preview.
+
 ## OpenSCAD Language Features
 
 The editor provides several language features for OpenSCAD:

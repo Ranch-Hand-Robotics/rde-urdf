@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+<robot name="property_hover_test" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  
+  <!-- Define some properties -->
+  <xacro:property name="box_color" value="0.8 0.2 0.2 1.0"/>
+  <xacro:property name="box_size" value="0.5"/>
+  <xacro:property name="wheel_radius" value="0.1"/>
+  <xacro:property name="chassis_length" value="1.0"/>
+  <xacro:property name="chassis_width" value="0.6"/>
+  
+  <!-- Use properties in links -->
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <!-- Hover over ${box_size} to see its value -->
+        <box size="${box_size} ${box_size} ${box_size}"/>
+      </geometry>
+      <material name="box_material">
+        <!-- Hover over ${box_color} to see its value -->
+        <color rgba="${box_color}"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="${box_size} ${box_size} ${box_size}"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="10.0"/>
+      <inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
+    </inertial>
+  </link>
+  
+  <link name="wheel">
+    <visual>
+      <geometry>
+        <!-- Hover over ${wheel_radius} to see its value -->
+        <cylinder radius="${wheel_radius}" length="0.05"/>
+      </geometry>
+    </visual>
+  </link>
+  
+  <joint name="wheel_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="wheel"/>
+    <!-- Properties can be used in multiple places -->
+    <origin xyz="${chassis_length/2} ${chassis_width/2} 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+  
+</robot>

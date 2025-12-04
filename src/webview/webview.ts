@@ -35,9 +35,11 @@ async function apply3DFile(filename: string) {
     if (currentRobotScene.scene) {
       let scale = BABYLON.Vector3.One();
       
-      // Apply scaling for STL files
+      // Apply scaling for files that use mm as default units
+      // OpenSCAD exports STL in mm, so scale down to meters for robotics
+      // GLB, GLTF, DAE typically use meters already
       if (filename.toLowerCase().endsWith('.stl')) {
-        // STL files are often in mm, scale down to meters for robotics
+        // STL files from OpenSCAD are in mm, scale down to meters
         scale = new BABYLON.Vector3(0.001, 0.001, 0.001);
       }
       
@@ -47,6 +49,7 @@ async function apply3DFile(filename: string) {
       let visual = new urdf.Visual();
       visual.material = new urdf.Material();
       visual.material.name = "default";
+      visual.material.color = new BABYLON.Color4(.8, .8, .8, 1); // Bright white for better visibility
       visual.geometry = m;
 
       let link = new urdf.Link();

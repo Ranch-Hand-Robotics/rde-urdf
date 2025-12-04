@@ -4,21 +4,59 @@ This extension provides developer tooling for Unified Robot Description Format (
 ![URDF Preview](https://raw.githubusercontent.com/Ranch-Hand-Robotics/rde-urdf/refs/heads/main/docs/URDF_Preview.png)
 
 ## Features
-- 3D preview
-- Link Visualization
-- Joint Visualization
-- Color Customization
-- Camera Controls
-- Gizmos for exploring a URDF
-- Syntax highlighting
-- Code completion
-- Collision Visualization
-- Schema Validation
-- AI Assisted Coding prompts for Github Copilot
-- [Virtual Reality preview](https://ranchhandrobotics.com/rde-urdf/WebXRPreview.html) of the model you are editing.
-- (New!) (Preview) [Supports OpenSCAD Rendering](https://ranchhandrobotics.com/rde-urdf/OpenSCAD.html) and syntax Highlighting for programatically creating robot parts.
-- (New!) (Preview) [Exposes an MCP Server](https://ranchhandrobotics.com/rde-urdf/mcp.html) allowing AI to check its work visually. 
-- Virtual Reality preview of the model you are editing.
+
+### Core URDF/Xacro Editing
+- **3D Preview**: Real-time rendering with BabylonJS engine
+- **Link & Joint Visualization**: Visual representation of robot structure
+- **Interactive Controls**: Camera controls, rotation gizmos, and axis visualization
+- **Collision Visualization**: Toggle collision geometry display
+- **Schema Validation**: XML schema validation for URDF and Xacro files
+- **Syntax Highlighting**: Full syntax support for URDF, Xacro, and OpenSCAD
+
+### IntelliSense & Navigation
+- **Go to Definition (F12)**:
+  - Jump to URDF links, joints, xacro macros, and properties
+  - Navigate to OpenSCAD modules and functions across files
+  - Resolve package paths and file references
+  - Cross-file symbol resolution via includes
+- **Enhanced Hover Documentation**:
+  - URDF/Xacro elements with full XML signatures and inline attributes
+  - OpenSCAD modules/functions with parameters from comments
+  - Built-in element documentation with types and defaults
+  - Source file location for imported definitions
+- **Code Completion**:
+  - URDF/Xacro element snippets with placeholders
+  - OpenSCAD built-in functions and transformations
+  - Xacro property reference completion (`${}`)
+  - Contextual suggestions based on cursor position
+
+### OpenSCAD Support
+- **Integrated Editing**: Full OpenSCAD language support with syntax highlighting
+- **Live Preview**: Automatic STL conversion and 3D rendering
+- **Library Management**: Automatic discovery of libraries from workspace and system paths
+- **Performance Optimizations**: Fast preview mode with configurable timeouts
+- **Documentation Generation**: Extract module/function docs from comments
+- **Snippets**: Common OpenSCAD patterns for quick coding
+
+### Visual Customization
+- **Color Settings**: Background, grid, and mirror customization
+- **Camera Configuration**: Distance, angles, and view presets
+- **Grid Properties**: Line color, spacing, opacity controls
+- **Mirror Effects**: Reflective ground plane with configurable reflectivity
+- **Debug UI**: Optional BabylonJS inspector for advanced debugging
+
+### AI-Assisted Development
+- **GitHub Copilot Integration**: Custom prompts for URDF/Xacro/OpenSCAD
+- **Model Context Protocol (MCP) Server**: AI visual verification tools
+  - Screenshot capture of 3D previews
+  - OpenSCAD library documentation access
+  - Visual feedback loop for code generation
+- **Vibe Coding**: AI can see rendered output and suggest improvements
+
+### Virtual Reality
+- **WebXR Preview**: Immersive VR viewing of robot models
+- **Interactive Exploration**: Navigate and inspect models in VR
+- [Learn more about WebXR](https://ranchhandrobotics.com/rde-urdf/WebXRPreview.html)
 
 
 ## Coming Soon
@@ -26,9 +64,18 @@ This extension provides developer tooling for Unified Robot Description Format (
 - [Kinematics Visualization](https://github.com/ranchhandrobotics/vscode_urdf/issues/5)
 - [External URDF / Xacro References](https://github.com/ranchhandrobotics/vscode_urdf/issues/6)
 
-## Usage
-1. Open a URDF, .xacro, or OpenSCAD file.
-2. Right click on the file and select "Preview", or press `Ctrl+Shift+P` and select "Preview"
+## Quick Start
+1. Open a URDF, .xacro, or OpenSCAD file
+2. Right-click and select **"Preview"** or press `Ctrl+Shift+P` → "URDF: Preview"
+3. Use **F12** (Go to Definition) on any link, joint, or module name to navigate
+4. Hover over elements to see inline documentation with parameters
+
+### Navigation Tips
+- **F12** on link/joint names → Jump to definition
+- **F12** on xacro macro calls → Jump to macro definition
+- **F12** on OpenSCAD module calls → Jump to module (even in libraries)
+- **F12** on file paths → Open the referenced file
+- **Hover** on elements → See full signature with parameters and types
 
 For detailed configuration options, see the [Configuration Guide](https://ranchhandrobotics.com/rde-urdf/Configuration.html).
 
