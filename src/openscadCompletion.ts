@@ -157,11 +157,11 @@ export class OpenSCADCompletionProvider implements vscode.CompletionItemProvider
 }
 
 export class OpenSCADHoverProvider implements vscode.HoverProvider {
-    provideHover(
+    async provideHover(
         document: vscode.TextDocument,
         position: vscode.Position,
         token: vscode.CancellationToken
-    ): vscode.Hover | undefined {
+    ): Promise<vscode.Hover | undefined> {
         const range = document.getWordRangeAtPosition(position);
         if (!range) {
             return undefined;
@@ -223,6 +223,66 @@ export class OpenSCADHoverProvider implements vscode.HoverProvider {
             return new vscode.Hover(markdown, range);
         }
 
+        // Check user-defined modules/functions in current file and includes
+        const userDoc = await this.getUserDefinedDocumentation(document, word);
+        if (userDoc) {
+            const markdown = new vscode.MarkdownString(userDoc);
+            return new vscode.Hover(markdown, range);
+        }
+
         return undefined;
+    }
+
+    private async getUserDefinedDocumentation(document: vscode.TextDocument, symbolName: string): Promise<string | undefined> {
+        // Import the definition provider dynamically to avoid circular dependency
+        const { OpenSCADDefinitionProvider } = await import('./openscadDefinitionProvider');
+        const definitionProvider = new OpenSCADDefinitionProvider(
+            vscode.window.createOutputChannel('URDF Editor')
+        );
+
+        // Check current file first
+        let doc = definitionProvider.getSymbolDocumentation(document, symbolName);
+        if (doc) {
+            return doc;
+        }
+
+        // Check included files
+        const includedFiles = await this.findIncludedFiles(document);
+        for (const filePath of includedFiles) {
+            try {
+                const fileUri = vscode.Uri.file(filePath);
+                const fileDoc = await vscode.workspace.openTextDocument(fileUri);
+                doc = definitionProvider.getSymbolDocumentation(fileDoc, symbolName);
+                if (doc) {
+                    return doc + `\n\n*From: ${filePath}*`;
+                }
+            } catch (error) {
+                // Continue to next file
+            }
+        }
+
+        return undefined;
+    }
+
+    private async findIncludedFiles(document: vscode.TextDocument): Promise<string[]> {
+        const path = require('path');
+        const fs = require('fs');
+        
+        const text = document.getText();
+        const files: string[] = [];
+        const documentDir = path.dirname(document.uri.fsPath);
+        
+        const includePattern = /(?:include|use)\s*<([^>]+)>/g;
+        let match;
+        
+        while ((match = includePattern.exec(text)) !== null) {
+            const includedFile = match[1];
+            const fullPath = path.resolve(documentDir, includedFile);
+            if (fs.existsSync(fullPath)) {
+                files.push(fullPath);
+            }
+        }
+        
+        return files;
     }
 }

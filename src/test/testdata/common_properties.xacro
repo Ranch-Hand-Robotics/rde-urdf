@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<robot name="common_properties" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  
+  <!-- Common color definitions -->
+  <xacro:property name="red" value="0.8 0.0 0.0 1.0"/>
+  <xacro:property name="green" value="0.0 0.8 0.0 1.0"/>
+  <xacro:property name="blue" value="0.0 0.0 0.8 1.0"/>
+  <xacro:property name="white" value="1.0 1.0 1.0 1.0"/>
+  <xacro:property name="black" value="0.0 0.0 0.0 1.0"/>
+  
+  <!-- Common dimensions -->
+  <xacro:property name="wheel_radius" value="0.1"/>
+  <xacro:property name="wheel_width" value="0.05"/>
+  <xacro:property name="chassis_height" value="0.2"/>
+  
+</robot>

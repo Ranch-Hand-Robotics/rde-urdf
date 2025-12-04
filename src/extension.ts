@@ -7,6 +7,8 @@ import { UrdfMcpServer } from './mcp';
 import { generateAndSaveLibrariesDocumentation } from './openscad';
 import { OpenSCADCompletionProvider, OpenSCADHoverProvider } from './openscadCompletion';
 import { URDFXacroCompletionProvider, URDFXacroHoverProvider } from './urdfXacroCompletion';
+import { OpenSCADDefinitionProvider } from './openscadDefinitionProvider';
+import { URDFDefinitionProvider } from './urdfDefinitionProvider';
 
 import { Viewer3DProvider } from './3DViewerProvider';
 
@@ -100,11 +102,19 @@ export function activate(context: vscode.ExtensionContext) {
   );
   context.subscriptions.push(openscadHoverProvider);
 
+  // Register OpenSCAD definition provider (Go to Definition / F12)
+  const openscadDefinitionProvider = vscode.languages.registerDefinitionProvider(
+    { language: 'openscad', scheme: 'file' },
+    new OpenSCADDefinitionProvider(tracing)
+  );
+  context.subscriptions.push(openscadDefinitionProvider);
+
   // Register URDF/Xacro IntelliSense completion providers
   const urdfCompletionProvider = vscode.languages.registerCompletionItemProvider(
     [
-      { language: 'xml', scheme: 'file', pattern: '**/*.urdf' },
-      { language: 'xml', scheme: 'file', pattern: '**/*.xacro' }
+      { scheme: 'file', pattern: '**/*.urdf' },
+      { scheme: 'file', pattern: '**/*.xacro' },
+      { language: 'xml', scheme: 'file' }
     ],
     new URDFXacroCompletionProvider(),
     '<', '"', '{' // Trigger characters
@@ -114,12 +124,24 @@ export function activate(context: vscode.ExtensionContext) {
   // Register hover provider for URDF/Xacro
   const urdfHoverProvider = vscode.languages.registerHoverProvider(
     [
-      { language: 'xml', scheme: 'file', pattern: '**/*.urdf' },
-      { language: 'xml', scheme: 'file', pattern: '**/*.xacro' }
+      { scheme: 'file', pattern: '**/*.urdf' },
+      { scheme: 'file', pattern: '**/*.xacro' },
+      { language: 'xml', scheme: 'file' }
     ],
     new URDFXacroHoverProvider()
   );
   context.subscriptions.push(urdfHoverProvider);
+
+  // Register definition provider for URDF/Xacro (Go to Definition / F12)
+  const urdfDefinitionProvider = vscode.languages.registerDefinitionProvider(
+    [
+      { scheme: 'file', pattern: '**/*.urdf' },
+      { scheme: 'file', pattern: '**/*.xacro' },
+      { language: 'xml', scheme: 'file' }
+    ],
+    new URDFDefinitionProvider(tracing)
+  );
+  context.subscriptions.push(urdfDefinitionProvider);
 
   // Set up MCP server lifecycle callbacks for the preview manager
   urdfManager.setMcpServerCallbacks({
