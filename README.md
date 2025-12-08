@@ -12,6 +12,7 @@ This extension provides developer tooling for Unified Robot Description Format (
 - **Collision Visualization**: Toggle collision geometry display
 - **Schema Validation**: XML schema validation for URDF and Xacro files
 - **Syntax Highlighting**: Full syntax support for URDF, Xacro, and OpenSCAD
+- **Xacro Arguments & Environment Variables**: Configure arguments and environment variables via `.vscode/xacro.json`
 
 ### IntelliSense & Navigation
 - **Go to Definition (F12)**:
@@ -78,6 +79,68 @@ This extension provides developer tooling for Unified Robot Description Format (
 - **Hover** on elements → See full signature with parameters and types
 
 For detailed configuration options, see the [Configuration Guide](https://ranchhandrobotics.com/rde-urdf/Configuration.html).
+
+### Xacro Arguments & Environment Variables Configuration
+The extension supports passing arguments and environment variables to Xacro files during preview without modifying the source files. This is useful for:
+- Testing different robot configurations
+- Using environment-specific paths
+- Configuring robot parameters for different deployments
+
+**How it works:**
+1. When you preview a Xacro file containing `<xacro:arg>` declarations or `$(env ...)` / `$(optenv ...)` references, the extension automatically detects them
+2. You'll be prompted to create a `.vscode/xacro.json` configuration file
+3. The configuration file maps file paths (with wildcard support) to argument and environment variable values
+
+**Creating the configuration file:**
+
+Create `.vscode/xacro.json` in your workspace:
+
+```json
+{
+  "version": "1.0.0",
+  "${workspaceFolder}/urdf/robot.xacro": {
+    "args": {
+      "robot_name": "my_robot",
+      "base_width": "0.5",
+      "wheel_count": "4"
+    },
+    "env": {
+      "ROBOT_PREFIX": "test",
+      "MESH_PATH": "/meshes"
+    }
+  },
+  "**/*.xacro": {
+    "args": {
+      "default_color": "0.8 0.2 0.2 1.0"
+    }
+  }
+}
+```
+
+**Features:**
+- **Wildcard patterns**: Use `**/*.xacro` or `robot_*.xacro` to match multiple files
+- **Variable substitution**: `${workspaceFolder}` resolves to your workspace root
+- **Environment fallback**: If an environment variable is not in the config, the extension checks `process.env`
+- **Automatic detection**: The extension detects `xacro:arg`, `$(arg ...)`, `$(env ...)`, and `$(optenv ...)` usage
+
+**Example Xacro file:**
+```xml
+<?xml version="1.0"?>
+<robot name="configurable_robot" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:arg name="robot_name" default="default_robot"/>
+  <xacro:arg name="base_size" default="0.5"/>
+  
+  <xacro:property name="mesh_path" value="$(optenv MESH_PATH /default/meshes)"/>
+  
+  <link name="$(arg robot_name)_base">
+    <visual>
+      <geometry>
+        <box size="$(arg base_size) $(arg base_size) 0.1"/>
+      </geometry>
+    </visual>
+  </link>
+</robot>
+```
 
 ### OpenSCAD Library Configuration
 The extension automatically loads OpenSCAD libraries from:
