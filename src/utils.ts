@@ -7,6 +7,7 @@ import { JSDOM } from 'jsdom';
 import * as path from "path";
 import * as fs from "fs";
 import { tracing } from "./extension";
+import * as xacroConfig from './xacroConfig';
 
 
 
@@ -267,9 +268,11 @@ function resolvePackageUris(
 /**
  * Processes a xacro file with package resolution.
  * This function handles the processing pipeline:
- * 1. Uses XacroParser to parse the xacro file with custom getFileContents
- * 2. Maps package:// URIs to resolved paths after xacro processing
- * 3. Returns the final URDF content and any missing packages
+ * 1. Detects and prompts for xacro arguments and environment variables if needed
+ * 2. Loads configuration from .vscode/xacro.json if available
+ * 3. Uses XacroParser to parse the xacro file with custom getFileContents
+ * 4. Maps package:// URIs to resolved paths after xacro processing
+ * 5. Returns the final URDF content and any missing packages
  * 
  * @param filename The path to the xacro file to process
  * @param resolvePackagesFxn Function to resolve package URIs to webview URIs
@@ -284,12 +287,33 @@ export async function processXacro(filename: string, resolvePackagesFxn: (packag
       // Read the file content
       const xacroContents = fs.readFileSync(filename, { encoding: 'utf8' });
       
+      // Detect arguments and environment variables in the file
+      const detected = xacroConfig.detectArgumentsAndEnv(xacroContents);
+      
+      // Load xacro configuration
+      let config = await xacroConfig.loadXacroConfig();
+      
+      // If arguments or environment variables are detected and no config exists, prompt user
+      if ((detected.hasArgs || detected.hasEnv) && !config) {
+        await xacroConfig.promptCreateConfig(filename, detected.argNames, detected.envNames);
+        // Reload config after creation
+        config = await xacroConfig.loadXacroConfig();
+      }
+      
+      // Find configuration for this specific file
+      const fileConfig = xacroConfig.findConfigForFile(filename, config);
+      
       // Get package map for resolving package:// URIs and $(find) idioms
       const packageMap = await getPackages();
 
       // Setup XacroParser with custom getFileContents
       global.DOMParser = new JSDOM().window.DOMParser;
       const parser = new XacroParser();
+      
+      // Set arguments from configuration if available
+      if (fileConfig?.args) {
+        parser.arguments = fileConfig.args;
+      }
 
       parser.getFileContents = async (filePath: string): Promise<string> => {
         if (!filePath || filePath.trim() === "") {
@@ -376,19 +400,42 @@ export async function processXacro(filename: string, resolvePackagesFxn: (packag
         },
 
         optenv: (...args : Array<String>): string => {
-          // This function is not used in the current implementation
-          // but can be extended to handle other rospack commands if needed
-
-          tracing.appendLine(`rospack optenv is not supported currently. If you'd like to see this implemented, +1 https://github.com/Ranch-Hand-Robotics/rde-urdf/issues/45`);
-          if (args.length < 2) {
+          // Handle optional environment variables
+          // First argument is the env var name, rest are default values
+          if (args.length === 0) {
             return "";
           }
-          return args.slice(1).join("");
+          
+          const envName = args[0] as string;
+          const defaultValue = args.length > 1 ? args.slice(1).join("") : "";
+          
+          // Check configuration first
+          if (fileConfig?.env && fileConfig.env[envName] !== undefined && fileConfig.env[envName] !== "") {
+            return fileConfig.env[envName];
+          }
+          
+          // Then check actual environment
+          if (process.env[envName] !== undefined) {
+            return process.env[envName]!;
+          }
+          
+          // Return default value
+          return defaultValue;
         },
 
-        env: (env: string): string => {
-          // Get the environment variable if it exists, otherwise return empty string
-          return env[env.toString()] !== undefined ? env[env.toString()].toString() : "";
+        env: (envName: string): string => {
+          // Check configuration first
+          if (fileConfig?.env && fileConfig.env[envName] !== undefined && fileConfig.env[envName] !== "") {
+            return fileConfig.env[envName];
+          }
+          
+          // Then check actual environment
+          if (process.env[envName] !== undefined) {
+            return process.env[envName]!;
+          }
+          
+          // Return empty string if not found
+          return "";
         }
       };
 

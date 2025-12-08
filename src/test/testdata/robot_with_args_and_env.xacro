@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<robot name="test_robot_combined" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  
+  <!-- Define arguments -->
+  <xacro:arg name="robot_name" default="my_robot"/>
+  <xacro:arg name="base_width" default="0.6"/>
+  <xacro:arg name="base_length" default="1.0"/>
+  
+  <!-- Properties using both arguments and environment variables -->
+  <xacro:property name="robot_prefix" value="$(optenv ROBOT_PREFIX default)"/>
+  <xacro:property name="mesh_path" value="$(optenv MESH_PATH /meshes)"/>
+  
+  <!-- Base link -->
+  <link name="$(arg robot_name)_${robot_prefix}_base">
+    <visual>
+      <geometry>
+        <box size="$(arg base_length) $(arg base_width) 0.2"/>
+      </geometry>
+      <material name="base_material">
+        <color rgba="0.7 0.7 0.7 1.0"/>
+      </material>
+    </visual>
+  </link>
+  
+</robot>
