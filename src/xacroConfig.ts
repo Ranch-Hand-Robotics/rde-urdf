@@ -53,7 +53,7 @@ export async function loadXacroConfig(workspaceFolder?: vscode.WorkspaceFolder):
         const config = JSON.parse(content) as XacroConfig;
         return config;
     } catch (error) {
-        vscode.window.showErrorMessage(`Failed to load xacro configuration: ${error}`);
+        vscode.window.showErrorMessage(`Failed to load xacro configuration: ${error instanceof Error ? error.message : String(error)}`);
         return null;
     }
 }
@@ -78,7 +78,7 @@ export async function saveXacroConfig(config: XacroConfig, workspaceFolder?: vsc
         fs.writeFileSync(configPath, content, 'utf8');
         return true;
     } catch (error) {
-        vscode.window.showErrorMessage(`Failed to save xacro configuration: ${error}`);
+        vscode.window.showErrorMessage(`Failed to save xacro configuration: ${error instanceof Error ? error.message : String(error)}`);
         return false;
     }
 }
@@ -105,7 +105,7 @@ export function findConfigForFile(filePath: string, config: XacroConfig | null):
         let resolvedPattern = pattern;
         if (pattern.includes('${workspaceFolder}')) {
             const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
-            resolvedPattern = pattern.replace('${workspaceFolder}', workspaceRoot);
+            resolvedPattern = pattern.replace(/\$\{workspaceFolder\}/g, workspaceRoot);
         }
 
         // Normalize pattern
