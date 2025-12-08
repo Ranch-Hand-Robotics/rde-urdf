@@ -287,15 +287,78 @@ export async function processXacro(filename: string, resolvePackagesFxn: (packag
       // Read the file content
       const xacroContents = fs.readFileSync(filename, { encoding: 'utf8' });
       
-      // Detect arguments and environment variables in the file
-      const detected = xacroConfig.detectArgumentsAndEnv(xacroContents);
+      // Accumulate all arguments and environment variables from main file and includes
+      const allArgNames: string[] = [];
+      const allEnvNames: string[] = [];
+      const processedFiles = new Set<string>(); // Track processed files to avoid duplicates
+      
+      // Detect arguments and environment variables in the main file
+      const mainDetected = xacroConfig.detectArgumentsAndEnv(xacroContents);
+      allArgNames.push(...mainDetected.argNames);
+      allEnvNames.push(...mainDetected.envNames);
+      processedFiles.add(path.normalize(filename));
+      
+      // Function to recursively scan included files for arguments
+      const scanIncludedFile = (content: string, basePath: string) => {
+        // Find all xacro:include directives
+        const includePattern = /<xacro:include\s+filename="([^"]+)"/g;
+        let match;
+        while ((match = includePattern.exec(content)) !== null) {
+          let includePath = match[1];
+          
+          // Resolve relative paths
+          if (!path.isAbsolute(includePath)) {
+            includePath = path.join(path.dirname(basePath), includePath);
+          }
+          
+          const normalizedIncludePath = path.normalize(includePath);
+          
+          // Skip if already processed
+          if (processedFiles.has(normalizedIncludePath)) {
+            continue;
+          }
+          processedFiles.add(normalizedIncludePath);
+          
+          try {
+            if (fs.existsSync(includePath)) {
+              const includeContent = fs.readFileSync(includePath, { encoding: 'utf8' });
+              const includeDetected = xacroConfig.detectArgumentsAndEnv(includeContent);
+              
+              // Add newly detected arguments
+              includeDetected.argNames.forEach(arg => {
+                if (!allArgNames.includes(arg)) {
+                  allArgNames.push(arg);
+                }
+              });
+              
+              // Add newly detected environment variables
+              includeDetected.envNames.forEach(env => {
+                if (!allEnvNames.includes(env)) {
+                  allEnvNames.push(env);
+                }
+              });
+              
+              // Recursively scan this included file
+              scanIncludedFile(includeContent, includePath);
+            }
+          } catch (error) {
+            // Silently skip files that can't be read
+            tracing.appendLine(`Could not scan included file for arguments: ${includePath}`);
+          }
+        }
+      };
+      
+      // Scan all included files
+      scanIncludedFile(xacroContents, filename);
       
       // Load xacro configuration
       let config = await xacroConfig.loadXacroConfig();
       
       // If arguments or environment variables are detected and no config exists, prompt user
-      if ((detected.hasArgs || detected.hasEnv) && !config) {
-        await xacroConfig.promptCreateConfig(filename, detected.argNames, detected.envNames);
+      const hasArgs = allArgNames.length > 0;
+      const hasEnv = allEnvNames.length > 0;
+      if ((hasArgs || hasEnv) && !config) {
+        await xacroConfig.promptCreateConfig(filename, allArgNames, allEnvNames);
         // Reload config after creation
         config = await xacroConfig.loadXacroConfig();
       }

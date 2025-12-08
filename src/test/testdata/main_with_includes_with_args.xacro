@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<robot name="robot_with_included_args" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  
+  <!-- Main file arguments -->
+  <xacro:arg name="main_robot_name" default="main_robot"/>
+  
+  <!-- Include file that has its own arguments -->
+  <xacro:include filename="included_with_args.xacro"/>
+  
+  <!-- Base link using main argument -->
+  <link name="$(arg main_robot_name)_base">
+    <visual>
+      <geometry>
+        <box size="${size_value} ${size_value} 0.1"/>
+      </geometry>
+      <material name="base_material">
+        <color rgba="${color_value}"/>
+      </material>
+    </visual>
+  </link>
+  
+</robot>
