@@ -31,6 +31,11 @@ export default class WebXRPreviewManager {
     this.startServer();
   }
 
+  public refresh(): void {
+    // WebXR preview doesn't need active refresh as it's server-based
+    // The content is regenerated on each request
+  }
+
   private startServer() {
     this._app.get('/', async (req, res) => {
       res.send(await this._getWebviewContent());
