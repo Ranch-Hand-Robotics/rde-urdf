@@ -3,6 +3,7 @@
 // OpenSCAD IntelliSense completion provider
 
 import * as vscode from 'vscode';
+import { tracing } from './extension';
 
 // OpenSCAD built-in modules
 const openscadModules = [
@@ -236,9 +237,7 @@ export class OpenSCADHoverProvider implements vscode.HoverProvider {
     private async getUserDefinedDocumentation(document: vscode.TextDocument, symbolName: string): Promise<string | undefined> {
         // Import the definition provider dynamically to avoid circular dependency
         const { OpenSCADDefinitionProvider } = await import('./openscadDefinitionProvider');
-        const definitionProvider = new OpenSCADDefinitionProvider(
-            vscode.window.createOutputChannel('URDF Editor')
-        );
+        const definitionProvider = new OpenSCADDefinitionProvider(tracing);
 
         // Check current file first
         let doc = definitionProvider.getSymbolDocumentation(document, symbolName);

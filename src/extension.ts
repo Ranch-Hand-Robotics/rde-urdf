@@ -148,6 +148,25 @@ export function activate(context: vscode.ExtensionContext) {
     onStartServer: () => startMcpServer(context),
     onStopServer: () => stopMcpServer()
   });
+  
+  // Watch for file saves to refresh all previews when dependent files change
+  const saveWatcher = vscode.workspace.onDidSaveTextDocument((document) => {
+    const ext = path.extname(document.uri.fsPath);
+    
+    // Check if the saved file is a URDF, Xacro, or OpenSCAD file
+    if (ext === '.urdf' || ext === '.xacro' || ext === '.scad') {
+      tracing.appendLine(`File saved: ${document.uri.fsPath}, refreshing all previews`);
+      
+      // Refresh all open previews since files can depend on each other
+      if (urdfManager) {
+        urdfManager.refresh();
+      }
+      if (urdfXRManager) {
+        urdfXRManager.refresh();
+      }
+    }
+  });
+  context.subscriptions.push(saveWatcher);
 
   vscode.window.registerCustomEditorProvider('urdf-editor.Viewer3D', viewProvider, 
     {
