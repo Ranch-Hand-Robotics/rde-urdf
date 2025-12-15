@@ -32,8 +32,9 @@ export default class WebXRPreviewManager {
   }
 
   public refresh(): void {
-    // WebXR preview doesn't need active refresh as it's server-based
-    // The content is regenerated on each request
+    // No action needed: WebXRPreviewManager uses a server-based approach where the URDF is processed
+    // fresh on every HTTP request via _getURDFText(). This ensures the preview always reflects the latest
+    // content, making explicit refresh unnecessary.
   }
 
   private startServer() {
