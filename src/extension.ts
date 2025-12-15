@@ -155,18 +155,14 @@ export function activate(context: vscode.ExtensionContext) {
     
     // Check if the saved file is a URDF, Xacro, or OpenSCAD file
     if (ext === '.urdf' || ext === '.xacro' || ext === '.scad') {
-      // Avoid duplicate refresh if the file is already being previewed (handled by preview.ts)
-      const isPreviewedByURDF = urdfManager && urdfManager.isPreviewingFile && urdfManager.isPreviewingFile(document.uri);
-      const isPreviewedByXR = urdfXRManager && urdfXRManager.isPreviewingFile && urdfXRManager.isPreviewingFile(document.uri);
-      if (!isPreviewedByURDF && !isPreviewedByXR) {
-        tracing.appendLine(`File saved: ${document.uri.fsPath}, refreshing all previews`);
-        // Refresh all open previews since files can depend on each other
-        if (urdfManager) {
-          urdfManager.refresh();
-        }
-        if (urdfXRManager) {
-          urdfXRManager.refresh();
-        }
+      tracing.appendLine(`File saved: ${document.uri.fsPath}, refreshing all previews`);
+      
+      // Refresh all open previews since files can depend on each other
+      if (urdfManager) {
+        urdfManager.refresh();
+      }
+      if (urdfXRManager) {
+        urdfXRManager.refresh();
       }
     }
   });
