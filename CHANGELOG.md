@@ -6,6 +6,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+##  [1.4.0] - 2025-12-26
+
 ### Added
 - **IntelliSense Features**:
   - Go to Definition (F12) support for OpenSCAD modules and functions across files
