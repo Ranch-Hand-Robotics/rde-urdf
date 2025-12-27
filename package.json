@@ -386,7 +386,7 @@
     "handlebars": "^4.7.8",
     "jsdom": "^25.0.1",
     "memfs": "^4.9.3",
-    "minimatch": "^10.1.1",
+    "minimatch": "^9.0.0",
     "openscad-wasm-prebuilt": "^1.2.0",
     "tslib": "^2.6.3",
     "xacro-parser": "^0.3.9",
