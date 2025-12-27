@@ -306,6 +306,29 @@ export async function processXacro(filename: string, resolvePackagesFxn: (packag
         while ((match = includePattern.exec(content)) !== null) {
           let includePath = match[2];
           
+          // Convert $(find package) to package:// format
+          includePath = convertFindToPackageUri(includePath);
+          
+          // Handle package:// protocol
+          if (includePath.startsWith("package://")) {
+            const packagePattern = /^package:\/\/([^/]+)(\/.*)?$/;
+            const packageMatch = packagePattern.exec(includePath);
+            
+            if (packageMatch && packageMatch.length >= 2) {
+              const packageName = packageMatch[1];
+              const resourcePath = packageMatch[2] || '';
+              
+              if (packageMap.has(packageName)) {
+                const packageBasePath = packageMap.get(packageName)!;
+                includePath = path.join(packageBasePath, resourcePath);
+              } else {
+                // Package not found, skip this include
+                tracing.appendLine(`Could not resolve package in include: package://${packageName} - package not found`);
+                continue;
+              }
+            }
+          }
+          
           // Resolve relative paths
           if (!path.isAbsolute(includePath)) {
             includePath = path.join(path.dirname(basePath), includePath);
