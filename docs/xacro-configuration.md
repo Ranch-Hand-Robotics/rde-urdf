@@ -62,6 +62,7 @@ When you preview a Xacro file, the extension:
 4. Detects `$(env ...)` and `$(optenv ...)` usage
 5. If any are found and no config exists, prompts user to create one
 
+> **Note:** Files included via `$(find package_name)` cannot be scanned during this detection phase because package paths are resolved later during Xacro parsing. If important arguments or environment variables are only declared in such included files, they may not be auto-detected. In that case, manually add the required `args` and `env` entries for the affected Xacro files to your `.vscode/xacro.json` configuration.
 ### Processing Phase
 
 During Xacro processing:
