@@ -13,6 +13,12 @@ suite('Recursive Include Scanning Test Suite', () => {
      * 
      * NOTE: This is a test-only implementation that duplicates the production logic
      * from utils.ts to enable unit testing without requiring the full VS Code environment.
+     * 
+     * REFACTORING OPPORTUNITY: The production scanning logic in utils.ts (processXacro function)
+     * could be extracted into a standalone, testable function in xacroConfig.ts. This would
+     * eliminate duplication and ensure tests verify actual production behavior. However, this
+     * would require refactoring processXacro to inject dependencies (packageMap, tracing, etc.)
+     * making it a larger change beyond the scope of this initial implementation.
      */
     function scanIncludesRecursively(mainFilePath: string): {
         argNames: string[];
