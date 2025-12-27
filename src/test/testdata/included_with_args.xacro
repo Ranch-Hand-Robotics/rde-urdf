@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  
+  <!-- Arguments in included file -->
+  <xacro:arg name="included_color" default="0.5 0.5 0.5 1.0"/>
+  <xacro:arg name="included_size" default="0.3"/>
+  
+  <!-- Properties using arguments from this file -->
+  <xacro:property name="color_value" value="$(arg included_color)"/>
+  <xacro:property name="size_value" value="$(arg included_size)"/>
+  
+  <!-- Environment variable usage -->
+  <xacro:property name="included_path" value="$(optenv INCLUDED_MESH_PATH /default/path)"/>
+  
+</robot>
