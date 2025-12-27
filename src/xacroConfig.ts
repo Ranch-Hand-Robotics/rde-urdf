@@ -219,7 +219,7 @@ export async function promptCreateConfig(
     const workspaceRoot = workspaceFolder?.uri.fsPath || vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
     let relativeFilePath = path.relative(workspaceRoot, filePath).replace(/\\/g, '/');
     if (!relativeFilePath.startsWith('.')) {
-        relativeFilePath = '${workspaceFolder}/' + relativeFilePath;
+        relativeFilePath = `\${workspaceFolder}/${relativeFilePath}`;
     }
 
     // Create file configuration
@@ -279,7 +279,7 @@ export async function addMissingArgument(
     const workspaceRoot = workspaceFolder?.uri.fsPath || vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
     let relativeFilePath = path.relative(workspaceRoot, filePath).replace(/\\/g, '/');
     if (!relativeFilePath.startsWith('.')) {
-        relativeFilePath = '${workspaceFolder}/' + relativeFilePath;
+        relativeFilePath = `\${workspaceFolder}/${relativeFilePath}`;
     }
 
     // Get or create file configuration

@@ -1,6 +1,7 @@
 import * as assert from 'assert';
 import * as path from 'path';
 import * as fs from 'fs';
+import { performance } from 'perf_hooks';
 
 suite('Recursive Include Scanning Test Suite', () => {
     const testDataPath = path.join(__dirname, '../../src/test/testdata');
@@ -227,7 +228,7 @@ suite('Recursive Include Scanning Test Suite', () => {
         const testArgs = Array.from({ length: 100 }, (_, i) => `arg_${i % 50}`);
 
         // Measure array-based approach
-        const startArray = Date.now();
+        const startArray = performance.now();
         const arrayResult: string[] = [];
         for (let i = 0; i < iterations; i++) {
             testArgs.forEach(arg => {
@@ -236,15 +237,15 @@ suite('Recursive Include Scanning Test Suite', () => {
                 }
             });
         }
-        const arrayTime = Date.now() - startArray;
+        const arrayTime = performance.now() - startArray;
 
         // Measure Set-based approach
-        const startSet = Date.now();
+        const startSet = performance.now();
         const setResult = new Set<string>();
         for (let i = 0; i < iterations; i++) {
             testArgs.forEach(arg => setResult.add(arg));
         }
-        const setTime = Date.now() - startSet;
+        const setTime = performance.now() - startSet;
 
         // Set-based should be faster or at least not significantly slower
         assert.ok(setTime <= arrayTime * 2, `Set-based approach should be efficient (Set: ${setTime}ms, Array: ${arrayTime}ms)`);
