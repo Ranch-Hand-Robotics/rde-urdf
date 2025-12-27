@@ -9,6 +9,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { minimatch } from 'minimatch';
+import { tracing } from './extension';
 
 /**
  * Configuration for a specific xacro file or pattern
@@ -53,7 +54,7 @@ export async function loadXacroConfig(workspaceFolder?: vscode.WorkspaceFolder):
         const config = JSON.parse(content) as XacroConfig;
         return config;
     } catch (error) {
-        vscode.window.showErrorMessage(`Failed to load xacro configuration: ${error instanceof Error ? error.message : String(error)}`);
+        tracing.appendLine(`Failed to load xacro configuration: ${error instanceof Error ? error.message : String(error)}`);
         return null;
     }
 }
@@ -78,7 +79,7 @@ export async function saveXacroConfig(config: XacroConfig, workspaceFolder?: vsc
         fs.writeFileSync(configPath, content, 'utf8');
         return true;
     } catch (error) {
-        vscode.window.showErrorMessage(`Failed to save xacro configuration: ${error instanceof Error ? error.message : String(error)}`);
+        tracing.appendLine(`Failed to save xacro configuration: ${error instanceof Error ? error.message : String(error)}`);
         return false;
     }
 }
