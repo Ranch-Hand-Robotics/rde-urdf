@@ -6,8 +6,12 @@ suite('Recursive Include Scanning Test Suite', () => {
     const testDataPath = path.join(__dirname, '../../src/test/testdata');
 
     /**
-     * Helper function to simulate the recursive include scanning logic
-     * This mimics what happens in utils.ts processXacro function
+     * Helper function to simulate the recursive include scanning logic.
+     * This mimics the implementation in utils.ts processXacro function for testing purposes.
+     * It provides the same recursive scanning behavior but in an isolated test environment.
+     * 
+     * NOTE: This is a test-only implementation that duplicates the production logic
+     * from utils.ts to enable unit testing without requiring the full VS Code environment.
      */
     function scanIncludesRecursively(mainFilePath: string): {
         argNames: string[];
@@ -150,6 +154,7 @@ suite('Recursive Include Scanning Test Suite', () => {
   <xacro:arg name="test_arg" default="value"/>
 </robot>`;
 
+        // Use try-finally to ensure cleanup even if test fails
         try {
             fs.writeFileSync(tempFilePath, tempContent);
             const result = scanIncludesRecursively(tempFilePath);
@@ -157,9 +162,13 @@ suite('Recursive Include Scanning Test Suite', () => {
             assert.strictEqual(result.filesProcessed, 1, 'Should process only the main file');
             assert.ok(result.argNames.includes('test_arg'), 'Should still detect arguments in main file');
         } finally {
-            // Clean up
-            if (fs.existsSync(tempFilePath)) {
-                fs.unlinkSync(tempFilePath);
+            // Cleanup: Remove temporary file if it exists
+            try {
+                if (fs.existsSync(tempFilePath)) {
+                    fs.unlinkSync(tempFilePath);
+                }
+            } catch (cleanupError) {
+                // Ignore cleanup errors in tests
             }
         }
     });
@@ -193,6 +202,7 @@ suite('Recursive Include Scanning Test Suite', () => {
   <xacro:arg name="mixed_arg" default="value"/>
 </robot>`;
 
+        // Use try-finally to ensure cleanup even if test fails
         try {
             fs.writeFileSync(tempFilePath, tempContent);
             const result = scanIncludesRecursively(tempFilePath);
@@ -200,8 +210,13 @@ suite('Recursive Include Scanning Test Suite', () => {
             assert.ok(result.filesProcessed >= 3, 'Should process main file and both includes');
             assert.ok(result.argNames.includes('mixed_arg'), 'Should detect argument from main file');
         } finally {
-            if (fs.existsSync(tempFilePath)) {
-                fs.unlinkSync(tempFilePath);
+            // Cleanup: Remove temporary file if it exists
+            try {
+                if (fs.existsSync(tempFilePath)) {
+                    fs.unlinkSync(tempFilePath);
+                }
+            } catch (cleanupError) {
+                // Ignore cleanup errors in tests
             }
         }
     });
@@ -239,6 +254,7 @@ suite('Recursive Include Scanning Test Suite', () => {
         const tempFilePath = path.join(testDataPath, 'temp_empty.xacro');
         const tempContent = '<?xml version="1.0"?>\n<robot xmlns:xacro="http://www.ros.org/wiki/xacro"></robot>';
 
+        // Use try-finally to ensure cleanup even if test fails
         try {
             fs.writeFileSync(tempFilePath, tempContent);
             const result = scanIncludesRecursively(tempFilePath);
@@ -247,8 +263,13 @@ suite('Recursive Include Scanning Test Suite', () => {
             assert.strictEqual(result.argNames.length, 0, 'Should have no arguments');
             assert.strictEqual(result.envNames.length, 0, 'Should have no env vars');
         } finally {
-            if (fs.existsSync(tempFilePath)) {
-                fs.unlinkSync(tempFilePath);
+            // Cleanup: Remove temporary file if it exists
+            try {
+                if (fs.existsSync(tempFilePath)) {
+                    fs.unlinkSync(tempFilePath);
+                }
+            } catch (cleanupError) {
+                // Ignore cleanup errors in tests
             }
         }
     });
