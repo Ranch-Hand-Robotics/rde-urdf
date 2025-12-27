@@ -198,6 +198,26 @@ export function activate(context: vscode.ExtensionContext) {
     }
   });
   context.subscriptions.push(previewURDFWebXRCommand);
+
+  // Watch for changes to xacro.json configuration file
+  const xacroConfigWatcher = vscode.workspace.createFileSystemWatcher('**/.vscode/xacro.json');
+  
+  xacroConfigWatcher.onDidChange(() => {
+    tracing.appendLine('xacro.json configuration file changed - refreshing previews');
+    urdfManager?.refresh();
+  });
+  
+  xacroConfigWatcher.onDidCreate(() => {
+    tracing.appendLine('xacro.json configuration file created - refreshing previews');
+    urdfManager?.refresh();
+  });
+  
+  xacroConfigWatcher.onDidDelete(() => {
+    tracing.appendLine('xacro.json configuration file deleted - refreshing previews');
+    urdfManager?.refresh();
+  });
+  
+  context.subscriptions.push(xacroConfigWatcher);
   const exportURDFCommand = vscode.commands.registerCommand("urdf-editor.export", (uri?: vscode.Uri) => {
     // Determine which URI to use
     let documentUri: vscode.Uri | undefined;
