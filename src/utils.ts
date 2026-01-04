@@ -7,6 +7,7 @@ import { JSDOM } from 'jsdom';
 import * as path from "path";
 import * as fs from "fs";
 import { tracing } from "./extension";
+import * as xacroConfig from './xacroConfig';
 
 
 
@@ -267,9 +268,11 @@ function resolvePackageUris(
 /**
  * Processes a xacro file with package resolution.
  * This function handles the processing pipeline:
- * 1. Uses XacroParser to parse the xacro file with custom getFileContents
- * 2. Maps package:// URIs to resolved paths after xacro processing
- * 3. Returns the final URDF content and any missing packages
+ * 1. Detects and prompts for xacro arguments and environment variables if needed
+ * 2. Loads configuration from .vscode/xacro.json if available
+ * 3. Uses XacroParser to parse the xacro file with custom getFileContents
+ * 4. Maps package:// URIs to resolved paths after xacro processing
+ * 5. Returns the final URDF content and any missing packages
  * 
  * @param filename The path to the xacro file to process
  * @param resolvePackagesFxn Function to resolve package URIs to webview URIs
@@ -284,12 +287,115 @@ export async function processXacro(filename: string, resolvePackagesFxn: (packag
       // Read the file content
       const xacroContents = fs.readFileSync(filename, { encoding: 'utf8' });
       
+      // Accumulate all arguments and environment variables from main file and includes
+      const allArgNamesSet = new Set<string>();
+      const allEnvNamesSet = new Set<string>();
+      const processedFiles = new Set<string>(); // Track processed files to avoid duplicates
+      
+      // Detect arguments and environment variables in the main file
+      const mainDetected = xacroConfig.detectArgumentsAndEnv(xacroContents);
+      mainDetected.argNames.forEach(arg => allArgNamesSet.add(arg));
+      mainDetected.envNames.forEach(env => allEnvNamesSet.add(env));
+      processedFiles.add(path.normalize(filename));
+      
+      // Function to recursively scan included files for arguments
+      const scanIncludedFile = (content: string, basePath: string) => {
+        // Find all xacro:include directives (supports both single and double quotes)
+        const includePattern = /<xacro:include\s+filename=(['"])([^'"]+)\1/g;
+        let match;
+        while ((match = includePattern.exec(content)) !== null) {
+          let includePath = match[2];
+          
+          // Convert $(find package) to package:// format
+          includePath = convertFindToPackageUri(includePath);
+          
+          // Handle package:// protocol
+          if (includePath.startsWith("package://")) {
+            const packagePattern = /^package:\/\/([^/]+)(\/.*)?$/;
+            const packageMatch = packagePattern.exec(includePath);
+            
+            if (packageMatch && packageMatch.length >= 2) {
+              const packageName = packageMatch[1];
+              const resourcePath = packageMatch[2] || '';
+              
+              if (packageMap.has(packageName)) {
+                const packageBasePath = packageMap.get(packageName)!;
+                includePath = path.join(packageBasePath, resourcePath);
+              } else {
+                // Package not found, skip this include
+                tracing.appendLine(`Could not resolve package in include: package://${packageName} - package not found`);
+                continue;
+              }
+            }
+          }
+          
+          // Resolve relative paths
+          if (!path.isAbsolute(includePath)) {
+            includePath = path.join(path.dirname(basePath), includePath);
+          }
+          
+          const normalizedIncludePath = path.normalize(includePath);
+          
+          // Skip if already processed
+          if (processedFiles.has(normalizedIncludePath)) {
+            continue;
+          }
+          processedFiles.add(normalizedIncludePath);
+          
+          try {
+            if (fs.existsSync(includePath)) {
+              const includeContent = fs.readFileSync(includePath, { encoding: 'utf8' });
+              const includeDetected = xacroConfig.detectArgumentsAndEnv(includeContent);
+              
+              // Add newly detected arguments (Set automatically handles duplicates)
+              includeDetected.argNames.forEach(arg => allArgNamesSet.add(arg));
+              
+              // Add newly detected environment variables (Set automatically handles duplicates)
+              includeDetected.envNames.forEach(env => allEnvNamesSet.add(env));
+              
+              // Recursively scan this included file
+              scanIncludedFile(includeContent, includePath);
+            }
+          } catch (error) {
+            // Silently skip files that can't be read
+            tracing.appendLine(`Could not scan included file for arguments: ${includePath}`);
+          }
+        }
+      };
+      
+      // Scan all included files
+      scanIncludedFile(xacroContents, filename);
+      
+      // Convert sets to arrays for compatibility with existing code
+      const allArgNames = Array.from(allArgNamesSet);
+      const allEnvNames = Array.from(allEnvNamesSet);
+      
+      // Load xacro configuration
+      let config = await xacroConfig.loadXacroConfig();
+      
+      // If arguments or environment variables are detected and no config exists, prompt user
+      const hasArgs = allArgNames.length > 0;
+      const hasEnv = allEnvNames.length > 0;
+      if ((hasArgs || hasEnv) && !config) {
+        await xacroConfig.promptCreateConfig(filename, allArgNames, allEnvNames);
+        // Reload config after creation
+        config = await xacroConfig.loadXacroConfig();
+      }
+      
+      // Find configuration for this specific file
+      const fileConfig = xacroConfig.findConfigForFile(filename, config);
+      
       // Get package map for resolving package:// URIs and $(find) idioms
       const packageMap = await getPackages();
 
       // Setup XacroParser with custom getFileContents
       global.DOMParser = new JSDOM().window.DOMParser;
       const parser = new XacroParser();
+      
+      // Set arguments from configuration if available
+      if (fileConfig?.args) {
+        parser.arguments = fileConfig.args;
+      }
 
       parser.getFileContents = async (filePath: string): Promise<string> => {
         if (!filePath || filePath.trim() === "") {
@@ -376,19 +482,42 @@ export async function processXacro(filename: string, resolvePackagesFxn: (packag
         },
 
         optenv: (...args : Array<String>): string => {
-          // This function is not used in the current implementation
-          // but can be extended to handle other rospack commands if needed
-
-          tracing.appendLine(`rospack optenv is not supported currently. If you'd like to see this implemented, +1 https://github.com/Ranch-Hand-Robotics/rde-urdf/issues/45`);
-          if (args.length < 2) {
+          // Handle optional environment variables
+          // First argument is the env var name, rest are default values
+          if (args.length === 0) {
             return "";
           }
-          return args.slice(1).join("");
+          
+          const envName = args[0] as string;
+          const defaultValue = args.length > 1 ? args.slice(1).join("") : "";
+          
+          // Check configuration first
+          if (fileConfig?.env && fileConfig.env[envName] !== undefined && fileConfig.env[envName] !== "") {
+            return fileConfig.env[envName];
+          }
+          
+          // Then check actual environment
+          if (process.env[envName] !== undefined) {
+            return process.env[envName]!;
+          }
+          
+          // Return default value
+          return defaultValue;
         },
 
-        env: (env: string): string => {
-          // Get the environment variable if it exists, otherwise return empty string
-          return env[env.toString()] !== undefined ? env[env.toString()].toString() : "";
+        env: (envName: string): string => {
+          // Check configuration first
+          if (fileConfig?.env && fileConfig.env[envName] !== undefined && fileConfig.env[envName] !== "") {
+            return fileConfig.env[envName];
+          }
+          
+          // Then check actual environment
+          if (process.env[envName] !== undefined) {
+            return process.env[envName]!;
+          }
+          
+          // Return empty string if not found
+          return "";
         }
       };
 

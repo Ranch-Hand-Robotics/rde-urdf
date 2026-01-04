@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<robot name="test_robot_with_args" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  
+  <!-- Define arguments that can be passed from outside -->
+  <xacro:arg name="robot_name" default="default_robot"/>
+  <xacro:arg name="base_size" default="0.5"/>
+  <xacro:arg name="wheel_count" default="4"/>
+  
+  <!-- Properties using arguments -->
+  <xacro:property name="robot_name_value" value="$(arg robot_name)"/>
+  <xacro:property name="base_size_value" value="$(arg base_size)"/>
+  
+  <!-- Base link using argument values -->
+  <link name="$(arg robot_name)_base_link">
+    <visual>
+      <geometry>
+        <box size="$(arg base_size) $(arg base_size) 0.1"/>
+      </geometry>
+      <material name="base_material">
+        <color rgba="0.8 0.2 0.2 1.0"/>
+      </material>
+    </visual>
+  </link>
+  
+  <!-- Wheel link -->
+  <link name="wheel">
+    <visual>
+      <geometry>
+        <cylinder radius="0.1" length="0.05"/>
+      </geometry>
+      <material name="wheel_material">
+        <color rgba="0.2 0.2 0.2 1.0"/>
+      </material>
+    </visual>
+  </link>
+  
+  <joint name="wheel_joint" type="continuous">
+    <parent link="$(arg robot_name)_base_link"/>
+    <child link="wheel"/>
+    <origin xyz="0 0 -0.05" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+  
+</robot>
