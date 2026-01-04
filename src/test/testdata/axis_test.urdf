@@ -49,7 +49,7 @@
     <origin xyz="0.0 .5 0.0" rpy="0 0 0"/>
   </joint>
 
-  <!-- Blue box on Z axis at +2m -->
+  <!-- Blue box on Z axis at +0.75m -->
   <link name="z_axis_box">
     <visual>
       <geometry>
