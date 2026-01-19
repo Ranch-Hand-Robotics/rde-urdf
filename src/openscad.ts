@@ -874,10 +874,11 @@ export async function validateOpenSCAD(
       // callMain throws when OpenSCAD exits with non-zero code
       // Only add the error message if it's not a generic exit code message
       if (error instanceof Error) {
-        const msg = error.message;
-        // Avoid duplicating error messages that are just about the process exiting
-        const isExitCodeError = /exit|abort|halt|stopped/i.test(msg);
-        if (!isExitCodeError && msg && msg.trim()) {
+        const msg = error.message.trim();
+        // Filter out generic WASM exit messages - actual errors are in printErr
+        // Match messages that start with exit-related phrases
+        const isExitCodeError = /^(Program (exited|stopped|halted)|Aborted|Exception thrown)/i.test(msg);
+        if (!isExitCodeError && msg) {
           errors.push(msg);
         }
       }
