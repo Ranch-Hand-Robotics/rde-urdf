@@ -790,3 +790,109 @@ export async function generateAndSaveLibrariesDocumentation(outputPath: string, 
   const markdown = convertLibrariesDocumentationToMarkdown(doc);
   await fs.promises.writeFile(outputPath, markdown, 'utf8');
 }
+
+/**
+ * Result of OpenSCAD validation
+ */
+export interface OpenSCADValidationResult {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
+/**
+ * Validate an OpenSCAD file by attempting to compile it without rendering.
+ * This is useful for checking syntax and compilation errors before full rendering.
+ * 
+ * @param scadFilePath - Path to the OpenSCAD file to validate
+ * @param scadContent - Optional content to validate (if not provided, reads from file)
+ * @param workspaceRoot - Optional workspace root for library resolution
+ * @returns Validation result with any errors and warnings
+ */
+export async function validateOpenSCAD(
+  scadFilePath: string, 
+  scadContent?: string,
+  workspaceRoot?: string
+): Promise<OpenSCADValidationResult> {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  
+  try {
+    // Create OpenSCAD instance with error capturing
+    const openscad = await createOpenSCAD({
+      print: (text: string) => {
+        // Capture warnings from stdout
+        if (text && text.trim()) {
+          warnings.push(text);
+        }
+      },
+      printErr: (text: string) => {
+        // Capture errors from stderr
+        if (text && text.trim()) {
+          errors.push(text);
+        }
+      },
+    });
+
+    const instance = openscad.getInstance();
+
+    // Load OpenSCAD libraries
+    const libraryPaths = await getAllOpenSCADLibraryPaths(workspaceRoot, scadFilePath);
+    if (libraryPaths.length > 0) {
+      // Create a minimal silent trace object for validation
+      const silentTrace = {
+        name: 'silent',
+        append: () => {},
+        appendLine: () => {},
+        replace: () => {},
+        clear: () => {},
+        show: () => {},
+        hide: () => {},
+        dispose: () => {}
+      } as vscode.OutputChannel;
+      
+      await loadLibraryFiles(instance, libraryPaths, silentTrace);
+    }
+
+    // Read file content if not provided
+    const scadText = scadContent || await fs.promises.readFile(scadFilePath, 'utf8');
+    
+    // Write the SCAD file to the virtual filesystem
+    instance.FS.writeFile('/input.scad', scadText);
+    
+    // Try to compile the file without full rendering
+    // Use --export-format=echo to just parse and compile without geometry generation
+    const args = [
+      '--export-format=echo',
+      '/input.scad'
+    ];
+
+    try {
+      instance.callMain(args);
+    } catch (error) {
+      // Compilation errors will be captured in printErr callback
+      // The error here might just be the exit code
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      if (errorMsg && !errorMsg.includes('exit') && !errorMsg.includes('aborted')) {
+        errors.push(errorMsg);
+      }
+    }
+
+    // Determine if validation was successful
+    const valid = errors.length === 0;
+
+    return {
+      valid,
+      errors,
+      warnings
+    };
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    errors.push(`Validation failed: ${errorMsg}`);
+    return {
+      valid: false,
+      errors,
+      warnings
+    };
+  }
+}
