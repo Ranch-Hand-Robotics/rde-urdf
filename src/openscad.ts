@@ -870,11 +870,16 @@ export async function validateOpenSCAD(
     try {
       instance.callMain(args);
     } catch (error) {
-      // Compilation errors will be captured in printErr callback
-      // The error here might just be the exit code
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      if (errorMsg && !errorMsg.includes('exit') && !errorMsg.includes('aborted')) {
-        errors.push(errorMsg);
+      // Compilation errors are captured in printErr callback
+      // callMain throws when OpenSCAD exits with non-zero code
+      // Only add the error message if it's not a generic exit code message
+      if (error instanceof Error) {
+        const msg = error.message;
+        // Avoid duplicating error messages that are just about the process exiting
+        const isExitCodeError = /exit|abort|halt|stopped/i.test(msg);
+        if (!isExitCodeError && msg && msg.trim()) {
+          errors.push(msg);
+        }
       }
     }
 
