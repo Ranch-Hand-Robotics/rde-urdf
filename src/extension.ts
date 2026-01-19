@@ -79,6 +79,25 @@ async function stopMcpServer(): Promise<void> {
   }
 }
 
+/**
+ * Check if workspace contains URDF/Xacro/OpenSCAD files and start MCP server if found
+ */
+async function checkAndStartMcpServer(context: vscode.ExtensionContext): Promise<void> {
+  try {
+    // Search for URDF, Xacro, or OpenSCAD files in the workspace
+    const urdfFiles = await vscode.workspace.findFiles('**/*.{urdf,xacro,scad}', '**/node_modules/**', 1);
+    
+    if (urdfFiles.length > 0) {
+      tracing.appendLine(`Found ${urdfFiles.length > 0 ? 'URDF/Xacro/OpenSCAD' : ''} files in workspace, starting MCP server`);
+      await startMcpServer(context);
+    } else {
+      tracing.appendLine('No URDF/Xacro/OpenSCAD files found in workspace, MCP server will start on first preview');
+    }
+  } catch (error) {
+    tracing.appendLine(`Failed to check for files and start MCP server: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
 export function activate(context: vscode.ExtensionContext) {
 
   console.log('"urdf-editor" is now active!');
@@ -86,6 +105,9 @@ export function activate(context: vscode.ExtensionContext) {
   urdfXRManager = new WebXRPreviewManager(context, tracing);
   viewProvider = new Viewer3DProvider(context, tracing);
   vscode.window.registerWebviewPanelSerializer('urdfPreview_standalone', urdfManager);
+
+  // Start MCP server if URDF/Xacro/OpenSCAD files exist in workspace
+  checkAndStartMcpServer(context);
 
   // Register OpenSCAD IntelliSense completion provider
   const openscadCompletionProvider = vscode.languages.registerCompletionItemProvider(
