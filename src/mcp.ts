@@ -11,7 +11,7 @@ import { tracing } from './extension';
 import * as express from 'express';
 import { randomUUID } from 'node:crypto';
 import {urdfManager} from "./extension";
-import { generateOpenSCADLibrariesDocumentation, convertLibrariesDocumentationToMarkdown } from './openscad';
+import { generateOpenSCADLibrariesDocumentation, convertLibrariesDocumentationToMarkdown, validateOpenSCAD } from './openscad';
 
 /**
  * URDF MCP Server Implementation
@@ -302,6 +302,137 @@ export class UrdfMcpServer {
         throw new McpError(
           ErrorCode.InternalError,
           `Failed to take screenshot: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+    });
+
+    // Register the OpenSCAD validation tool
+    this.server.registerTool('validate_openscad', {
+        title: 'Validate OpenSCAD File for Compilation Errors',
+        description: 'Validates an OpenSCAD file by attempting to compile it and returns any syntax or compilation errors. Use this to check if your OpenSCAD code is valid before declaring completion. Parameters: filename (required - path to .scad file), content (optional - file content to validate instead of reading from file).',
+        inputSchema: {}
+    }, async (args) => {
+      try {
+        const argsObj = args as any;
+        const filename = argsObj.filename as string;
+        const content = argsObj.content as string | undefined;
+
+        if (!filename) {
+          return { 
+            content: [{ 
+              type: 'text', 
+              text: 'Missing required parameter: filename. Please provide the path to an OpenSCAD (.scad) file.'
+            }] 
+          };
+        }
+
+        tracing.appendLine(`MCP Server: Validating OpenSCAD file: ${filename}`);
+
+        // Resolve the file path
+        let fileUri: vscode.Uri;
+        try {
+          if (path.isAbsolute(filename)) {
+            fileUri = vscode.Uri.file(filename);
+          } else {
+            // Try to resolve relative to workspace
+            const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+            if (!workspaceRoot) {
+              return { 
+                content: [{ 
+                  type: 'text', 
+                  text: `Cannot resolve relative path "${filename}" - no workspace folder is open.`
+                }] 
+              };
+            }
+            fileUri = vscode.Uri.file(path.join(workspaceRoot, filename));
+          }
+        } catch (error) {
+          return { 
+            content: [{ 
+              type: 'text', 
+              text: `Invalid filename: "${filename}". Please provide a valid file path.`
+            }] 
+          };
+        }
+
+        // Check if the file exists (unless content is provided)
+        if (!content) {
+          try {
+            await vscode.workspace.fs.stat(fileUri);
+          } catch (error) {
+            return { 
+              content: [{ 
+                type: 'text', 
+                text: `File not found: "${fileUri.fsPath}". Please check the path and try again.`
+              }] 
+            };
+          }
+        }
+
+        // Check if it's a .scad file
+        const ext = path.extname(fileUri.fsPath).toLowerCase();
+        if (ext !== '.scad') {
+          return { 
+            content: [{ 
+              type: 'text', 
+              text: `File must be an OpenSCAD file (.scad), got: "${ext}".`
+            }] 
+          };
+        }
+
+        // Get workspace root for library resolution
+        const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+
+        // Validate the OpenSCAD file
+        const result = await validateOpenSCAD(fileUri.fsPath, content, workspaceRoot);
+
+        tracing.appendLine(`MCP Server: Validation complete. Valid: ${result.valid}, Errors: ${result.errors.length}, Warnings: ${result.warnings.length}`);
+
+        // Format the response
+        let responseText = '';
+        
+        if (result.valid) {
+          responseText = `✓ OpenSCAD file is valid and compiles successfully.\n\nFile: ${fileUri.fsPath}`;
+          
+          if (result.warnings.length > 0) {
+            responseText += '\n\n⚠ Warnings:\n';
+            result.warnings.forEach((warning, idx) => {
+              responseText += `${idx + 1}. ${warning}\n`;
+            });
+          }
+        } else {
+          responseText = `✗ OpenSCAD file has compilation errors.\n\nFile: ${fileUri.fsPath}\n\n`;
+          responseText += '❌ Errors:\n';
+          result.errors.forEach((error, idx) => {
+            responseText += `${idx + 1}. ${error}\n`;
+          });
+          
+          if (result.warnings.length > 0) {
+            responseText += '\n⚠ Warnings:\n';
+            result.warnings.forEach((warning, idx) => {
+              responseText += `${idx + 1}. ${warning}\n`;
+            });
+          }
+        }
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: responseText,
+            },
+          ],
+        };
+      } catch (error) {
+        tracing.appendLine(`MCP Server error validating OpenSCAD: ${error instanceof Error ? error.message : String(error)}`);
+        
+        if (error instanceof McpError) {
+          throw error;
+        }
+        
+        throw new McpError(
+          ErrorCode.InternalError,
+          `Failed to validate OpenSCAD file: ${error instanceof Error ? error.message : String(error)}`
         );
       }
     });
