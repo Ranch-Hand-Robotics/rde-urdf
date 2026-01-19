@@ -88,7 +88,7 @@ async function checkAndStartMcpServer(context: vscode.ExtensionContext): Promise
     const urdfFiles = await vscode.workspace.findFiles('**/*.{urdf,xacro,scad}', '**/node_modules/**', 1);
     
     if (urdfFiles.length > 0) {
-      tracing.appendLine(`Found ${urdfFiles.length > 0 ? 'URDF/Xacro/OpenSCAD' : ''} files in workspace, starting MCP server`);
+      tracing.appendLine('Found URDF/Xacro/OpenSCAD files in workspace, starting MCP server');
       await startMcpServer(context);
     } else {
       tracing.appendLine('No URDF/Xacro/OpenSCAD files found in workspace, MCP server will start on first preview');
