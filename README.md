@@ -81,7 +81,6 @@ For detailed configuration options, see the [Configuration Guide](https://ranchh
 
 ### OpenSCAD Library Configuration
 The extension automatically loads OpenSCAD libraries from:
-- **SCAD file directory**: The directory containing the SCAD file being previewed (highest priority)
 - **SCAD file directory**: The directory containing the SCAD file (highest priority). Only this directory and its subdirectories are loaded from the workspace.
 - **OS-specific default paths**:
   - **Windows**: `%USERPROFILE%\Documents\OpenSCAD\libraries`

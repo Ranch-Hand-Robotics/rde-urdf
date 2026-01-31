@@ -165,7 +165,7 @@ async function checkAndWarnIfScadFileAtRoot(scadFilePath: string, workspaceRoot:
   // Check if SCAD file is directly in the workspace root
   if (normalizedScadDir === normalizedWorkspaceRoot) {
     // Always log warning to output channel
-    trace.appendLine('WARNING: OpenSCAD file is located at the workspace root. This will copy all files from the workspace root (including subdirectories) which may include large folders like .git, node_modules, or venv, causing significant delays in rendering.');
+    trace.appendLine('WARNING: OpenSCAD file is located at the workspace root. This will copy all files and subdirectories from the workspace root (excluding common directories like .git, node_modules, venv) which may still cause significant rendering delays if you have many files.');
     trace.appendLine('RECOMMENDATION: Create a subdirectory for your OpenSCAD files, or create a stub .scad file in a subdirectory that references the root-level file using include/use statements.');
     
     // Check if user has dismissed this warning for this workspace
@@ -175,7 +175,7 @@ async function checkAndWarnIfScadFileAtRoot(scadFilePath: string, workspaceRoot:
     if (!dismissed) {
       // Show dialog with "Don't show again" option
       const result = await vscode.window.showWarningMessage(
-        'OpenSCAD file is at workspace root. This will copy all workspace files (including .git, node_modules, etc.) which may cause rendering delays. Consider moving your SCAD file to a subdirectory for better performance.',
+        'OpenSCAD file is at workspace root. This will copy all workspace files (large directories like .git, node_modules are excluded, but this may still cause rendering delays). Consider moving your SCAD file to a subdirectory for better performance.',
         'OK',
         "Don't Show Again"
       );
