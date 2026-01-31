@@ -82,12 +82,13 @@ For detailed configuration options, see the [Configuration Guide](https://ranchh
 ### OpenSCAD Library Configuration
 The extension automatically loads OpenSCAD libraries from:
 - **SCAD file directory**: The directory containing the SCAD file being previewed (highest priority)
-- **Workspace root**: The current workspace folder
-- **Windows**: `%USERPROFILE%\Documents\OpenSCAD\libraries`
-- **Linux**: `$HOME/.local/share/OpenSCAD/libraries` 
-- **macOS**: `$HOME/Documents/OpenSCAD/libraries`
+- **SCAD file directory**: The directory containing the SCAD file (highest priority). Only this directory and its subdirectories are loaded from the workspace.
+- **OS-specific default paths**:
+  - **Windows**: `%USERPROFILE%\Documents\OpenSCAD\libraries`
+  - **Linux**: `$HOME/.local/share/OpenSCAD/libraries` 
+  - **macOS**: `$HOME/Documents/OpenSCAD/libraries`
 
-This means SCAD files in the same directory or subdirectories can reference each other without any configuration.
+**Performance Note**: The workspace root is no longer automatically included to avoid copying large directories like `.git`, `node_modules`, or virtual environments. Files in the same directory as the SCAD file can still reference each other.
 
 To add additional custom library paths:
 1. Open VS Code settings (`Ctrl+,`)
