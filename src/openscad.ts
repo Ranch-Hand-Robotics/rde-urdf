@@ -30,6 +30,36 @@ export interface OpenSCADModule {
 }
 
 /**
+ * Directories to exclude when copying library files to avoid performance issues
+ */
+const EXCLUDED_DIRECTORIES = new Set([
+  '.git',
+  'node_modules',
+  'venv',
+  '.venv',
+  'env',
+  '.env',
+  '__pycache__',
+  '.pytest_cache',
+  '.tox',
+  'dist',
+  'build',
+  '.cache',
+  '.vscode',
+  '.idea',
+  'target',  // Rust/Java build directories
+  'bin',
+  'obj',
+]);
+
+/**
+ * Check if a directory should be excluded from copying
+ */
+function shouldExcludeDirectory(dirName: string): boolean {
+  return EXCLUDED_DIRECTORIES.has(dirName);
+}
+
+/**
  * Get default OpenSCAD library paths based on the operating system
  */
 export function getDefaultOpenSCADLibraryPaths(): string[] {
@@ -80,13 +110,8 @@ export async function getAllOpenSCADLibraryPaths(workspaceRoot?: string, scadFil
   // Get default OS-specific paths
   const defaultPaths = getDefaultOpenSCADLibraryPaths();
   
-  // Automatically include workspace root if available
-  const workspacePaths: string[] = [];
-  if (workspaceRoot) {
-    workspacePaths.push(workspaceRoot);
-  }
-  
   // If processing a specific SCAD file, include its directory (highest priority)
+  // This is the ONLY workspace-related path we include to avoid copying entire workspace
   const scadDirPaths: string[] = [];
   if (scadFilePath) {
     const scadDir = path.dirname(scadFilePath);
@@ -96,8 +121,9 @@ export async function getAllOpenSCADLibraryPaths(workspaceRoot?: string, scadFil
   // Resolve workspace variables in user paths
   const resolvedUserPaths = userLibraryPaths.map(p => resolveWorkspaceVariables(p, workspaceRoot));
   
-  // Combine all paths (SCAD dir first for highest priority, then workspace, then defaults, then user paths)
-  const allPaths = [...scadDirPaths, ...workspacePaths, ...defaultPaths, ...resolvedUserPaths];
+  // Combine all paths (SCAD dir first for highest priority, then defaults, then user paths)
+  // NOTE: We no longer automatically include workspace root to avoid copying entire workspace
+  const allPaths = [...scadDirPaths, ...defaultPaths, ...resolvedUserPaths];
   
   // Filter to only existing directories and remove duplicates
   const existingPaths: string[] = [];
@@ -119,6 +145,48 @@ export async function getAllOpenSCADLibraryPaths(workspaceRoot?: string, scadFil
   }
   
   return existingPaths;
+}
+
+/**
+ * Check if a SCAD file is at the workspace root and warn the user if needed
+ * @param scadFilePath - Path to the SCAD file being processed
+ * @param workspaceRoot - Workspace root path
+ * @param trace - Output channel for logging
+ */
+async function checkAndWarnIfScadFileAtRoot(scadFilePath: string, workspaceRoot: string | undefined, trace: vscode.OutputChannel): Promise<void> {
+  if (!workspaceRoot) {
+    return;
+  }
+  
+  const scadDir = path.dirname(scadFilePath);
+  const normalizedScadDir = path.normalize(scadDir);
+  const normalizedWorkspaceRoot = path.normalize(workspaceRoot);
+  
+  // Check if SCAD file is directly in the workspace root
+  if (normalizedScadDir === normalizedWorkspaceRoot) {
+    // Always log warning to output channel
+    trace.appendLine('WARNING: OpenSCAD file is located at the workspace root. This will copy all files from the workspace root (including subdirectories) which may include large folders like .git, node_modules, or venv, causing significant delays in rendering.');
+    trace.appendLine('RECOMMENDATION: Create a subdirectory for your OpenSCAD files, or create a stub .scad file in a subdirectory that references the root-level file using include/use statements.');
+    
+    // Check if user has dismissed this warning for this workspace
+    const config = vscode.workspace.getConfiguration('urdf-editor', vscode.Uri.file(workspaceRoot));
+    const dismissed = config.get<boolean>('openscadRootWarningDismissed', false);
+    
+    if (!dismissed) {
+      // Show dialog with "Don't show again" option
+      const result = await vscode.window.showWarningMessage(
+        'OpenSCAD file is at workspace root. This will copy all workspace files (including .git, node_modules, etc.) which may cause rendering delays. Consider moving your SCAD file to a subdirectory for better performance.',
+        'OK',
+        "Don't Show Again"
+      );
+      
+      if (result === "Don't Show Again") {
+        // Save the preference in workspace settings
+        await config.update('openscadRootWarningDismissed', true, vscode.ConfigurationTarget.Workspace);
+        trace.appendLine('User dismissed workspace root warning. This setting can be reset in workspace settings (urdf-editor.openscadRootWarningDismissed).');
+      }
+    }
+  }
 }
 
 /**
@@ -155,6 +223,12 @@ export async function loadLibraryDirectory(
     const entries = await fs.promises.readdir(fullPath, { withFileTypes: true });
     
     for (const entry of entries) {
+      // Skip excluded directories
+      if (entry.isDirectory() && shouldExcludeDirectory(entry.name)) {
+        trace.appendLine(`Skipping excluded directory: ${entry.name}`);
+        continue;
+      }
+      
       const entryPath = path.join(relativePath, entry.name);
       const entryPathUnix = path.posix.join(relativePath, entry.name);
       const fullEntryPath = path.join(fullPath, entry.name);
@@ -209,6 +283,9 @@ export async function convertOpenSCADToSTL(scadFilePath: string, trace: vscode.O
 
     // Get workspace root for variable resolution
     const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    
+    // Check and warn if SCAD file is at workspace root
+    await checkAndWarnIfScadFileAtRoot(scadFilePath, workspaceRoot, trace);
     
     // Load OpenSCAD libraries
     trace.appendLine(`Loading OpenSCAD libraries...`);
@@ -299,6 +376,9 @@ export async function convertOpenSCADToSTLCancellable(
       
       // Get workspace root for variable resolution
       const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+      
+      // Check and warn if SCAD file is at workspace root
+      await checkAndWarnIfScadFileAtRoot(scadFilePath, workspaceRoot, trace);
       
       // Load OpenSCAD libraries and encode them as base64
       trace.appendLine(`Loading OpenSCAD libraries...`);
@@ -439,6 +519,12 @@ async function loadLibraryDirectoryBase64(
     const entries = await fs.promises.readdir(fullPath, { withFileTypes: true });
     
     for (const entry of entries) {
+      // Skip excluded directories
+      if (entry.isDirectory() && shouldExcludeDirectory(entry.name)) {
+        trace.appendLine(`Skipping excluded directory: ${entry.name}`);
+        continue;
+      }
+      
       const entryPath = path.join(relativePath, entry.name);
       const entryPathUnix = path.posix.join(relativePath, entry.name);
       const fullEntryPath = path.join(fullPath, entry.name);
