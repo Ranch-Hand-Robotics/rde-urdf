@@ -287,7 +287,13 @@
           },
           "title": "OpenSCAD Library Paths",
           "default": [],
-          "description": "Additional library paths for OpenSCAD files. Use ${workspace} to reference subdirectories. The SCAD file's directory, workspace root, and OS-specific default locations are automatically included."
+          "description": "Additional library paths for OpenSCAD files. Use ${workspace} to reference subdirectories. The SCAD file's directory and OS-specific default locations are automatically included. Note: The workspace root is no longer automatically included to avoid copying large directories."
+        },
+        "urdf-editor.openscadRootWarningDismissed": {
+          "type": "boolean",
+          "default": false,
+          "title": "OpenSCAD Root Warning Dismissed",
+          "description": "Whether the warning about OpenSCAD files at workspace root has been dismissed for this workspace. Reset to false to see the warning again."
         },
         "urdf-editor.MirrorReflectivity": {
           "type": "number",
