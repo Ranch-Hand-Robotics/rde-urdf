@@ -38,13 +38,14 @@ async function configureAgentAndSkillsSettings(context: vscode.ExtensionContext)
 
     // Configure workspace settings to point to relative paths within workspace
     // VSCode only supports relative paths from workspace root, not absolute paths
-    await config.update('chat.agentFilesLocations', ['.github/agents'], vscode.ConfigurationTarget.Workspace);
-    tracing.appendLine('Configured chat.agentFilesLocations to: .github/agents');
+    // Use object format with boolean values as required by VSCode
+    await config.update('chat.agentFilesLocations', { '.rde/agents': true }, vscode.ConfigurationTarget.Workspace);
+    tracing.appendLine('Configured chat.agentFilesLocations to: .rde/agents');
     
-    await config.update('chat.agentSkillsLocations', ['.github/skills'], vscode.ConfigurationTarget.Workspace);
-    tracing.appendLine('Configured chat.agentSkillsLocations to: .github/skills');
+    await config.update('chat.agentSkillsLocations', { '.rde/skills': true }, vscode.ConfigurationTarget.Workspace);
+    tracing.appendLine('Configured chat.agentSkillsLocations to: .rde/skills');
 
-    // Enable agent skills feature to allow Copilot to discover skills from .github/skills
+    // Enable agent skills feature to allow Copilot to discover skills
     await config.update('chat.useAgentSkills', true, vscode.ConfigurationTarget.Workspace);
     tracing.appendLine('Enabled chat.useAgentSkills for workspace');
 

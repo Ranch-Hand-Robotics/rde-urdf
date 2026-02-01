@@ -40,9 +40,9 @@ export async function copyDirectory(srcDir: string, destDir: string): Promise<vo
  * Check if agents and skills exist in the workspace
  */
 export function doAgentsAndSkillsExist(workspacePath: string): boolean {
-  const githubDir = path.join(workspacePath, '.github');
-  const agentsDir = path.join(githubDir, 'agents');
-  const skillsDir = path.join(githubDir, 'skills');
+  const rdeDir = path.join(workspacePath, '.rde');
+  const agentsDir = path.join(rdeDir, 'agents');
+  const skillsDir = path.join(rdeDir, 'skills');
   
   return fs.existsSync(agentsDir) && fs.existsSync(skillsDir);
 }
@@ -52,9 +52,9 @@ export function doAgentsAndSkillsExist(workspacePath: string): boolean {
  */
 export async function setupAgentsAndSkills(context: vscode.ExtensionContext, workspacePath: string): Promise<void> {
   try {
-    const githubDir = path.join(workspacePath, '.github');
-    const agentsDir = path.join(githubDir, 'agents');
-    const skillsDir = path.join(githubDir, 'skills');
+    const rdeDir = path.join(workspacePath, '.rde');
+    const agentsDir = path.join(rdeDir, 'agents');
+    const skillsDir = path.join(rdeDir, 'skills');
 
     const extensionAgentsDir = path.join(context.extensionPath, '.github', 'agents');
     const extensionSkillsDir = path.join(context.extensionPath, '.github', 'skills');
@@ -74,12 +74,12 @@ export async function setupAgentsAndSkills(context: vscode.ExtensionContext, wor
     // Configure workspace settings to point to the relative paths within workspace
     const config = vscode.workspace.getConfiguration();
     
-    // Use relative paths from workspace root
-    await config.update('chat.agentFilesLocations', ['.github/agents'], vscode.ConfigurationTarget.Workspace);
-    tracing.appendLine('Configured chat.agentFilesLocations to: .github/agents');
+    // Use object format with boolean values as required by VSCode
+    await config.update('chat.agentFilesLocations', { '.rde/agents': true }, vscode.ConfigurationTarget.Workspace);
+    tracing.appendLine('Configured chat.agentFilesLocations to: .rde/agents');
     
-    await config.update('chat.agentSkillsLocations', ['.github/skills'], vscode.ConfigurationTarget.Workspace);
-    tracing.appendLine('Configured chat.agentSkillsLocations to: .github/skills');
+    await config.update('chat.agentSkillsLocations', { '.rde/skills': true }, vscode.ConfigurationTarget.Workspace);
+    tracing.appendLine('Configured chat.agentSkillsLocations to: .rde/skills');
     
     await config.update('chat.useAgentSkills', true, vscode.ConfigurationTarget.Workspace);
     tracing.appendLine('Enabled chat.useAgentSkills for workspace');
