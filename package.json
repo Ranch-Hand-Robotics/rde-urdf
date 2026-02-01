@@ -269,6 +269,24 @@
           "default": 1,
           "description": "Distance in meters from the camera to the robot in the URDF preview panel."
         },
+        "urdf-editor.CameraAlpha": {
+          "type": "number",
+          "title": "Camera Alpha Angle",
+          "default": -1.0471975511965976,
+          "description": "Horizontal rotation around Y-axis in radians for the camera (default: -π/3). This sets the initial camera angle when viewing URDF/Xacro files."
+        },
+        "urdf-editor.CameraBeta": {
+          "type": "number",
+          "title": "Camera Beta Angle",
+          "default": 1.3089969389957472,
+          "description": "Vertical rotation from Y-axis in radians for the camera (default: 5π/12). This sets the initial camera elevation when viewing URDF/Xacro files."
+        },
+        "urdf-editor.CameraRadius": {
+          "type": "number",
+          "title": "Camera Radius",
+          "default": 1,
+          "description": "Distance from target in meters for the camera (default: 1). This sets how far the camera is from the focus point when viewing URDF/Xacro files."
+        },
         "urdf-editor.DebugUI": {
           "type": "boolean",
           "title": "Debug User Interface",
@@ -378,7 +396,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.3",
-    "@ranchhandrobotics/babylon_ros": "^0.3.0",
+    "@ranchhandrobotics/babylon_ros": "^0.4.0",
     "@polyhobbyist/babylon-collada-loader": "^0.0.8",
     "@types/xmldom": "^0.1.34",
     "@vscode/debugadapter": "^1.66.0",
