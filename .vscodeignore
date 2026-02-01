@@ -16,6 +16,6 @@ vsc-extension-quickstart.md
 # Don't ignore these folders in the dist directory
 !dist/snippets/**
 !dist/schemas/**
-!dist/prompts/**
+!dist/.github/**
 !dist/CHANGELOG.md
 !dist/README.md

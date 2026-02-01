@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as fs from 'fs';
 import URDFPreviewManager from "./previewManager";
 import WebXRPreviewManager from "./webXRPreviewManager";
 import * as util from "./utils";
@@ -18,6 +19,79 @@ export var urdfManager: URDFPreviewManager | null = null;
 export var urdfXRManager: WebXRPreviewManager | null = null;
 var viewProvider: Viewer3DProvider | null = null;
 var mcpServer: UrdfMcpServer | null = null;
+
+/**
+ * Copy URDF agent and skills from extension directory to workspace .github directory
+ * This allows GitHub Copilot and compatible editors to discover them automatically
+ */
+async function copyAgentAndSkillsToWorkspace(context: vscode.ExtensionContext): Promise<void> {
+  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+  if (!workspaceFolder) {
+    // No workspace open, skip
+    return;
+  }
+
+  const workspaceRoot = workspaceFolder.uri.fsPath;
+  const extensionAgentsDir = path.join(context.extensionPath, '.github', 'agents');
+  const extensionSkillsDir = path.join(context.extensionPath, '.github', 'skills');
+  const workspaceGithubDir = path.join(workspaceRoot, '.github');
+  const workspaceAgentsDir = path.join(workspaceGithubDir, 'agents');
+  const workspaceSkillsDir = path.join(workspaceGithubDir, 'skills');
+
+  try {
+    // Create .github directory in workspace if it doesn't exist
+    if (!fs.existsSync(workspaceGithubDir)) {
+      await fs.promises.mkdir(workspaceGithubDir, { recursive: true });
+    }
+
+    // Copy agents directory
+    if (fs.existsSync(extensionAgentsDir)) {
+      await copyDirectory(extensionAgentsDir, workspaceAgentsDir);
+      tracing.appendLine(`Copied URDF agents to ${workspaceAgentsDir}`);
+    }
+
+    // Copy skills directory
+    if (fs.existsSync(extensionSkillsDir)) {
+      await copyDirectory(extensionSkillsDir, workspaceSkillsDir);
+      tracing.appendLine(`Copied URDF skills to ${workspaceSkillsDir}`);
+    }
+  } catch (error) {
+    tracing.appendLine(`Failed to copy agents/skills to workspace: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
+ * Recursively copy a directory
+ */
+async function copyDirectory(src: string, dest: string): Promise<void> {
+  // Create destination directory if it doesn't exist
+  if (!fs.existsSync(dest)) {
+    await fs.promises.mkdir(dest, { recursive: true });
+  }
+
+  const entries = await fs.promises.readdir(src, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+
+    if (entry.isDirectory()) {
+      await copyDirectory(srcPath, destPath);
+    } else {
+      // Only copy if file doesn't exist or is different
+      let shouldCopy = true;
+      if (fs.existsSync(destPath)) {
+        const srcContent = await fs.promises.readFile(srcPath, 'utf8');
+        const destContent = await fs.promises.readFile(destPath, 'utf8');
+        shouldCopy = srcContent !== destContent;
+      }
+      
+      if (shouldCopy) {
+        await fs.promises.copyFile(srcPath, destPath);
+      }
+    }
+  }
+}
 
 async function startMcpServer(context: vscode.ExtensionContext): Promise<void> {
   if (mcpServer && mcpServer.getStatus().isRunning) {
@@ -79,7 +153,7 @@ async function stopMcpServer(): Promise<void> {
   }
 }
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
 
   console.log('"urdf-editor" is now active!');
   urdfManager = new URDFPreviewManager(context, tracing);
@@ -177,16 +251,9 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
-  // Force the workspace to use github.copilot.chat.codeGeneration.useInstructionFiles to true
-  vscode.workspace.getConfiguration().update('github.copilot.chat.codeGeneration.useInstructionFiles', true, vscode.ConfigurationTarget.Workspace);
-
-  // Add prompts/urdf-instructions.md to the github.copilot.chat.codeGeneration.instruction array if it is not already there
-  var instructions = vscode.workspace.getConfiguration().get('github.copilot.chat.codeGeneration.instruction') as Array<any> || [];
-  if (!instructions.includes('urdf-instructions.md')) {
-    let extensionInstructionPath = path.join(context.extensionPath, 'prompts/urdf-instructions.md');
-    instructions.push({ file: extensionInstructionPath });
-    vscode.workspace.getConfiguration().update('github.copilot.chat.codeGeneration.instruction', instructions, vscode.ConfigurationTarget.Workspace);
-  }
+  // Copy URDF agent and skills to workspace .github directory
+  // This allows Copilot to discover them automatically
+  await copyAgentAndSkillsToWorkspace(context);
 
   // Register language support for URDF and XACRO files
   // This is now handled by the package.json configuration
