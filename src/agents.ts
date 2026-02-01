@@ -56,6 +56,8 @@ export async function setupAgentsAndSkills(context: vscode.ExtensionContext, wor
     const agentsDir = path.join(rdeDir, 'agents');
     const skillsDir = path.join(rdeDir, 'skills');
 
+    // Source: extension's .github directory (bundled with extension)
+    // Destination: workspace's .rde directory (for RDE-specific isolation)
     const extensionAgentsDir = path.join(context.extensionPath, '.github', 'agents');
     const extensionSkillsDir = path.join(context.extensionPath, '.github', 'skills');
 
