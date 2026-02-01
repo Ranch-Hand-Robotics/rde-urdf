@@ -36,19 +36,15 @@ async function configureAgentAndSkillsSettings(context: vscode.ExtensionContext)
   try {
     const config = vscode.workspace.getConfiguration();
 
-    // Get extension's .github directory path
-    const extensionAgentsPath = path.join(context.extensionPath, '.github', 'agents');
-    const extensionSkillsPath = path.join(context.extensionPath, '.github', 'skills');
+    // Configure workspace settings to point to relative paths within workspace
+    // VSCode only supports relative paths from workspace root, not absolute paths
+    await config.update('chat.agentFilesLocations', ['.github/agents'], vscode.ConfigurationTarget.Workspace);
+    tracing.appendLine('Configured chat.agentFilesLocations to: .github/agents');
+    
+    await config.update('chat.agentSkillsLocations', ['.github/skills'], vscode.ConfigurationTarget.Workspace);
+    tracing.appendLine('Configured chat.agentSkillsLocations to: .github/skills');
 
-    // Configure chat.agentFilesLocations to point to extension's agents directory
-    await config.update('chat.agentFilesLocations', [extensionAgentsPath], vscode.ConfigurationTarget.Workspace);
-    tracing.appendLine(`Configured chat.agentFilesLocations to: ${extensionAgentsPath}`);
-
-    // Configure chat.agentSkillsLocations to point to extension's skills directory
-    await config.update('chat.agentSkillsLocations', [extensionSkillsPath], vscode.ConfigurationTarget.Workspace);
-    tracing.appendLine(`Configured chat.agentSkillsLocations to: ${extensionSkillsPath}`);
-
-    // Enable agent skills feature to allow Copilot to discover skills
+    // Enable agent skills feature to allow Copilot to discover skills from .github/skills
     await config.update('chat.useAgentSkills', true, vscode.ConfigurationTarget.Workspace);
     tracing.appendLine('Enabled chat.useAgentSkills for workspace');
 
@@ -132,6 +128,9 @@ export async function activate(context: vscode.ExtensionContext) {
   urdfXRManager = new WebXRPreviewManager(context, tracing);
   viewProvider = new Viewer3DProvider(context, tracing);
   vscode.window.registerWebviewPanelSerializer('urdfPreview_standalone', urdfManager);
+
+  // Check if agents and skills need to be set up
+  await agents.checkAndOfferAgentsAndSkillsSetup(context);
 
   // Register OpenSCAD IntelliSense completion provider
   const openscadCompletionProvider = vscode.languages.registerCompletionItemProvider(
@@ -425,7 +424,7 @@ export async function activate(context: vscode.ExtensionContext) {
       return;
     }
 
-    await agents.setupAgentsAndSkills(context);
+    await agents.setupAgentsAndSkills(context, workspaceFolder.uri.fsPath);
   });
 
   const resetAgentsSetupCommand = vscode.commands.registerCommand("urdf-editor.resetAgentsSetup", async () => {
