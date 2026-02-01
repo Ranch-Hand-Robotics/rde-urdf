@@ -122,9 +122,9 @@ suite('Camera Configuration Test Suite', () => {
 		assert.ok(typeof beta === 'number', 'CameraBeta should be a number');
 		assert.ok(typeof radius === 'number', 'CameraRadius should be a number');
 		
-		// Verify default values (approximately, allowing for floating point precision)
-		assert.ok(Math.abs(alpha - (-Math.PI / 3)) < 0.0001, 'CameraAlpha should default to -π/3');
-		assert.ok(Math.abs(beta - (5 * Math.PI / 12)) < 0.0001, 'CameraBeta should default to 5π/12');
+		// Verify default values in degrees
+		assert.strictEqual(alpha, -60, 'CameraAlpha should default to -60 degrees');
+		assert.strictEqual(beta, 75, 'CameraBeta should default to 75 degrees');
 		assert.strictEqual(radius, 1, 'CameraRadius should default to 1');
 	});
 });

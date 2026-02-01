@@ -97,11 +97,17 @@ export class Viewer3DDocument implements vscode.CustomDocument {
   private updateColors() {
     if (this.webviewPanel) {
         const config = vscode.workspace.getConfiguration("urdf-editor");
+        // Convert degrees to radians for camera angles
+        const alphaInDegrees = config.get("CameraAlpha", -60);
+        const betaInDegrees = config.get("CameraBeta", 75);
+        const alphaInRadians = (alphaInDegrees * Math.PI) / 180;
+        const betaInRadians = (betaInDegrees * Math.PI) / 180;
+        
         this.webviewPanel.webview.postMessage({ 
             command: 'colors', 
             cameraRadius: config.get("CameraDistanceToRobot", "1.0"),
-            defaultCameraAlpha: config.get("CameraAlpha", -Math.PI / 3),
-            defaultCameraBeta: config.get("CameraBeta", 5 * Math.PI / 12),
+            defaultCameraAlpha: alphaInRadians,
+            defaultCameraBeta: betaInRadians,
             defaultCameraRadius: config.get("CameraRadius", 1),
             backgroundColor: config.get("BackgroundColor", "#000000"),
             gridLineColor: config.get("GridMinorColor", "#00FF00"),
