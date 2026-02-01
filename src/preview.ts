@@ -186,9 +186,18 @@ export default class URDFPreview
     private updateColors() {
         if (this._webview) {
             const config = vscode.workspace.getConfiguration("urdf-editor");
+            // Convert degrees to radians for camera angles
+            const alphaInDegrees = config.get("CameraAlpha", 12);
+            const betaInDegrees = config.get("CameraBeta", 75);
+            const alphaInRadians = (alphaInDegrees * Math.PI) / 180;
+            const betaInRadians = (betaInDegrees * Math.PI) / 180;
+            
             this._webview.webview.postMessage({ 
                 command: 'colors', 
-                cameraRadius: config.get("CameraDistanceToRobot", "1.0"),
+                cameraRadius: config.get("CameraDistanceToRobot", 1),
+                defaultCameraAlpha: alphaInRadians,
+                defaultCameraBeta: betaInRadians,
+                defaultCameraRadius: config.get("CameraDistanceToRobot", 1),
                 backgroundColor: config.get("BackgroundColor", "#000000"),
                 gridLineColor: config.get("GridMinorColor", "#00FF00"),
                 gridMainColor: config.get("GridMainColor", "#001100"),

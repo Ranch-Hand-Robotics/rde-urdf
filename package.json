@@ -284,6 +284,19 @@
           "default": 1,
           "description": "Distance in meters from the camera to the robot in the URDF preview panel."
         },
+        "urdf-editor.CameraAlpha": {
+          "type": "number",
+          "title": "Camera Alpha Angle",
+          "default": 120,
+          "description": "Horizontal rotation around Y-axis in degrees for the camera (default: 120°). This sets the initial camera angle when viewing URDF/Xacro files."
+        },
+        "urdf-editor.CameraBeta": {
+          "type": "number",
+          "title": "Camera Beta Angle",
+          "default": 75,
+          "description": "Vertical rotation from Y-axis in degrees for the camera (default: 75°). This sets the initial camera elevation when viewing URDF/Xacro files."
+        },
+
         "urdf-editor.DebugUI": {
           "type": "boolean",
           "title": "Debug User Interface",
@@ -302,7 +315,13 @@
           },
           "title": "OpenSCAD Library Paths",
           "default": [],
-          "description": "Additional library paths for OpenSCAD files. Use ${workspace} to reference subdirectories. The SCAD file's directory, workspace root, and OS-specific default locations are automatically included."
+          "description": "Additional library paths for OpenSCAD files. Use ${workspace} to reference subdirectories. The SCAD file's directory and OS-specific default locations are automatically included. Note: The workspace root is no longer automatically included to avoid copying large directories."
+        },
+        "urdf-editor.openscadRootWarningDismissed": {
+          "type": "boolean",
+          "default": false,
+          "title": "OpenSCAD Root Warning Dismissed",
+          "description": "Whether the warning about OpenSCAD files at workspace root has been dismissed for this workspace. Reset to false to see the warning again."
         },
         "urdf-editor.MirrorReflectivity": {
           "type": "number",
@@ -387,6 +406,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.3",
+    "@ranchhandrobotics/babylon_ros": "^0.4.0",
     "@polyhobbyist/babylon-collada-loader": "^0.0.8",
     "@ranchhandrobotics/babylon_ros": "^0.3.0",
     "@types/xmldom": "^0.1.34",
