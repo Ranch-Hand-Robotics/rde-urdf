@@ -73,6 +73,7 @@ suite('Extension Test Suite', () => {
 		const result = await validateOpenSCAD('/tmp/test.scad', validContent);
 		assert.strictEqual(result.valid, true, 'Valid OpenSCAD content should be marked as valid');
 		assert.strictEqual(result.errors.length, 0, 'Valid content should have no errors');
+	});
 });
 
 suite('OpenSCAD Library Paths Test Suite', () => {
