@@ -272,8 +272,8 @@
         "urdf-editor.CameraAlpha": {
           "type": "number",
           "title": "Camera Alpha Angle",
-          "default": -60,
-          "description": "Horizontal rotation around Y-axis in degrees for the camera (default: -60°). This sets the initial camera angle when viewing URDF/Xacro files."
+          "default": 120,
+          "description": "Horizontal rotation around Y-axis in degrees for the camera (default: 120°). This sets the initial camera angle when viewing URDF/Xacro files."
         },
         "urdf-editor.CameraBeta": {
           "type": "number",
@@ -281,12 +281,7 @@
           "default": 75,
           "description": "Vertical rotation from Y-axis in degrees for the camera (default: 75°). This sets the initial camera elevation when viewing URDF/Xacro files."
         },
-        "urdf-editor.CameraRadius": {
-          "type": "number",
-          "title": "Camera Radius",
-          "default": 1,
-          "description": "Distance from target in meters for the camera (default: 1). This sets how far the camera is from the focus point when viewing URDF/Xacro files."
-        },
+
         "urdf-editor.DebugUI": {
           "type": "boolean",
           "title": "Debug User Interface",

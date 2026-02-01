@@ -115,16 +115,16 @@ suite('Camera Configuration Test Suite', () => {
 		// Check that the new camera settings exist with their default values
 		const alpha = config.get("CameraAlpha");
 		const beta = config.get("CameraBeta");
-		const radius = config.get("CameraRadius");
+		const distance = config.get("CameraDistanceToRobot");
 		
 		// Verify they are numbers
 		assert.ok(typeof alpha === 'number', 'CameraAlpha should be a number');
 		assert.ok(typeof beta === 'number', 'CameraBeta should be a number');
-		assert.ok(typeof radius === 'number', 'CameraRadius should be a number');
+		assert.ok(typeof distance === 'number', 'CameraDistanceToRobot should be a number');
 		
 		// Verify default values in degrees
 		assert.strictEqual(alpha, -60, 'CameraAlpha should default to -60 degrees');
 		assert.strictEqual(beta, 75, 'CameraBeta should default to 75 degrees');
-		assert.strictEqual(radius, 1, 'CameraRadius should default to 1');
+		assert.strictEqual(distance, 1, 'CameraDistanceToRobot should default to 1');
 	});
 });

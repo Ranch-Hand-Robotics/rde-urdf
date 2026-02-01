@@ -127,6 +127,10 @@ async function main() {
               radius: message.defaultCameraRadius
             });
             
+            // Also set the current camera position to match the defaults
+            currentRobotScene.camera.alpha = message.defaultCameraAlpha;
+            currentRobotScene.camera.beta = message.defaultCameraBeta;
+            
             if (typeof robotSceneAny.setCameraRadius === 'function') {
               robotSceneAny.setCameraRadius(message.cameraRadius);
             } else {

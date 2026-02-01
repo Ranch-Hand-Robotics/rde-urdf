@@ -105,10 +105,10 @@ export class Viewer3DDocument implements vscode.CustomDocument {
         
         this.webviewPanel.webview.postMessage({ 
             command: 'colors', 
-            cameraRadius: config.get("CameraDistanceToRobot", "1.0"),
+            cameraRadius: config.get("CameraDistanceToRobot", 1),
             defaultCameraAlpha: alphaInRadians,
             defaultCameraBeta: betaInRadians,
-            defaultCameraRadius: config.get("CameraRadius", 1),
+            defaultCameraRadius: config.get("CameraDistanceToRobot", 1),
             backgroundColor: config.get("BackgroundColor", "#000000"),
             gridLineColor: config.get("GridMinorColor", "#00FF00"),
             gridMainColor: config.get("GridMainColor", "#001100"),
