@@ -6,6 +6,12 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+### Added
+- **Camera Positioning API**:
+  - Updated to babylon_ros 0.4.0 with new `setDefaultCameraPosition()` API
+  - New extension settings for camera angles: `CameraAlpha`, `CameraBeta`, and `CameraRadius`
+  - Configurable default camera position for URDF/Xacro preview
+
 ##  [1.4.0] - 2025-12-26
 
 ### Added

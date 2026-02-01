@@ -123,9 +123,9 @@ async function main() {
             // Set default camera position using new API if available
             if (typeof robotSceneAny.setDefaultCameraPosition === 'function') {
               robotSceneAny.setDefaultCameraPosition({
-                alpha: message.cameraAlpha,
-                beta: message.cameraBeta,
-                radius: message.cameraRadiusNew
+                alpha: message.defaultCameraAlpha,
+                beta: message.defaultCameraBeta,
+                radius: message.defaultCameraRadius
               });
             }
             
