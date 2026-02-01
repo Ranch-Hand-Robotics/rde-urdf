@@ -45,8 +45,7 @@ OpenSCAD (.scad) files are processed using dedicated utilities in `src/openscad.
 
 #### Library Support
 OpenSCAD library loading supports:
-- **SCAD file directory**: Automatically included with highest priority (the directory containing the SCAD file being processed)
-- **Workspace root**: Automatically included for all workspaces
+- **SCAD file directory**: Automatically included with highest priority (the directory containing the SCAD file being processed). **NOTE**: Only the SCAD file's directory is included from the workspace - the workspace root is no longer automatically added to avoid copying large directories like `.git`, `node_modules`, or virtual environments.
 - **OS-specific default paths**:
   - Windows: `%USERPROFILE%\Documents\OpenSCAD\libraries`
   - Linux: `$HOME/.local/share/OpenSCAD/libraries`
@@ -55,6 +54,7 @@ OpenSCAD library loading supports:
 - **Workspace variables**: `${workspaceFolder}` resolves to workspace root
 - **Automatic discovery**: Only existing directories are included
 - **Recursive loading**: Subdirectories and files (.scad, .stl, .dxf) loaded into virtual filesystem
+- **Directory exclusion**: Automatically excludes common directories like `.git`, `node_modules`, `venv`, `__pycache__`, `dist`, `build`, etc. to improve performance
 
 #### Library Documentation
 The extension can generate comprehensive documentation of available OpenSCAD libraries:

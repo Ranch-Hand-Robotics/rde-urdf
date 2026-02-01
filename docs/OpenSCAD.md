@@ -25,13 +25,17 @@ The editor provides several language features for OpenSCAD:
 
 ### OpenSCAD Library Configuration
 The extension automatically loads OpenSCAD libraries from:
-- **SCAD file directory**: The directory containing the SCAD file being previewed (highest priority)
-- **Workspace root**: The current workspace folder
-- **Windows**: `%USERPROFILE%\Documents\OpenSCAD\libraries`
-- **Linux**: `$HOME/.local/share/OpenSCAD/libraries` 
-- **macOS**: `$HOME/Documents/OpenSCAD/libraries`
+- **SCAD file directory**: The directory containing the SCAD file being previewed (highest priority). Only this directory and its subdirectories are loaded from the workspace.
+- **OS-specific default paths**:
+  - **Windows**: `%USERPROFILE%\Documents\OpenSCAD\libraries`
+  - **Linux**: `$HOME/.local/share/OpenSCAD/libraries` 
+  - **macOS**: `$HOME/Documents/OpenSCAD/libraries`
 
-This means SCAD files in the same directory or subdirectories can reference each other without any configuration.
+**Important Performance Notes**:
+- The workspace root is **no longer automatically included** to avoid copying large directories like `.git`, `node_modules`, or virtual environments.
+- Files in the same directory as the SCAD file can reference each other without any configuration.
+- If your SCAD file is at the workspace root, all workspace files will be copied, which may cause rendering delays. Consider organizing SCAD files in a subdirectory for better performance.
+- Certain directories are automatically excluded from copying: `.git`, `node_modules`, `venv`, `.venv`, `env`, `.env`, `__pycache__`, `.pytest_cache`, `.tox`, `dist`, `build`, `.cache`, `.vscode`, `.idea`, `target`, `bin`, `obj`
 
 To add additional custom library paths:
 1. Open VS Code settings (`Ctrl+,`)

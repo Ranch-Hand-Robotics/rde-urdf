@@ -120,6 +120,17 @@ async function main() {
             // Use new API methods if available, otherwise fall back to direct property access
             const robotSceneAny = currentRobotScene as any;
             
+            // Set default camera position using new API
+            robotSceneAny.setDefaultCameraPosition({
+              alpha: message.defaultCameraAlpha,
+              beta: message.defaultCameraBeta,
+              radius: message.defaultCameraRadius
+            });
+            
+            // Also set the current camera position to match the defaults
+            currentRobotScene.camera.alpha = message.defaultCameraAlpha;
+            currentRobotScene.camera.beta = message.defaultCameraBeta;
+            
             if (typeof robotSceneAny.setCameraRadius === 'function') {
               robotSceneAny.setCameraRadius(message.cameraRadius);
             } else {
