@@ -35,7 +35,10 @@
     "url": "https://github.com/sponsors/Ranch-Hand-Robotics"
   },
   "activationEvents": [
-    "onWebviewPanel:urdfPreview"
+    "onWebviewPanel:urdfPreview",
+    "workspaceContains:**/*.urdf",
+    "workspaceContains:**/*.xacro",
+    "workspaceContains:**/*.scad"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -123,6 +126,18 @@
         "title": "Generate OpenSCAD Libraries Documentation",
         "category": "URDF",
         "icon": "$(book)"
+      },
+      {
+        "command": "urdf-editor.setupAgents",
+        "title": "Setup Agents and Skills",
+        "category": "URDF",
+        "icon": "$(extensions)"
+      },
+      {
+        "command": "urdf-editor.resetAgentsSetup",
+        "title": "Reset Agents and Skills Setup",
+        "category": "URDF",
+        "icon": "$(refresh)"
       },
       {
         "command": "urdf-editor.startMcpServer",

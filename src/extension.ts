@@ -9,10 +9,13 @@ import { OpenSCADCompletionProvider, OpenSCADHoverProvider } from './openscadCom
 import { URDFXacroCompletionProvider, URDFXacroHoverProvider } from './urdfXacroCompletion';
 import { OpenSCADDefinitionProvider } from './openscadDefinitionProvider';
 import { URDFDefinitionProvider } from './urdfDefinitionProvider';
-
 import { Viewer3DProvider } from './3DViewerProvider';
+import * as agents from './agents';
 
 export var tracing: vscode.OutputChannel = vscode.window.createOutputChannel("URDF Editor");
+
+// Initialize agents module with tracing
+agents.setTracing(tracing);
 
 export var urdfManager: URDFPreviewManager | null = null;
 export var urdfXRManager: WebXRPreviewManager | null = null;
@@ -20,9 +23,8 @@ var viewProvider: Viewer3DProvider | null = null;
 var mcpServer: UrdfMcpServer | null = null;
 
 /**
- * Configure workspace settings to point Copilot to extension's agent and skills directories
- * This allows GitHub Copilot and compatible editors to discover them automatically
- * without copying files to the user's workspace
+ * Configure workspace settings to enable GitHub Copilot agent skills and instruction files
+ * This allows GitHub Copilot to discover and use skills from the extension
  */
 async function configureAgentAndSkillsSettings(context: vscode.ExtensionContext): Promise<void> {
   const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
@@ -33,30 +35,14 @@ async function configureAgentAndSkillsSettings(context: vscode.ExtensionContext)
 
   try {
     const config = vscode.workspace.getConfiguration();
-    const extensionSkillsPath = path.join(context.extensionPath, '.github', 'skills');
-    const extensionAgentsPath = path.join(context.extensionPath, '.github', 'agents');
 
-    // Enable experimental agent skills feature
+    // Enable agent skills feature to allow Copilot to discover skills from .github/skills
     await config.update('chat.useAgentSkills', true, vscode.ConfigurationTarget.Workspace);
     tracing.appendLine('Enabled chat.useAgentSkills for workspace');
 
-    // Configure skills path to point to extension directory
-    // Note: chat.agent.skills.path may not be available in all VS Code versions
-    // This is an experimental feature
-    try {
-      await config.update('chat.agent.skills.path', extensionSkillsPath, vscode.ConfigurationTarget.Workspace);
-      tracing.appendLine(`Configured skills path to: ${extensionSkillsPath}`);
-    } catch (error) {
-      tracing.appendLine(`Note: chat.agent.skills.path setting not available: ${error instanceof Error ? error.message : String(error)}`);
-    }
-
-    // Create a .copilot directory reference for agents if supported
-    // This is experimental and may not work in all environments
-    const copilotConfig = config.get('copilot') as any || {};
-    if (!copilotConfig.agentsPath) {
-      await config.update('copilot.agentsPath', extensionAgentsPath, vscode.ConfigurationTarget.Workspace);
-      tracing.appendLine(`Configured agents path to: ${extensionAgentsPath}`);
-    }
+    // Enable Copilot to use instruction files from the extension
+    await config.update('github.copilot.chat.codeGeneration.useInstructionFiles', true, vscode.ConfigurationTarget.Workspace);
+    tracing.appendLine('Enabled github.copilot.chat.codeGeneration.useInstructionFiles for workspace');
 
   } catch (error) {
     tracing.appendLine(`Failed to configure agent/skills settings: ${error instanceof Error ? error.message : String(error)}`);
@@ -126,10 +112,17 @@ async function stopMcpServer(): Promise<void> {
 export async function activate(context: vscode.ExtensionContext) {
 
   console.log('"urdf-editor" is now active!');
+  
+  // Initialize agents module with context
+  agents.setExtensionContext(context);
+  
   urdfManager = new URDFPreviewManager(context, tracing);
   urdfXRManager = new WebXRPreviewManager(context, tracing);
   viewProvider = new Viewer3DProvider(context, tracing);
   vscode.window.registerWebviewPanelSerializer('urdfPreview_standalone', urdfManager);
+
+  // Check if agents and skills need to be set up
+  await agents.checkAndOfferAgentsAndSkillsSetup(context);
 
   // Register OpenSCAD IntelliSense completion provider
   const openscadCompletionProvider = vscode.languages.registerCompletionItemProvider(
@@ -416,8 +409,24 @@ export async function activate(context: vscode.ExtensionContext) {
     }
   });
 
+  const setupAgentsCommand = vscode.commands.registerCommand("urdf-editor.setupAgents", async () => {
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder) {
+      vscode.window.showErrorMessage('No workspace folder open');
+      return;
+    }
+
+    await agents.setupAgentsAndSkills(context, workspaceFolder.uri.fsPath);
+  });
+
+  const resetAgentsSetupCommand = vscode.commands.registerCommand("urdf-editor.resetAgentsSetup", async () => {
+    await agents.resetAgentsSetupState();
+  });
+
   context.subscriptions.push(takeScreenshotCommand);
   context.subscriptions.push(generateOpenSCADDocsCommand);
+  context.subscriptions.push(setupAgentsCommand);
+  context.subscriptions.push(resetAgentsSetupCommand);
 }
 
 export async function deactivate() {
