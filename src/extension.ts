@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import * as fs from 'fs';
 import URDFPreviewManager from "./previewManager";
 import WebXRPreviewManager from "./webXRPreviewManager";
 import * as util from "./utils";
@@ -21,75 +20,46 @@ var viewProvider: Viewer3DProvider | null = null;
 var mcpServer: UrdfMcpServer | null = null;
 
 /**
- * Copy URDF agent and skills from extension directory to workspace .github directory
+ * Configure workspace settings to point Copilot to extension's agent and skills directories
  * This allows GitHub Copilot and compatible editors to discover them automatically
+ * without copying files to the user's workspace
  */
-async function copyAgentAndSkillsToWorkspace(context: vscode.ExtensionContext): Promise<void> {
+async function configureAgentAndSkillsSettings(context: vscode.ExtensionContext): Promise<void> {
   const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
   if (!workspaceFolder) {
     // No workspace open, skip
     return;
   }
 
-  const workspaceRoot = workspaceFolder.uri.fsPath;
-  const extensionAgentsDir = path.join(context.extensionPath, '.github', 'agents');
-  const extensionSkillsDir = path.join(context.extensionPath, '.github', 'skills');
-  const workspaceGithubDir = path.join(workspaceRoot, '.github');
-  const workspaceAgentsDir = path.join(workspaceGithubDir, 'agents');
-  const workspaceSkillsDir = path.join(workspaceGithubDir, 'skills');
-
   try {
-    // Create .github directory in workspace if it doesn't exist
-    if (!fs.existsSync(workspaceGithubDir)) {
-      await fs.promises.mkdir(workspaceGithubDir, { recursive: true });
+    const config = vscode.workspace.getConfiguration();
+    const extensionSkillsPath = path.join(context.extensionPath, '.github', 'skills');
+    const extensionAgentsPath = path.join(context.extensionPath, '.github', 'agents');
+
+    // Enable experimental agent skills feature
+    await config.update('chat.useAgentSkills', true, vscode.ConfigurationTarget.Workspace);
+    tracing.appendLine('Enabled chat.useAgentSkills for workspace');
+
+    // Configure skills path to point to extension directory
+    // Note: chat.agent.skills.path may not be available in all VS Code versions
+    // This is an experimental feature
+    try {
+      await config.update('chat.agent.skills.path', extensionSkillsPath, vscode.ConfigurationTarget.Workspace);
+      tracing.appendLine(`Configured skills path to: ${extensionSkillsPath}`);
+    } catch (error) {
+      tracing.appendLine(`Note: chat.agent.skills.path setting not available: ${error instanceof Error ? error.message : String(error)}`);
     }
 
-    // Copy agents directory
-    if (fs.existsSync(extensionAgentsDir)) {
-      await copyDirectory(extensionAgentsDir, workspaceAgentsDir);
-      tracing.appendLine(`Copied URDF agents to ${workspaceAgentsDir}`);
+    // Create a .copilot directory reference for agents if supported
+    // This is experimental and may not work in all environments
+    const copilotConfig = config.get('copilot') as any || {};
+    if (!copilotConfig.agentsPath) {
+      await config.update('copilot.agentsPath', extensionAgentsPath, vscode.ConfigurationTarget.Workspace);
+      tracing.appendLine(`Configured agents path to: ${extensionAgentsPath}`);
     }
 
-    // Copy skills directory
-    if (fs.existsSync(extensionSkillsDir)) {
-      await copyDirectory(extensionSkillsDir, workspaceSkillsDir);
-      tracing.appendLine(`Copied URDF skills to ${workspaceSkillsDir}`);
-    }
   } catch (error) {
-    tracing.appendLine(`Failed to copy agents/skills to workspace: ${error instanceof Error ? error.message : String(error)}`);
-  }
-}
-
-/**
- * Recursively copy a directory
- */
-async function copyDirectory(src: string, dest: string): Promise<void> {
-  // Create destination directory if it doesn't exist
-  if (!fs.existsSync(dest)) {
-    await fs.promises.mkdir(dest, { recursive: true });
-  }
-
-  const entries = await fs.promises.readdir(src, { withFileTypes: true });
-
-  for (const entry of entries) {
-    const srcPath = path.join(src, entry.name);
-    const destPath = path.join(dest, entry.name);
-
-    if (entry.isDirectory()) {
-      await copyDirectory(srcPath, destPath);
-    } else {
-      // Only copy if file doesn't exist or is different
-      let shouldCopy = true;
-      if (fs.existsSync(destPath)) {
-        const srcContent = await fs.promises.readFile(srcPath, 'utf8');
-        const destContent = await fs.promises.readFile(destPath, 'utf8');
-        shouldCopy = srcContent !== destContent;
-      }
-      
-      if (shouldCopy) {
-        await fs.promises.copyFile(srcPath, destPath);
-      }
-    }
+    tracing.appendLine(`Failed to configure agent/skills settings: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -251,9 +221,9 @@ export async function activate(context: vscode.ExtensionContext) {
     }
   );
 
-  // Copy URDF agent and skills to workspace .github directory
-  // This allows Copilot to discover them automatically
-  await copyAgentAndSkillsToWorkspace(context);
+  // Configure workspace settings to point to URDF agent and skills
+  // This allows Copilot to discover them from the extension directory
+  await configureAgentAndSkillsSettings(context);
 
   // Register language support for URDF and XACRO files
   // This is now handled by the package.json configuration
