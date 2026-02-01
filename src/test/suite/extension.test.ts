@@ -107,3 +107,24 @@ suite('OpenSCAD Library Paths Test Suite', () => {
 		assert.ok(paths.length >= 0, 'Should return a paths array');
 	});
 });
+
+suite('Camera Configuration Test Suite', () => {
+	test('Camera angle settings exist in configuration', () => {
+		const config = vscode.workspace.getConfiguration("urdf-editor");
+		
+		// Check that the new camera settings exist with their default values
+		const alpha = config.get("CameraAlpha");
+		const beta = config.get("CameraBeta");
+		const distance = config.get("CameraDistanceToRobot");
+		
+		// Verify they are numbers
+		assert.ok(typeof alpha === 'number', 'CameraAlpha should be a number');
+		assert.ok(typeof beta === 'number', 'CameraBeta should be a number');
+		assert.ok(typeof distance === 'number', 'CameraDistanceToRobot should be a number');
+		
+		// Verify default values in degrees
+		assert.strictEqual(alpha, -60, 'CameraAlpha should default to -60 degrees');
+		assert.strictEqual(beta, 75, 'CameraBeta should default to 75 degrees');
+		assert.strictEqual(distance, 1, 'CameraDistanceToRobot should default to 1');
+	});
+});
