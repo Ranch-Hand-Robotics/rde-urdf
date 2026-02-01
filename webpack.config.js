@@ -53,7 +53,7 @@ const extensionConfig = {
       patterns: [
         { from: 'snippets', to: 'snippets' },
         { from: 'schemas', to: 'schemas' },
-        { from: 'prompts', to: 'prompts' },
+        { from: '.github', to: '.github' },
         { from: 'syntaxes', to: 'syntaxes' },
         { from: 'language-configuration.json', to: 'language-configuration.json' },
         { from: 'CHANGELOG.md', to: 'CHANGELOG.md' },
@@ -106,7 +106,7 @@ const webviewConfig = {
       patterns: [
         { from: 'snippets', to: 'snippets' },
         { from: 'schemas', to: 'schemas' },
-        { from: 'prompts', to: 'prompts' },
+        { from: '.github', to: '.github' },
         { from: 'syntaxes', to: 'syntaxes' },
         { from: 'language-configuration.json', to: 'language-configuration.json' },
         { from: 'CHANGELOG.md', to: 'CHANGELOG.md' },

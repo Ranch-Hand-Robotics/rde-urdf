@@ -31,6 +31,12 @@ export default class WebXRPreviewManager {
     this.startServer();
   }
 
+  public refresh(): void {
+    // No action needed: WebXRPreviewManager uses a server-based approach where the URDF is processed
+    // fresh on every HTTP request via _getURDFText(). This ensures the preview always reflects the latest
+    // content, making explicit refresh unnecessary.
+  }
+
   private startServer() {
     this._app.get('/', async (req, res) => {
       res.send(await this._getWebviewContent());

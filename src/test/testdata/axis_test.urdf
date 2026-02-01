@@ -1,0 +1,70 @@
+<?xml version="1.0"?>
+<robot name="axis_test">
+  
+  <!-- Base link at origin -->
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <box size="0.01 0.01 0.01"/>
+      </geometry>
+      <material name="white">
+        <color rgba="1.0 1.0 1.0 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <!-- Red box on X axis at +1m -->
+  <link name="x_axis_box">
+    <visual>
+      <geometry>
+        <box size="0.1 0.1 0.1"/>
+      </geometry>
+      <material name="red">
+        <color rgba="1.0 0.0 0.0 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="x_axis_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="x_axis_box"/>
+    <origin xyz="0.25 0.0 0.0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Green box on Y axis at +1.5m -->
+  <link name="y_axis_box">
+    <visual>
+      <geometry>
+        <box size="0.1 0.1 0.1"/>
+      </geometry>
+      <material name="green">
+        <color rgba="0.0 1.0 0.0 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="y_axis_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="y_axis_box"/>
+    <origin xyz="0.0 0.5 0.0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Blue box on Z axis at +0.75m -->
+  <link name="z_axis_box">
+    <visual>
+      <geometry>
+        <box size="0.1 0.1 0.1"/>
+      </geometry>
+      <material name="blue">
+        <color rgba="0.0 0.0 1.0 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="z_axis_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="z_axis_box"/>
+    <origin xyz="0.0 0.0 0.75" rpy="0 0 0"/>
+  </joint>
+
+</robot>

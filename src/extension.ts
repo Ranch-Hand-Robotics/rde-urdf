@@ -9,15 +9,45 @@ import { OpenSCADCompletionProvider, OpenSCADHoverProvider } from './openscadCom
 import { URDFXacroCompletionProvider, URDFXacroHoverProvider } from './urdfXacroCompletion';
 import { OpenSCADDefinitionProvider } from './openscadDefinitionProvider';
 import { URDFDefinitionProvider } from './urdfDefinitionProvider';
-
 import { Viewer3DProvider } from './3DViewerProvider';
+import * as agents from './agents';
 
 export var tracing: vscode.OutputChannel = vscode.window.createOutputChannel("URDF Editor");
+
+// Initialize agents module with tracing
+agents.setTracing(tracing);
 
 export var urdfManager: URDFPreviewManager | null = null;
 export var urdfXRManager: WebXRPreviewManager | null = null;
 var viewProvider: Viewer3DProvider | null = null;
 var mcpServer: UrdfMcpServer | null = null;
+
+/**
+ * Configure workspace settings to enable GitHub Copilot agent skills and instruction files
+ * This allows GitHub Copilot to discover and use skills from the extension
+ */
+async function configureAgentAndSkillsSettings(context: vscode.ExtensionContext): Promise<void> {
+  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+  if (!workspaceFolder) {
+    // No workspace open, skip
+    return;
+  }
+
+  try {
+    const config = vscode.workspace.getConfiguration();
+
+    // Enable agent skills feature to allow Copilot to discover skills from .github/skills
+    await config.update('chat.useAgentSkills', true, vscode.ConfigurationTarget.Workspace);
+    tracing.appendLine('Enabled chat.useAgentSkills for workspace');
+
+    // Enable Copilot to use instruction files from the extension
+    await config.update('github.copilot.chat.codeGeneration.useInstructionFiles', true, vscode.ConfigurationTarget.Workspace);
+    tracing.appendLine('Enabled github.copilot.chat.codeGeneration.useInstructionFiles for workspace');
+
+  } catch (error) {
+    tracing.appendLine(`Failed to configure agent/skills settings: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
 
 async function startMcpServer(context: vscode.ExtensionContext): Promise<void> {
   if (mcpServer && mcpServer.getStatus().isRunning) {
@@ -79,13 +109,20 @@ async function stopMcpServer(): Promise<void> {
   }
 }
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
 
   console.log('"urdf-editor" is now active!');
+  
+  // Initialize agents module with context
+  agents.setExtensionContext(context);
+  
   urdfManager = new URDFPreviewManager(context, tracing);
   urdfXRManager = new WebXRPreviewManager(context, tracing);
   viewProvider = new Viewer3DProvider(context, tracing);
   vscode.window.registerWebviewPanelSerializer('urdfPreview_standalone', urdfManager);
+
+  // Check if agents and skills need to be set up
+  await agents.checkAndOfferAgentsAndSkillsSetup(context);
 
   // Register OpenSCAD IntelliSense completion provider
   const openscadCompletionProvider = vscode.languages.registerCompletionItemProvider(
@@ -148,6 +185,25 @@ export function activate(context: vscode.ExtensionContext) {
     onStartServer: () => startMcpServer(context),
     onStopServer: () => stopMcpServer()
   });
+  
+  // Watch for file saves to refresh all previews when dependent files change
+  const saveWatcher = vscode.workspace.onDidSaveTextDocument((document) => {
+    const ext = path.extname(document.uri.fsPath);
+    
+    // Check if the saved file is a URDF, Xacro, or OpenSCAD file
+    if (ext === '.urdf' || ext === '.xacro' || ext === '.scad') {
+      tracing.appendLine(`File saved: ${document.uri.fsPath}, refreshing all previews`);
+      
+      // Refresh all open previews since files can depend on each other
+      if (urdfManager) {
+        urdfManager.refresh();
+      }
+      if (urdfXRManager) {
+        urdfXRManager.refresh();
+      }
+    }
+  });
+  context.subscriptions.push(saveWatcher);
 
   vscode.window.registerCustomEditorProvider('urdf-editor.Viewer3D', viewProvider, 
     {
@@ -158,16 +214,9 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
-  // Force the workspace to use github.copilot.chat.codeGeneration.useInstructionFiles to true
-  vscode.workspace.getConfiguration().update('github.copilot.chat.codeGeneration.useInstructionFiles', true, vscode.ConfigurationTarget.Workspace);
-
-  // Add prompts/urdf-instructions.md to the github.copilot.chat.codeGeneration.instruction array if it is not already there
-  var instructions = vscode.workspace.getConfiguration().get('github.copilot.chat.codeGeneration.instruction') as Array<any> || [];
-  if (!instructions.includes('urdf-instructions.md')) {
-    let extensionInstructionPath = path.join(context.extensionPath, 'prompts/urdf-instructions.md');
-    instructions.push({ file: extensionInstructionPath });
-    vscode.workspace.getConfiguration().update('github.copilot.chat.codeGeneration.instruction', instructions, vscode.ConfigurationTarget.Workspace);
-  }
+  // Configure workspace settings to point to URDF agent and skills
+  // This allows Copilot to discover them from the extension directory
+  await configureAgentAndSkillsSettings(context);
 
   // Register language support for URDF and XACRO files
   // This is now handled by the package.json configuration
@@ -380,8 +429,24 @@ export function activate(context: vscode.ExtensionContext) {
     }
   });
 
+  const setupAgentsCommand = vscode.commands.registerCommand("urdf-editor.setupAgents", async () => {
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder) {
+      vscode.window.showErrorMessage('No workspace folder open');
+      return;
+    }
+
+    await agents.setupAgentsAndSkills(context, workspaceFolder.uri.fsPath);
+  });
+
+  const resetAgentsSetupCommand = vscode.commands.registerCommand("urdf-editor.resetAgentsSetup", async () => {
+    await agents.resetAgentsSetupState();
+  });
+
   context.subscriptions.push(takeScreenshotCommand);
   context.subscriptions.push(generateOpenSCADDocsCommand);
+  context.subscriptions.push(setupAgentsCommand);
+  context.subscriptions.push(resetAgentsSetupCommand);
 }
 
 export async function deactivate() {
