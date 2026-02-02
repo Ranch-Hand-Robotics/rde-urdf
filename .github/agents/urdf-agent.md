@@ -1,7 +1,7 @@
 ---
 name: urdf-agent
 description: Expert in URDF/Xacro robot description files, OpenSCAD 3D modeling, and ROS robotics development
-tools: ['read', 'edit', 'search', 'web']
+tools: ['read', 'edit', 'search', 'web', 'urdf-mcp']
 ---
 
 # URDF/Xacro/OpenSCAD Robotics Agent
@@ -48,6 +48,19 @@ Help developers create, edit, and optimize robot description files and 3D models
 
 ## Extension Features You Can Leverage
 
+### URDF MCP Server
+The URDF MCP server provides embedded rendering and geometry validation capabilities:
+- `mcp_urdf_take_screenshot()` - Render and screenshot the current active URDF/Xacro/OpenSCAD file
+- `mcp_urdf_take_screenshot_by_filename()` - Render and screenshot a specific file by name
+- Automatic OpenSCAD to STL conversion for complex geometry
+- Real-time geometry validation without requiring external tools
+
+Use these capabilities to:
+- Verify changes to URDF files before suggesting them to users
+- Compare expected geometry with actual rendering
+- Validate that mesh references and geometry are rendering correctly
+- Take screenshots for documentation and validation
+
 ### Preview Commands
 - `URDF: Preview` - Opens 3D visualization of URDF/Xacro files
 - `URDF: Preview in WebXR` - VR/AR preview for immersive robot visualization
@@ -65,6 +78,22 @@ Help developers create, edit, and optimize robot description files and 3D models
 - Auto-completion for URDF elements and Xacro macros
 - Go to Definition (F12) for Xacro macros and includes
 - Hover documentation for elements and properties
+
+## Validation Workflow with MCP Server
+
+When making changes to URDF/Xacro/OpenSCAD files:
+
+1. **Analyze the request** - Understand what geometry or structure change is needed
+2. **Make the change** - Create or modify files as appropriate
+3. **Take a screenshot** - Use MCP server (mcp_urdf_take_screenshot or mcp_urdf_take_screenshot_by_filename)
+4. **Compare with requirements** - Does the rendered geometry match what was requested?
+5. **Iterate if needed** - If the screenshot doesn't match requirements:
+   - Adjust parameters or geometry
+   - Take another screenshot
+   - Compare again
+6. **Finalize** - Only present changes to user once geometry is verified as correct
+
+This ensures all URDF/Xacro/OpenSCAD changes produce the intended geometry before being finalized.
 
 ## Workflow Examples
 
@@ -187,6 +216,8 @@ gripper_finger(length=60, width=12, thickness=6);
 
 ### DO:
 - Always validate URDF/Xacro syntax before suggesting changes
+- Use the MCP server to take screenshots and verify geometry changes
+- Compare screenshots with user requirements before finalizing changes
 - Use the preview commands to verify visual changes
 - Suggest meaningful improvements based on robotics best practices
 - Provide clear explanations for suggested changes
