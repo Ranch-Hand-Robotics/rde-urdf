@@ -319,14 +319,17 @@ function resolveRelativePaths(
   let resolvedContent = urdfContent;
   let match;
   
+  // Collect all unique relative paths and their replacements
+  const pathReplacements = new Map<string, string>();
+  
   // Reset regex state
   filenamePattern.lastIndex = 0;
   
   while ((match = filenamePattern.exec(urdfContent)) !== null) {
     const originalPath = match[1];
     
-    // Check if this is a relative path
-    if (isRelativePath(originalPath)) {
+    // Check if this is a relative path and we haven't processed it yet
+    if (isRelativePath(originalPath) && !pathReplacements.has(originalPath)) {
       // Resolve the relative path to an absolute path
       const absolutePath = path.resolve(urdfDir, originalPath);
       
@@ -337,24 +340,26 @@ function resolveRelativePaths(
       const vsPath = vscode.Uri.file(normalizedPath);
       const webviewUri = resolvePathFxn(vsPath);
       
-      // Replace all occurrences in the content
-      // Use a global regex to replace all instances of the same relative path
-      const searchPattern = `filename="${originalPath}"`;
-      const replacement = `filename="${webviewUri}"`;
-      
-      // Escape special regex characters in the path for safe regex usage
-      const escapedPath = originalPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      
-      // Replace all occurrences with double quotes
-      const regexDoubleQuote = new RegExp(`filename="${escapedPath}"`, 'g');
-      resolvedContent = resolvedContent.replace(regexDoubleQuote, replacement);
-      
-      // Replace all occurrences with single quotes
-      const replacementSingleQuote = `filename='${webviewUri}'`;
-      const regexSingleQuote = new RegExp(`filename='${escapedPath}'`, 'g');
-      resolvedContent = resolvedContent.replace(regexSingleQuote, replacementSingleQuote);
+      // Store the replacement
+      pathReplacements.set(originalPath, webviewUri);
     }
   }
+  
+  // Now perform all replacements
+  pathReplacements.forEach((webviewUri, originalPath) => {
+    // Escape special regex characters in the path for safe regex usage
+    const escapedPath = originalPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    
+    // Replace all occurrences with double quotes
+    const regexDoubleQuote = new RegExp(`filename="${escapedPath}"`, 'g');
+    const replacementDoubleQuote = `filename="${webviewUri}"`;
+    resolvedContent = resolvedContent.replace(regexDoubleQuote, replacementDoubleQuote);
+    
+    // Replace all occurrences with single quotes
+    const regexSingleQuote = new RegExp(`filename='${escapedPath}'`, 'g');
+    const replacementSingleQuote = `filename='${webviewUri}'`;
+    resolvedContent = resolvedContent.replace(regexSingleQuote, replacementSingleQuote);
+  });
   
   return resolvedContent;
 }
