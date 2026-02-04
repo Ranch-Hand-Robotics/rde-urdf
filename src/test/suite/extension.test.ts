@@ -3,7 +3,7 @@ import * as assert from 'assert';
 // You can import and use all API from the 'vscode' module
 // as well as import your extension to test it
 import * as vscode from 'vscode';
-import { convertFindToPackageUri, processUrdfContent } from '../../utils';
+import { convertFindToPackageUri, processUrdfContent, isRelativePath } from '../../utils';
 import { getAllOpenSCADLibraryPaths, getDefaultOpenSCADLibraryPaths } from '../../openscad';
 import * as path from 'path';
 
@@ -50,6 +50,52 @@ suite('Extension Test Suite', () => {
 		const expected = '<mesh filename="package://test_package/meshes/test.stl"/>';
 		const result = processUrdfContent(input);
 		assert.strictEqual(result, expected);
+	});
+});
+
+suite('Relative Path Detection Test Suite', () => {
+	test('isRelativePath - detects simple relative path', () => {
+		assert.strictEqual(isRelativePath('meshes/base.stl'), true);
+	});
+
+	test('isRelativePath - detects parent directory relative path', () => {
+		assert.strictEqual(isRelativePath('../meshes/base.stl'), true);
+	});
+
+	test('isRelativePath - detects current directory relative path', () => {
+		assert.strictEqual(isRelativePath('./models/sensor.stl'), true);
+	});
+
+	test('isRelativePath - rejects absolute Unix path', () => {
+		assert.strictEqual(isRelativePath('/usr/share/meshes/base.stl'), false);
+	});
+
+	test('isRelativePath - rejects absolute Windows path', () => {
+		assert.strictEqual(isRelativePath('C:\\Users\\meshes\\base.stl'), false);
+	});
+
+	test('isRelativePath - rejects package:// URI', () => {
+		assert.strictEqual(isRelativePath('package://robot_pkg/meshes/base.stl'), false);
+	});
+
+	test('isRelativePath - rejects file:// URI', () => {
+		assert.strictEqual(isRelativePath('file:///home/user/meshes/base.stl'), false);
+	});
+
+	test('isRelativePath - rejects http:// URI', () => {
+		assert.strictEqual(isRelativePath('http://example.com/meshes/base.stl'), false);
+	});
+
+	test('isRelativePath - rejects https:// URI', () => {
+		assert.strictEqual(isRelativePath('https://example.com/meshes/base.stl'), false);
+	});
+
+	test('isRelativePath - handles empty string', () => {
+		assert.strictEqual(isRelativePath(''), false);
+	});
+
+	test('isRelativePath - handles whitespace', () => {
+		assert.strictEqual(isRelativePath('   '), false);
 	});
 });
 

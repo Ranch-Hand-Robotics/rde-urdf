@@ -269,7 +269,7 @@ function resolvePackageUris(
  * @param filePath The file path to check
  * @returns true if the path is relative
  */
-function isRelativePath(filePath: string): boolean {
+export function isRelativePath(filePath: string): boolean {
   if (!filePath || filePath.trim() === '') {
     return false;
   }

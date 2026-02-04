@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<robot name="relative_path_include_test" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  
+  <!-- Include common properties using relative path -->
+  <xacro:include filename="common_properties.xacro"/>
+  
+  <!-- Local properties -->
+  <xacro:property name="box_size" value="0.5"/>
+  
+  <!-- Use properties from the included file -->
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <box size="${box_size} ${box_size} ${box_size}"/>
+      </geometry>
+      <material name="base_material">
+        <color rgba="${red}"/>
+      </material>
+    </visual>
+  </link>
+  
+</robot>
