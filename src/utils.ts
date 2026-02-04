@@ -265,6 +265,101 @@ function resolvePackageUris(
 }
 
 /**
+ * Checks if a path is a relative path (not absolute, not a URL with protocol)
+ * @param filePath The file path to check
+ * @returns true if the path is relative
+ */
+function isRelativePath(filePath: string): boolean {
+  if (!filePath || filePath.trim() === '') {
+    return false;
+  }
+  
+  // Check for protocols (package://, file://, http://, https://, etc.)
+  if (filePath.includes('://')) {
+    return false;
+  }
+  
+  // Check for absolute paths
+  // Unix-style absolute path starts with /
+  if (filePath.startsWith('/')) {
+    return false;
+  }
+  
+  // Windows-style absolute path (e.g., C:\, D:\)
+  if (filePath.length >= 2 && filePath[1] === ':') {
+    return false;
+  }
+  
+  // If none of the above, it's a relative path
+  return true;
+}
+
+/**
+ * Resolves relative file paths in URDF content to absolute paths.
+ * This function finds mesh filename attributes with relative paths and converts them
+ * to absolute paths based on the URDF file's directory.
+ * 
+ * @param urdfContent The URDF content that may contain relative paths
+ * @param urdfFilePath The absolute path to the URDF file being processed
+ * @param resolvePathFxn Function to convert absolute paths to webview URIs
+ * @returns The URDF content with relative paths resolved to webview URIs
+ */
+function resolveRelativePaths(
+  urdfContent: string,
+  urdfFilePath: string,
+  resolvePathFxn: (absolutePath: vscode.Uri) => string
+): string {
+  // Get the directory containing the URDF file
+  const urdfDir = path.dirname(urdfFilePath);
+  
+  // Pattern to match filename attributes in mesh, texture, etc.
+  // Matches: filename="some/path/file.ext"
+  const filenamePattern = /filename=["']([^"']+)["']/g;
+  
+  let resolvedContent = urdfContent;
+  let match;
+  
+  // Reset regex state
+  filenamePattern.lastIndex = 0;
+  
+  while ((match = filenamePattern.exec(urdfContent)) !== null) {
+    const originalPath = match[1];
+    
+    // Check if this is a relative path
+    if (isRelativePath(originalPath)) {
+      // Resolve the relative path to an absolute path
+      const absolutePath = path.resolve(urdfDir, originalPath);
+      
+      // Normalize path separators for the platform
+      let normalizedPath = path.normalize(absolutePath);
+      
+      // Convert to webview URI
+      const vsPath = vscode.Uri.file(normalizedPath);
+      const webviewUri = resolvePathFxn(vsPath);
+      
+      // Replace this occurrence in the content
+      // Use a more specific pattern to avoid replacing unrelated matches
+      const searchPattern = `filename="${originalPath}"`;
+      const replacement = `filename="${webviewUri}"`;
+      
+      // Only replace if the pattern exists
+      if (resolvedContent.includes(searchPattern)) {
+        resolvedContent = resolvedContent.replace(searchPattern, replacement);
+      } else {
+        // Try with single quotes
+        const searchPatternSingleQuote = `filename='${originalPath}'`;
+        const replacementSingleQuote = `filename='${webviewUri}'`;
+        if (resolvedContent.includes(searchPatternSingleQuote)) {
+          resolvedContent = resolvedContent.replace(searchPatternSingleQuote, replacementSingleQuote);
+        }
+      }
+    }
+  }
+  
+  return resolvedContent;
+}
+
+/**
  * Processes a xacro file with package resolution.
  * This function handles the processing pipeline:
  * 1. Uses XacroParser to parse the xacro file with custom getFileContents
@@ -323,6 +418,11 @@ export async function processXacro(filename: string, resolvePackagesFxn: (packag
               const packageBasePath = packageMap.get(packageName)!;
               resolvedPath = path.join(packageBasePath, resourcePath);
             }
+          }
+          // Handle relative paths - resolve relative to the main URDF/Xacro file
+          else if (isRelativePath(resolvedPath)) {
+            const baseDir = path.dirname(filename);
+            resolvedPath = path.resolve(baseDir, resolvedPath);
           }
 
           // Normalize and decode the file path
@@ -406,6 +506,9 @@ export async function processXacro(filename: string, resolvePackagesFxn: (packag
 
       // Process package:// URIs in the final URDF content
       urdfText = resolvePackageUris(urdfText, packageMap, resolvePackagesFxn, packagesNotFound);
+      
+      // Process relative paths in the final URDF content
+      urdfText = resolveRelativePaths(urdfText, filename, resolvePackagesFxn);
 
     } catch (err: any) {
       reject(err);
