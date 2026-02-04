@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<robot name="relative_path_robot">
+  <!-- Test relative path support -->
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <!-- Relative path: meshes/base.stl relative to this file -->
+        <mesh filename="test_robot/meshes/base.stl" scale="1 1 1"/>
+      </geometry>
+      <material name="silver">
+        <color rgba="0.8 0.8 0.8 1"/>
+      </material>
+    </visual>
+  </link>
+
+  <link name="arm_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <!-- Another relative path -->
+        <mesh filename="test_robot/meshes/arm.dae"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <joint name="base_to_arm" type="revolute">
+    <parent link="base_link"/>
+    <child link="arm_link"/>
+    <origin xyz="0 0 0.1" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-1.57" upper="1.57" effort="50" velocity="2"/>
+  </joint>
+</robot>
