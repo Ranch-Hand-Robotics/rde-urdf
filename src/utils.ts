@@ -286,7 +286,9 @@ export function isRelativePath(filePath: string): boolean {
   }
   
   // Windows-style absolute path (e.g., C:\, D:\)
-  if (filePath.length >= 2 && filePath[1] === ':') {
+  // Check for drive letter followed by colon
+  if (filePath.length >= 2 && 
+      /^[a-zA-Z]:/.test(filePath)) {
     return false;
   }
   

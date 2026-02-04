@@ -74,6 +74,15 @@ suite('Relative Path Detection Test Suite', () => {
 		assert.strictEqual(isRelativePath('C:\\Users\\meshes\\base.stl'), false);
 	});
 
+	test('isRelativePath - rejects absolute Windows path (lowercase drive)', () => {
+		assert.strictEqual(isRelativePath('c:\\Users\\meshes\\base.stl'), false);
+	});
+
+	test('isRelativePath - handles invalid Windows-style path', () => {
+		// '1:foo' is not a valid Windows path, should be treated as relative
+		assert.strictEqual(isRelativePath('1:foo'), true);
+	});
+
 	test('isRelativePath - rejects package:// URI', () => {
 		assert.strictEqual(isRelativePath('package://robot_pkg/meshes/base.stl'), false);
 	});
