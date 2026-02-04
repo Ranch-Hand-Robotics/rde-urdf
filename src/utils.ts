@@ -337,22 +337,22 @@ function resolveRelativePaths(
       const vsPath = vscode.Uri.file(normalizedPath);
       const webviewUri = resolvePathFxn(vsPath);
       
-      // Replace this occurrence in the content
-      // Use a more specific pattern to avoid replacing unrelated matches
+      // Replace all occurrences in the content
+      // Use a global regex to replace all instances of the same relative path
       const searchPattern = `filename="${originalPath}"`;
       const replacement = `filename="${webviewUri}"`;
       
-      // Only replace if the pattern exists
-      if (resolvedContent.includes(searchPattern)) {
-        resolvedContent = resolvedContent.replace(searchPattern, replacement);
-      } else {
-        // Try with single quotes
-        const searchPatternSingleQuote = `filename='${originalPath}'`;
-        const replacementSingleQuote = `filename='${webviewUri}'`;
-        if (resolvedContent.includes(searchPatternSingleQuote)) {
-          resolvedContent = resolvedContent.replace(searchPatternSingleQuote, replacementSingleQuote);
-        }
-      }
+      // Escape special regex characters in the path for safe regex usage
+      const escapedPath = originalPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      
+      // Replace all occurrences with double quotes
+      const regexDoubleQuote = new RegExp(`filename="${escapedPath}"`, 'g');
+      resolvedContent = resolvedContent.replace(regexDoubleQuote, replacement);
+      
+      // Replace all occurrences with single quotes
+      const replacementSingleQuote = `filename='${webviewUri}'`;
+      const regexSingleQuote = new RegExp(`filename='${escapedPath}'`, 'g');
+      resolvedContent = resolvedContent.replace(regexSingleQuote, replacementSingleQuote);
     }
   }
   

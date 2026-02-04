@@ -13,8 +13,14 @@ This directory contains test files for validating URDF and Xacro parsing functio
 - `macro_test.xacro` - Xacro demonstrating macro definitions and usage
 
 ### Mesh References
-- `mesh_robot.urdf` - URDF referencing external STL and DAE mesh files
+- `mesh_robot.urdf` - URDF referencing external STL and DAE mesh files using package:// URIs
 - `find_robot.xacro` - Xacro using $(find package) idiom for mesh paths
+- `relative_path_test.urdf` - URDF with relative paths to mesh files (tests relative path resolution)
+
+### File Inclusion
+- `robot_with_includes.xacro` - Xacro that includes common_properties.xacro using relative path
+- `relative_include_test.xacro` - Tests relative path resolution for xacro:include statements
+- `common_properties.xacro` - Shared properties file for inclusion tests
 
 ### Complex Multi-file Xacro
 - `common_macros.xacro` - Shared macro definitions for wheels and arm segments
@@ -38,10 +44,11 @@ This directory contains test files for validating URDF and Xacro parsing functio
 4. **Macro Expansion** - Verify macro definitions and instantiation
 5. **File Inclusion** - Test xacro:include functionality with relative paths
 6. **Package Resolution** - Verify package:// URI and $(find) idiom resolution
-7. **Error Handling** - Test behavior with missing files and invalid references
-8. **Mesh Loading** - Verify STL and DAE file references resolve correctly
-9. **Gazebo Elements** - Test handling of Gazebo-specific XML elements
-10. **Complex Hierarchies** - Verify robots with multiple links and joints
+7. **Relative Path Resolution** - Test mesh and include file paths relative to URDF/Xacro file location
+8. **Error Handling** - Test behavior with missing files and invalid references
+9. **Mesh Loading** - Verify STL and DAE file references resolve correctly
+10. **Gazebo Elements** - Test handling of Gazebo-specific XML elements
+11. **Complex Hierarchies** - Verify robots with multiple links and joints
 
 ## Usage in Tests
 
