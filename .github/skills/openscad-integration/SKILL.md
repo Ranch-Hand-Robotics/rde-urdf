@@ -15,6 +15,15 @@ Use OpenSCAD when:
 - You want to leverage existing OpenSCAD libraries
 - You need maintainable, version-control-friendly geometry (vs binary STL)
 
+## ⚠️ Important: Always Verify with Screenshots
+
+**CRITICAL: Always take a screenshot after creating or modifying OpenSCAD files** to verify the generated geometry renders correctly. OpenSCAD syntax errors or invalid geometry will cause rendering failures. Use the MCP `take_screenshot` tool after save to confirm:
+- The .scad file compiles without errors
+- The geometry matches expectations
+- The STL conversion succeeded
+
+If the screenshot times out or shows errors, check the OpenSCAD code for syntax issues.
+
 ## ⚠️ Important: Always Ask Permission
 
 Before creating OpenSCAD files, ask the user:
@@ -330,7 +339,8 @@ my_robot/
 
 1. **Create .scad file** in `meshes/` directory
 2. **Save file** → Extension auto-generates `.stl`
-3. **Reference .stl in URDF**:
+3. **IMMEDIATELY take screenshot** to verify geometry renders correctly
+4. **Reference .stl in URDF**:
 ```xml
 <link name="custom_part">
   <visual>
@@ -340,8 +350,8 @@ my_robot/
   </visual>
 </link>
 ```
-4. **Preview URDF** → See the generated geometry
-5. **Modify .scad** → Auto-regenerates STL on save
+5. **Preview URDF** → See the generated geometry
+6. **Modify .scad** → Auto-regenerates STL on save, take another screenshot to verify
 
 ### Units and Scaling
 
@@ -436,6 +446,7 @@ cylinder(h=10, r=5, $fn=6);  // Hexagon
 ## Best Practices
 
 ### DO:
+✅ **Take screenshots immediately after creating/modifying .scad files** to verify rendering
 ✅ Ask permission before creating OpenSCAD files
 ✅ Use descriptive module names and parameters
 ✅ Add comments explaining what the code does
@@ -444,8 +455,10 @@ cylinder(h=10, r=5, $fn=6);  // Hexagon
 ✅ Check for available libraries before writing from scratch
 ✅ Test with preview after creating/modifying
 ✅ Keep .scad files in version control
+✅ Use MCP `take_screenshot` tool to validate geometry after every change
 
 ### DON'T:
+❌ Skip screenshot verification - geometry errors won't be caught
 ❌ Create overly complex geometry (affects preview performance)
 ❌ Forget to scale from mm to m in URDF
 ❌ Hardcode dimensions (use parameters instead)

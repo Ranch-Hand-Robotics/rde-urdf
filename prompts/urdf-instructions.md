@@ -13,22 +13,29 @@
    - DO NOT claim completion until validation passes with zero errors
 
 2. **After making changes to URDF/Xacro/OpenSCAD files:**
-   - MUST call `take_screenshot` or `take_screenshot_by_filename` to verify visual output
+   - MUST call `take_screenshot` (optionally with `filename` parameter) to verify visual output
+   - If no preview is open, use `take_screenshot_by_filename` to open preview and screenshot
    - MUST compare the screenshot with user requirements
    - MUST iterate if the visual output doesn't match expectations
+   - Screenshot timeout (>30 seconds) indicates rendering/syntax errors
 
 3. **When working with OpenSCAD libraries:**
    - SHOULD call `get_openscad_libraries` to see available modules and functions
    - Use existing library functions instead of reinventing code
+
+4. **When user requests documentation screenshots:**
+   - Use `take_screenshot_save_to_file` with `saveFilename` parameter
+   - Optionally specify `sourceFile` if not using active preview
 
 ### Example Workflow:
 
 ```
 1. Create/edit OpenSCAD file
 2. Call validate_openscad → Fix errors if any
-3. Call take_screenshot → Verify visual output
-4. If issues found → Go back to step 1
-5. Only then declare work complete
+3. Call take_screenshot with filename parameter → Verify visual output
+4. If screenshot times out or shows errors → Go back to step 1
+5. If issues found in visual → Go back to step 1
+6. Only then declare work complete
 ```
 
 **FAILURE TO USE THESE TOOLS WILL RESULT IN BROKEN CODE BEING DELIVERED.**
