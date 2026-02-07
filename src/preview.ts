@@ -72,18 +72,37 @@ export default class URDFPreview
         return new URDFPreview(editor, context, resource, trace);
     }
 
-    public takeScreenshot(width: number, height: number): Promise<string> {
+    public takeScreenshot(width: number, height: number, timeoutMs: number = 30000): Promise<string> {
         return new Promise((resolve, reject) => {
             if (!this._webview) {
                 reject('Webview is not initialized');
                 return;
             }
 
+            // Set up timeout to prevent infinite hangs
+            const timeoutHandle = setTimeout(() => {
+                // Find and remove this pending screenshot
+                const index = this._pendingScreenshots.findIndex(
+                    p => p.width === width && p.height === height
+                );
+                if (index !== -1) {
+                    this._pendingScreenshots.splice(index, 1);
+                }
+                
+                reject(new Error(`Screenshot timed out after ${timeoutMs}ms. The file may have rendering errors.`));
+            }, timeoutMs);
+
             this._pendingScreenshots.push({
                 width,
                 height,
-                resolve,
-                reject
+                resolve: (value: string) => {
+                    clearTimeout(timeoutHandle);
+                    resolve(value);
+                },
+                reject: (reason?: any) => {
+                    clearTimeout(timeoutHandle);
+                    reject(reason);
+                }
             });
 
             this._webview.webview.postMessage({

@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as net from 'net';
 import URDFPreviewManager from "./previewManager";
 import WebXRPreviewManager from "./webXRPreviewManager";
 import * as util from "./utils";
@@ -49,18 +50,60 @@ async function configureAgentAndSkillsSettings(context: vscode.ExtensionContext)
   }
 }
 
+/**
+ * Find an available port by probing for open ports
+ * @param startPort Starting port to check (default: 3005)
+ * @param maxAttempts Maximum number of ports to try (default: 100)
+ * @returns Promise that resolves to an available port number
+ */
+async function findAvailablePort(startPort: number = 3005, maxAttempts: number = 100): Promise<number> {
+  for (let port = startPort; port < startPort + maxAttempts; port++) {
+    if (await isPortAvailable(port)) {
+      return port;
+    }
+  }
+  throw new Error(`No available port found in range ${startPort}-${startPort + maxAttempts - 1}`);
+}
+
+/**
+ * Check if a port is available
+ * @param port Port number to check
+ * @returns Promise that resolves to true if port is available
+ */
+function isPortAvailable(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    
+    server.once('error', (err: any) => {
+      if (err.code === 'EADDRINUSE') {
+        resolve(false); // Port is in use
+      } else {
+        resolve(false); // Other error, assume not available
+      }
+    });
+    
+    server.once('listening', () => {
+      server.close();
+      resolve(true); // Port is available
+    });
+    
+    server.listen(port, '127.0.0.1');
+  });
+}
+
 async function startMcpServer(context: vscode.ExtensionContext): Promise<void> {
   if (mcpServer && mcpServer.getStatus().isRunning) {
     return; // Already running
   }
 
   try {
-    const config = vscode.workspace.getConfiguration('urdf-editor');
-    const port = config.get<number>('mcpServerPort', 3005);
+    // Find an available port starting from 3005
+    const port = await findAvailablePort(3005);
+    tracing.appendLine(`Found available port for MCP server: ${port}`);
     
     mcpServer = new UrdfMcpServer(port);
     await mcpServer.start();
-    tracing.appendLine('MCP Server started automatically with first preview');
+    tracing.appendLine(`MCP Server started on port ${port}`);
 
     // Check if the MCP API is available (only in VS Code, not Cursor)
     if ('lm' in vscode && vscode.lm && 'registerMcpServerDefinitionProvider' in vscode.lm) {
@@ -109,6 +152,25 @@ async function stopMcpServer(): Promise<void> {
   }
 }
 
+/**
+ * Check if workspace contains URDF/Xacro/OpenSCAD files and start MCP server if found
+ */
+async function checkAndStartMcpServer(context: vscode.ExtensionContext): Promise<void> {
+  try {
+    // Search for URDF, Xacro, or OpenSCAD files in the workspace
+    const urdfFiles = await vscode.workspace.findFiles('**/*.{urdf,xacro,scad}', '**/node_modules/**', 1);
+    
+    if (urdfFiles.length > 0) {
+      tracing.appendLine('Found URDF/Xacro/OpenSCAD files in workspace, starting MCP server');
+      await startMcpServer(context);
+    } else {
+      tracing.appendLine('No URDF/Xacro/OpenSCAD files found in workspace, MCP server will start on first preview');
+    }
+  } catch (error) {
+    tracing.appendLine(`Failed to check for files and start MCP server: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
 export async function activate(context: vscode.ExtensionContext) {
 
   console.log('"urdf-editor" is now active!');
@@ -121,6 +183,8 @@ export async function activate(context: vscode.ExtensionContext) {
   viewProvider = new Viewer3DProvider(context, tracing);
   vscode.window.registerWebviewPanelSerializer('urdfPreview_standalone', urdfManager);
 
+  // Start MCP server if URDF/Xacro/OpenSCAD files exist in workspace
+  checkAndStartMcpServer(context);
   // Check if agents and skills need to be set up
   await agents.checkAndOfferAgentsAndSkillsSetup(context);
 
@@ -180,12 +244,6 @@ export async function activate(context: vscode.ExtensionContext) {
   );
   context.subscriptions.push(urdfDefinitionProvider);
 
-  // Set up MCP server lifecycle callbacks for the preview manager
-  urdfManager.setMcpServerCallbacks({
-    onStartServer: () => startMcpServer(context),
-    onStopServer: () => stopMcpServer()
-  });
-  
   // Watch for file saves to refresh all previews when dependent files change
   const saveWatcher = vscode.workspace.onDidSaveTextDocument((document) => {
     const ext = path.extname(document.uri.fsPath);
@@ -430,7 +488,10 @@ export async function activate(context: vscode.ExtensionContext) {
 }
 
 export async function deactivate() {
-  // Dispose of preview managers which will clean up MCP servers
+  // Stop MCP server when extension deactivates
+  await stopMcpServer();
+  
+  // Dispose of preview managers
   if (urdfManager) {
     await urdfManager.dispose();
   }
