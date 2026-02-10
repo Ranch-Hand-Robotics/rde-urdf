@@ -26,6 +26,10 @@ var mcpServer: UrdfMcpServer | null = null;
 /**
  * Configure workspace settings to enable GitHub Copilot agent skills and instruction files
  * This allows GitHub Copilot to discover and use skills from the extension
+ * 
+ * NOTE: Configuration updates have been removed as they attempt to set unregistered
+ * VS Code settings. GitHub Copilot should automatically discover agents and skills
+ * from the .github/agents and .github/skills directories when they are set up.
  */
 async function configureAgentAndSkillsSettings(context: vscode.ExtensionContext): Promise<void> {
   const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
@@ -34,20 +38,9 @@ async function configureAgentAndSkillsSettings(context: vscode.ExtensionContext)
     return;
   }
 
-  try {
-    const config = vscode.workspace.getConfiguration();
-
-    // Enable agent skills feature to allow Copilot to discover skills from .github/skills
-    await config.update('chat.useAgentSkills', true, vscode.ConfigurationTarget.Workspace);
-    tracing.appendLine('Enabled chat.useAgentSkills for workspace');
-
-    // Enable Copilot to use instruction files from the extension
-    await config.update('github.copilot.chat.codeGeneration.useInstructionFiles', true, vscode.ConfigurationTarget.Workspace);
-    tracing.appendLine('Enabled github.copilot.chat.codeGeneration.useInstructionFiles for workspace');
-
-  } catch (error) {
-    tracing.appendLine(`Failed to configure agent/skills settings: ${error instanceof Error ? error.message : String(error)}`);
-  }
+  // Previously attempted to set configuration settings, but these are not registered
+  // in VS Code and cause activation failures. Agents and skills work via file discovery.
+  tracing.appendLine('Agent and skills configuration: relying on file-based discovery from .github/ directories');
 }
 
 /**
