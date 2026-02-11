@@ -23,6 +23,7 @@ export var urdfXRManager: WebXRPreviewManager | null = null;
 var viewProvider: Viewer3DProvider | null = null;
 var mcpServer: UrdfMcpServer | null = null;
 
+/**
  * Find an available port by probing for open ports
  * @param startPort Starting port to check (default: 3005)
  * @param maxAttempts Maximum number of ports to try (default: 100)
@@ -243,10 +244,6 @@ export async function activate(context: vscode.ExtensionContext) {
       }
     }
   );
-
-  // Configure workspace settings to point to URDF agent and skills
-  // This allows Copilot to discover them from the extension directory
-  await configureAgentAndSkillsSettings(context);
 
   // Register language support for URDF and XACRO files
   // This is now handled by the package.json configuration

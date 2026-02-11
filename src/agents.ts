@@ -40,26 +40,26 @@ export async function copyDirectory(srcDir: string, destDir: string): Promise<vo
  * Check if agents and skills exist in the workspace
  */
 export function doAgentsAndSkillsExist(workspacePath: string): boolean {
-  const rdeDir = path.join(workspacePath, '.rde');
-  const agentsDir = path.join(rdeDir, 'agents');
-  const skillsDir = path.join(rdeDir, 'skills');
+  const githubDir = path.join(workspacePath, '.github');
+  const agentsDir = path.join(githubDir, 'agents');
+  const skillsDir = path.join(githubDir, 'skills');
   
   return fs.existsSync(agentsDir) && fs.existsSync(skillsDir);
 }
 
 /**
- * Setup agents and skills by copying from extension to workspace and configuring workspace settings
+ * Setup agents and skills by copying from extension to workspace
  */
 export async function setupAgentsAndSkills(context: vscode.ExtensionContext, workspacePath: string): Promise<void> {
   try {
-    const rdeDir = path.join(workspacePath, '.rde');
-    const agentsDir = path.join(rdeDir, 'agents');
-    const skillsDir = path.join(rdeDir, 'skills');
+    const githubDir = path.join(workspacePath, '.github');
+    const agentsDir = path.join(githubDir, 'agents');
+    const skillsDir = path.join(githubDir, 'skills');
 
-    // Source: extension's .github directory (bundled with extension)
-    // Destination: workspace's .rde directory (for RDE-specific isolation)
-    const extensionAgentsDir = path.join(context.extensionPath, '.github', 'agents');
-    const extensionSkillsDir = path.join(context.extensionPath, '.github', 'skills');
+    // Source: extension's assets directory
+    // Destination: workspace's .github directory
+    const extensionAgentsDir = path.join(context.extensionPath, 'assets', 'agents');
+    const extensionSkillsDir = path.join(context.extensionPath, 'assets', 'skills');
 
     // Copy agents
     if (fs.existsSync(extensionAgentsDir)) {
@@ -72,19 +72,6 @@ export async function setupAgentsAndSkills(context: vscode.ExtensionContext, wor
       await copyDirectory(extensionSkillsDir, skillsDir);
       tracing.appendLine(`Copied skills from extension to ${skillsDir}`);
     }
-
-    // Configure workspace settings to point to the relative paths within workspace
-    const config = vscode.workspace.getConfiguration();
-    
-    // Use object format with boolean values as required by VSCode
-    await config.update('chat.agentFilesLocations', { '.rde/agents': true }, vscode.ConfigurationTarget.Workspace);
-    tracing.appendLine('Configured chat.agentFilesLocations to: .rde/agents');
-    
-    await config.update('chat.agentSkillsLocations', { '.rde/skills': true }, vscode.ConfigurationTarget.Workspace);
-    tracing.appendLine('Configured chat.agentSkillsLocations to: .rde/skills');
-    
-    await config.update('chat.useAgentSkills', true, vscode.ConfigurationTarget.Workspace);
-    tracing.appendLine('Enabled chat.useAgentSkills for workspace');
 
     vscode.window.showInformationMessage('Robot Developer agents and skills have been set up in your workspace!');
   } catch (error) {
@@ -169,11 +156,6 @@ export async function resetAgentsSetupState(): Promise<void> {
     // Clear user settings
     const userSettings = vscode.workspace.getConfiguration();
     await userSettings.update(neverAskAgainKey, undefined, vscode.ConfigurationTarget.Global);
-    
-    // Clear workspace settings for agents and skills
-    await userSettings.update('chat.agentFilesLocations', undefined, vscode.ConfigurationTarget.Workspace);
-    await userSettings.update('chat.agentSkillsLocations', undefined, vscode.ConfigurationTarget.Workspace);
-    await userSettings.update('chat.useAgentSkills', undefined, vscode.ConfigurationTarget.Workspace);
 
     vscode.window.showInformationMessage('Agents setup state has been reset. Run extension activation to see the dialog again.');
     tracing.appendLine('Agents setup state reset');
