@@ -73,7 +73,6 @@ export async function setupAgentsAndSkills(context: vscode.ExtensionContext, wor
       tracing.appendLine(`Copied skills from extension to ${skillsDir}`);
     }
 
-    vscode.window.showInformationMessage('Robot Developer agents and skills have been set up in your workspace!');
   } catch (error) {
     const message = `Failed to setup agents and skills: ${error instanceof Error ? error.message : String(error)}`;
     vscode.window.showErrorMessage(message);
@@ -117,7 +116,7 @@ export async function checkAndOfferAgentsAndSkillsSetup(context: vscode.Extensio
 
   const result = await Promise.race([
     vscode.window.showInformationMessage(
-      'Install Robot Developer agents and skills for enhanced Copilot editing?',
+      'Install AI agents and skills for URDF/Xacro/OpenSCAD Editing?',
       { modal: false },
       'Yes',
       'No',
