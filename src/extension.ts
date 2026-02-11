@@ -24,26 +24,6 @@ var viewProvider: Viewer3DProvider | null = null;
 var mcpServer: UrdfMcpServer | null = null;
 
 /**
- * Configure workspace settings to enable GitHub Copilot agent skills and instruction files
- * This allows GitHub Copilot to discover and use skills from the extension
- * 
- * NOTE: Configuration updates have been removed as they attempt to set unregistered
- * VS Code settings. GitHub Copilot should automatically discover agents and skills
- * from the .github/agents and .github/skills directories when they are set up.
- */
-async function configureAgentAndSkillsSettings(context: vscode.ExtensionContext): Promise<void> {
-  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-  if (!workspaceFolder) {
-    // No workspace open, skip
-    return;
-  }
-
-  // Previously attempted to set configuration settings, but these are not registered
-  // in VS Code and cause activation failures. Agents and skills work via file discovery.
-  tracing.appendLine('Agent and skills configuration: relying on file-based discovery from .github/ directories');
-}
-
-/**
  * Find an available port by probing for open ports
  * @param startPort Starting port to check (default: 3005)
  * @param maxAttempts Maximum number of ports to try (default: 100)
@@ -264,10 +244,6 @@ export async function activate(context: vscode.ExtensionContext) {
       }
     }
   );
-
-  // Configure workspace settings to point to URDF agent and skills
-  // This allows Copilot to discover them from the extension directory
-  await configureAgentAndSkillsSettings(context);
 
   // Register language support for URDF and XACRO files
   // This is now handled by the package.json configuration
