@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<robot name="test_charset">
+  <!-- This file contains valid UTF-8 -->
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <box size="1 1 1"/>
+      </geometry>
+    </visual>
+  </link>
+</robot>

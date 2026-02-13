@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<robot name="test_validation">
+  <!-- Link without name - should cause error -->
+  <link>
+    <visual>
+      <geometry>
+        <box size="1 1 1"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <!-- Box with wrong size format - should cause error -->
+  <link name="invalid_box">
+    <visual>
+      <geometry>
+        <box size="1 1"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <!-- Cylinder missing radius - should cause error -->
+  <link name="invalid_cylinder">
+    <visual>
+      <geometry>
+        <cylinder length="1.0"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <!-- Sphere missing radius - should cause error -->
+  <link name="invalid_sphere">
+    <visual>
+      <geometry>
+        <sphere/>
+      </geometry>
+    </visual>
+  </link>
+
+  <!-- Joint with invalid type - should cause error -->
+  <link name="valid_link">
+    <visual>
+      <geometry>
+        <box size="1 1 1"/>
+      </geometry>
+    </visual>
+  </link>
+  
+  <joint name="test_joint" type="invalid_type">
+    <parent link="valid_link"/>
+    <child link="undefined_link"/>
+  </joint>
+</robot>
