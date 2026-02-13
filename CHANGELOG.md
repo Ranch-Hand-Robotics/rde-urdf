@@ -5,6 +5,21 @@ All notable changes to the "urdf-editor" extension will be documented in this fi
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
 ## [Unreleased]
+### Added
+- **Real-time URDF/Xacro Validation**: Comprehensive inline error highlighting and diagnostics
+  - XML syntax validation with precise line/column error reporting
+  - URDF structure validation (required elements, attributes, and naming)
+  - Character set validation for UTF-8 compliance
+  - Geometry validation for box, cylinder, sphere, and mesh elements
+  - Joint type validation (revolute, continuous, prismatic, fixed, floating, planar)
+  - Link reference validation with undefined link detection
+  - Xacro-aware validation that recognizes properties, expressions, and macros
+  - Real-time diagnostics as you type with error and warning severity levels
+  - Problems panel integration for workspace-wide issue tracking
+- **Camera Positioning API**:
+  - Updated to babylon_ros 0.4.0 with new `setDefaultCameraPosition()` API
+  - New extension settings for camera angles: `CameraAlpha`, `CameraBeta`, and `CameraRadius`
+  - Configurable default camera position for URDF/Xacro preview
 
 ## [1.6.0] - 2026-04-10
 
@@ -41,11 +56,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - **Extension Activation**: Removed attempts to set unregistered VS Code configuration settings (`chat.useAgentSkills` and `github.copilot.chat.codeGeneration.useInstructionFiles`) that were causing extension activation failures with "Unable to write to Workspace Settings" errors. GitHub Copilot agents and skills now rely solely on file-based discovery from `.github/agents` and `.github/skills` directories.
 - **Gizmo Usability**: Updated babylon_ros to 0.5.0 to fix narrow hit testing on rotation and arrow gizmos, making them easier to use and track
 
-### Added
-- **Camera Positioning API**:
-  - Updated to babylon_ros 0.4.0 with new `setDefaultCameraPosition()` API
-  - New extension settings for camera angles: `CameraAlpha`, `CameraBeta`, and `CameraRadius`
-  - Configurable default camera position for URDF/Xacro preview
+### Fixed
+- **Extension Activation**: Removed attempts to set unregistered VS Code configuration settings (`chat.useAgentSkills` and `github.copilot.chat.codeGeneration.useInstructionFiles`) that were causing extension activation failures with "Unable to write to Workspace Settings" errors. GitHub Copilot agents and skills now rely solely on file-based discovery from `.github/agents` and `.github/skills` directories.
 
 ##  [1.4.0] - 2025-12-26
 
