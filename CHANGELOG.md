@@ -8,6 +8,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ### Fixed
 - **Extension Activation**: Removed attempts to set unregistered VS Code configuration settings (`chat.useAgentSkills` and `github.copilot.chat.codeGeneration.useInstructionFiles`) that were causing extension activation failures with "Unable to write to Workspace Settings" errors. GitHub Copilot agents and skills now rely solely on file-based discovery from `.github/agents` and `.github/skills` directories.
+- **Gizmo Usability**: Updated babylon_ros to 0.5.0 to fix narrow hit testing on rotation and arrow gizmos, making them easier to use and track
 
 ### Added
 - **Camera Positioning API**:
