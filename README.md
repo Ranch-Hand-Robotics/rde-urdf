@@ -10,6 +10,14 @@ This extension provides developer tooling for Unified Robot Description Format (
 - **Link & Joint Visualization**: Visual representation of robot structure
 - **Interactive Controls**: Camera controls, rotation gizmos, and axis visualization
 - **Collision Visualization**: Toggle collision geometry display
+- **Real-time Validation**: Inline error highlighting with detailed diagnostics
+  - XML syntax validation with line/column precision
+  - URDF structure validation (required elements and attributes)
+  - Character set validation (UTF-8 compliance)
+  - Geometry validation (box size, cylinder/sphere radius, mesh filename)
+  - Joint type validation (revolute, continuous, prismatic, fixed, floating, planar)
+  - Link reference validation (parent/child link existence checks)
+  - Xacro-aware validation (recognizes properties and expressions)
 - **Schema Validation**: XML schema validation for URDF and Xacro files
 - **Syntax Highlighting**: Full syntax support for URDF, Xacro, and OpenSCAD
 

@@ -10,6 +10,7 @@ import { OpenSCADCompletionProvider, OpenSCADHoverProvider } from './openscadCom
 import { URDFXacroCompletionProvider, URDFXacroHoverProvider } from './urdfXacroCompletion';
 import { OpenSCADDefinitionProvider } from './openscadDefinitionProvider';
 import { URDFDefinitionProvider } from './urdfDefinitionProvider';
+import { URDFXacroValidationProvider } from './urdfXacroValidation';
 import { Viewer3DProvider } from './3DViewerProvider';
 import * as agents from './agents';
 
@@ -155,6 +156,36 @@ export async function activate(context: vscode.ExtensionContext) {
   urdfXRManager = new WebXRPreviewManager(context, tracing);
   viewProvider = new Viewer3DProvider(context, tracing);
   vscode.window.registerWebviewPanelSerializer('urdfPreview_standalone', urdfManager);
+
+  // Initialize URDF/Xacro validation provider
+  const validationProvider = new URDFXacroValidationProvider();
+  context.subscriptions.push(validationProvider);
+
+  // Validate all open URDF/Xacro documents
+  vscode.workspace.textDocuments.forEach(document => {
+    validationProvider.validateDocument(document);
+  });
+
+  // Validate on document open
+  context.subscriptions.push(
+    vscode.workspace.onDidOpenTextDocument(document => {
+      validationProvider.validateDocument(document);
+    })
+  );
+
+  // Validate on document change
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeTextDocument(event => {
+      validationProvider.validateDocument(event.document);
+    })
+  );
+
+  // Clear diagnostics on document close
+  context.subscriptions.push(
+    vscode.workspace.onDidCloseTextDocument(document => {
+      validationProvider.clearDiagnostics(document);
+    })
+  );
 
   // Start MCP server if URDF/Xacro/OpenSCAD files exist in workspace
   checkAndStartMcpServer(context);
