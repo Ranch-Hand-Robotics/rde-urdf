@@ -11,6 +11,7 @@ import { URDFXacroCompletionProvider, URDFXacroHoverProvider } from './urdfXacro
 import { OpenSCADDefinitionProvider } from './openscadDefinitionProvider';
 import { URDFDefinitionProvider } from './urdfDefinitionProvider';
 import { URDFXacroValidationProvider } from './urdfXacroValidation';
+import { OpenSCADValidationProvider } from './openscadValidation';
 import { Viewer3DProvider } from './3DViewerProvider';
 import * as agents from './agents';
 
@@ -158,32 +159,40 @@ export async function activate(context: vscode.ExtensionContext) {
   vscode.window.registerWebviewPanelSerializer('urdfPreview_standalone', urdfManager);
 
   // Initialize URDF/Xacro validation provider
-  const validationProvider = new URDFXacroValidationProvider();
-  context.subscriptions.push(validationProvider);
+  const urdfXacroValidationProvider = new URDFXacroValidationProvider();
+  context.subscriptions.push(urdfXacroValidationProvider);
+
+  // Initialize OpenSCAD validation provider
+  const openscadValidationProvider = new OpenSCADValidationProvider();
+  context.subscriptions.push(openscadValidationProvider);
 
   // Validate all open URDF/Xacro documents
   vscode.workspace.textDocuments.forEach(document => {
-    validationProvider.validateDocument(document);
+    urdfXacroValidationProvider.validateDocument(document);
+    openscadValidationProvider.validateDocument(document);
   });
 
   // Validate on document open
   context.subscriptions.push(
     vscode.workspace.onDidOpenTextDocument(document => {
-      validationProvider.validateDocument(document);
+      urdfXacroValidationProvider.validateDocument(document);
+      openscadValidationProvider.validateDocument(document);
     })
   );
 
   // Validate on document change
   context.subscriptions.push(
     vscode.workspace.onDidChangeTextDocument(event => {
-      validationProvider.validateDocument(event.document);
+      urdfXacroValidationProvider.validateDocument(event.document);
+      openscadValidationProvider.validateDocument(event.document);
     })
   );
 
   // Clear diagnostics on document close
   context.subscriptions.push(
     vscode.workspace.onDidCloseTextDocument(document => {
-      validationProvider.clearDiagnostics(document);
+      urdfXacroValidationProvider.clearDiagnostics(document);
+      openscadValidationProvider.clearDiagnostics(document);
     })
   );
 

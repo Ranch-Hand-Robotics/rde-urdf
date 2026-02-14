@@ -41,6 +41,11 @@ This extension provides developer tooling for Unified Robot Description Format (
 ### OpenSCAD Support
 - **Integrated Editing**: Full OpenSCAD language support with syntax highlighting
 - **Live Preview**: Automatic STL conversion and 3D rendering
+- **Real-time Validation**: Compiler-based syntax checking with inline error highlighting
+  - Syntax error detection with precise line/column reporting
+  - Runtime error detection from OpenSCAD compiler
+  - Warning messages for potential issues
+  - Debounced validation to avoid excessive compilation
 - **Library Management**: Automatic discovery of libraries from workspace and system paths
 - **Performance Optimizations**: Fast preview mode with configurable timeouts
 - **Documentation Generation**: Extract module/function docs from comments
