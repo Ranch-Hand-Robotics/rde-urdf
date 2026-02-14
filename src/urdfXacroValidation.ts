@@ -11,11 +11,16 @@ import { DOMParser } from 'xmldom';
  * - Reference validation (link/joint references)
  */
 
+// Valid joint types as per URDF specification
+const VALID_JOINT_TYPES = ['revolute', 'continuous', 'prismatic', 'fixed', 'floating', 'planar'];
+
 export class URDFXacroValidationProvider {
     private diagnosticCollection: vscode.DiagnosticCollection;
+    private elementPatternCache: Map<string, RegExp>;
 
     constructor() {
         this.diagnosticCollection = vscode.languages.createDiagnosticCollection('urdf-xacro');
+        this.elementPatternCache = new Map();
     }
 
     /**
@@ -259,11 +264,10 @@ export class URDFXacroValidationProvider {
 
                 // Check joint type
                 const jointType = joint.getAttribute('type');
-                const validTypes = ['revolute', 'continuous', 'prismatic', 'fixed', 'floating', 'planar'];
-                if (jointType && !validTypes.includes(jointType)) {
+                if (jointType && !VALID_JOINT_TYPES.includes(jointType)) {
                     const diagnostic = new vscode.Diagnostic(
                         this.findElementPosition(text, 'joint', i),
-                        `Invalid joint type "${jointType}". Valid types are: ${validTypes.join(', ')}`,
+                        `Invalid joint type "${jointType}". Valid types are: ${VALID_JOINT_TYPES.join(', ')}`,
                         vscode.DiagnosticSeverity.Error
                     );
                     diagnostic.source = 'urdf-validator';
@@ -428,7 +432,7 @@ export class URDFXacroValidationProvider {
 
     /**
      * Find the position of an element in the source text
-     * This is a simple implementation that searches for the nth occurrence
+     * Uses cached regex patterns for better performance
      */
     private findElementPosition(
         text: string, 
@@ -436,12 +440,20 @@ export class URDFXacroValidationProvider {
         index: number,
         parentElement?: Element
     ): vscode.Range {
+        // Get or create cached pattern for this tag
+        let pattern = this.elementPatternCache.get(tagName);
+        if (!pattern) {
+            pattern = new RegExp(`<${tagName}[\\s>]`, 'gi');
+            this.elementPatternCache.set(tagName, pattern);
+        }
+        
         const lines = text.split('\n');
-        const pattern = new RegExp(`<${tagName}[\\s>]`, 'gi');
         let count = 0;
         
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
+            // Reset pattern lastIndex for each line
+            pattern.lastIndex = 0;
             const matches = line.matchAll(pattern);
             
             for (const match of matches) {
@@ -480,5 +492,6 @@ export class URDFXacroValidationProvider {
      */
     public dispose(): void {
         this.diagnosticCollection.dispose();
+        this.elementPatternCache.clear();
     }
 }
