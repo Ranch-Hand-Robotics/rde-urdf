@@ -16,6 +16,13 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
   - Xacro-aware validation that recognizes properties, expressions, and macros
   - Real-time diagnostics as you type with error and warning severity levels
   - Problems panel integration for workspace-wide issue tracking
+- **Real-time OpenSCAD Validation**: Compiler-based validation with inline diagnostics
+  - Syntax error detection via OpenSCAD compiler with line/column precision
+  - Runtime error detection from compilation process
+  - Warning messages for potential issues
+  - Debounced validation (500ms delay) to avoid excessive compilation during typing
+  - Automatic library loading for accurate validation context
+  - Problems panel integration with error and warning severity levels
 - **Camera Positioning API**:
   - Updated to babylon_ros 0.4.0 with new `setDefaultCameraPosition()` API
   - New extension settings for camera angles: `CameraAlpha`, `CameraBeta`, and `CameraRadius`

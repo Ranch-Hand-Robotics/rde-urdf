@@ -1,8 +1,97 @@
-# URDF/Xacro Validation
+# URDF/Xacro/OpenSCAD Validation
 
-The URDF Editor extension includes comprehensive real-time validation for URDF and Xacro files. Errors and warnings are highlighted inline as you type, making it easier to catch and fix issues early in the development process.
+The URDF Editor extension includes comprehensive real-time validation for URDF, Xacro, and OpenSCAD files. Errors and warnings are highlighted inline as you type, making it easier to catch and fix issues early in the development process.
 
-## Features
+## OpenSCAD Validation
+
+### Real-time Compiler Validation
+OpenSCAD files are validated using the actual OpenSCAD compiler, ensuring that your code will work when rendered. The validator:
+- Runs the OpenSCAD compiler on your code
+- Captures syntax errors and warnings
+- Reports line and column numbers for precise error location
+- Debounces validation (500ms delay) to avoid excessive compilation while typing
+
+### Features
+
+#### Syntax Error Detection
+The validator detects all OpenSCAD syntax errors including:
+- Missing semicolons
+- Unclosed braces or brackets
+- Undefined variables or modules
+- Invalid function calls
+- Malformed expressions
+
+**Example errors detected:**
+```openscad
+// ERROR: Missing semicolon
+cube([10, 10, 10])
+
+// ERROR: Undefined variable
+translate([x, y, z])  // x, y, z not defined
+sphere(r=5);
+
+// ERROR: Unclosed brace
+module test() {
+  cube([1, 1, 1]);
+// Missing closing brace
+```
+
+#### Runtime Error Detection
+Catches errors that occur during OpenSCAD execution:
+- Division by zero
+- Invalid parameter values
+- Module instantiation errors
+- Include/use file not found errors
+
+#### Warning Messages
+Reports warnings for:
+- Deprecated syntax or features
+- Potential performance issues
+- Ambiguous expressions
+- Library loading messages
+
+### Library-Aware Validation
+The validator automatically loads your OpenSCAD libraries from:
+- The SCAD file's directory
+- OS-specific default library paths
+- Custom paths configured in settings
+
+This ensures validation is performed with the same context as rendering, catching library-related issues early.
+
+### Using OpenSCAD Validation
+
+**Automatic Validation:**
+1. Open or create a `.scad` file
+2. Validation runs automatically after you stop typing (500ms delay)
+3. Errors appear as red squiggly underlines
+4. Warnings appear as yellow squiggly underlines
+
+**Viewing Errors:**
+- **Inline**: Hover over underlined code to see error details
+- **Problems Panel**: Press `Ctrl+Shift+M` to see all errors/warnings
+- **Quick Navigation**: Click errors in Problems panel to jump to location
+
+**Example:**
+```openscad
+// This will show an error because the semicolon is missing
+cube([10, 10, 10])
+
+// After adding the semicolon, the error disappears
+cube([10, 10, 10]);
+```
+
+### Performance Considerations
+
+**Debouncing:**
+The validator waits 500ms after you stop typing before running validation. This prevents excessive compilation and keeps the editor responsive.
+
+**Large Files:**
+For complex OpenSCAD files that take time to compile, you may notice a delay before errors appear. This is normal and ensures accurate validation.
+
+**Disabling Validation:**
+If validation impacts performance, you can temporarily disable it by closing the Problems panel and ignoring inline warnings. The extension does not currently provide a setting to disable validation permanently.
+
+## URDF/Xacro Validation
 
 ### XML Syntax Validation
 The validator checks for proper XML syntax including:
