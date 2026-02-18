@@ -164,6 +164,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Initialize OpenSCAD validation provider
   const openscadValidationProvider = new OpenSCADValidationProvider();
+  openscadValidationProvider.setTraceChannel(tracing);
   context.subscriptions.push(openscadValidationProvider);
 
   // Validate all open URDF/Xacro documents

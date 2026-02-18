@@ -300,16 +300,17 @@ export async function convertOpenSCADToSTL(scadFilePath: string, trace: vscode.O
     const basename = path.basename(scadFilePath, '.scad');
     const dir = path.dirname(scadFilePath);
     const stlPath = path.join(dir, `${basename}.stl`);
+    const virtualFileName = `/${basename}.scad`;
     
     trace.appendLine(`Converting OpenSCAD to STL: ${stlPath}`);
 
     const scadText = await fs.promises.readFile(scadFilePath, 'utf8');
     
-    // Write the main SCAD file to the virtual filesystem
-    instance.FS.writeFile('/input.scad', scadText);
+    // Write the main SCAD file to the virtual filesystem with its actual name
+    instance.FS.writeFile(virtualFileName, scadText);
     
     // Export to STL format
-    const args = ['-o', '/output.stl', '/input.scad'];
+    const args = ['-o', '/output.stl', virtualFileName];
 
     // Run OpenSCAD with library paths
     instance.callMain(args);
@@ -458,6 +459,7 @@ export async function convertOpenSCADToSTLCancellable(
 
       // Send conversion request to worker
       const request = {
+        type: 'convert' as const,
         scadFilePath,
         libraryFiles,
         workspaceRoot,
@@ -942,15 +944,20 @@ export async function validateOpenSCAD(
 
     // Read file content if not provided
     const scadText = scadContent || await fs.promises.readFile(scadFilePath, 'utf8');
+    const basename = path.basename(scadFilePath, '.scad');
+    const virtualFileName = `/${basename}.scad`;
     
-    // Write the SCAD file to the virtual filesystem
-    instance.FS.writeFile('/input.scad', scadText);
+    // Write the SCAD file to the virtual filesystem with its actual name
+    instance.FS.writeFile(virtualFileName, scadText);
     
     // Try to compile the file without full rendering
-    // Use --export-format=echo to just parse and compile without geometry generation
+    // Use fast preview mode for validation
     const args = [
-      '--export-format=echo',
-      '/input.scad'
+      '-o', '/tmp/validation.stl',  // Dummy output file to avoid GUI mode
+      virtualFileName,
+      '--preview',                  // Use preview mode (faster)
+      '--backend=Manifold',        // Use Manifold backend for speed
+      '--export-format=binstl'     // Binary STL for smaller size
     ];
 
     try {
@@ -964,7 +971,9 @@ export async function validateOpenSCAD(
         // Filter out generic WASM exit messages - actual errors are in printErr
         // Match messages that start with exit-related phrases
         const isExitCodeError = /^(Program (exited|stopped|halted)|Aborted|Exception thrown)/i.test(msg);
-        if (!isExitCodeError && msg) {
+        // Also filter out GUI mode errors - these aren't real validation errors
+        const isGuiError = /GUI mode|display/i.test(msg);
+        if (!isExitCodeError && !isGuiError && msg) {
           errors.push(msg);
         }
       }
@@ -987,4 +996,178 @@ export async function validateOpenSCAD(
       warnings
     };
   }
+}
+
+/**
+ * Validate an OpenSCAD file using a worker process to avoid blocking the UI
+ * @param scadFilePath - Path to the OpenSCAD file to validate
+ * @param scadContent - Content to validate
+ * @param workspaceRoot - Optional workspace root for library resolution
+ * @param trace - Optional trace output channel for debug logging
+ * @returns Validation result with any errors and warnings
+ */
+export async function validateOpenSCADWithWorker(
+  scadFilePath: string,
+  scadContent: string,
+  workspaceRoot?: string,
+  trace?: vscode.OutputChannel
+): Promise<OpenSCADValidationResult> {
+  return new Promise(async (resolve) => {
+    try {
+      // Load OpenSCAD libraries and encode them as base64
+      const libraryPaths = await getAllOpenSCADLibraryPaths(workspaceRoot, scadFilePath);
+      const libraryFiles: { [virtualPath: string]: string } = {};
+      
+      if (libraryPaths.length > 0) {
+        await loadLibraryFilesBase64(libraryPaths, libraryFiles, {
+          name: 'silent',
+          append: () => {},
+          appendLine: () => {},
+          replace: () => {},
+          clear: () => {},
+          show: () => {},
+          hide: () => {},
+          dispose: () => {}
+        } as vscode.OutputChannel);
+      }
+
+      // Spawn the worker process
+      const { spawn } = await import('child_process');
+      const workerPath = path.join(__dirname, 'workers', 'openscadWorker.js');
+      
+      trace?.appendLine(`[OpenSCAD Validator] Spawning worker process: ${process.execPath} ${workerPath}`);
+      
+      const childProcess = spawn(process.execPath, [workerPath], {
+        stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
+        detached: false
+      });
+
+      trace?.appendLine(`[OpenSCAD Validator] Worker PID: ${childProcess.pid}`);
+
+      let timeout: any;
+      let responsReceived = false;
+
+      // Capture stdout from worker
+      if (childProcess.stdout) {
+        childProcess.stdout.on('data', (data: Buffer) => {
+          trace?.appendLine(`[OpenSCAD Validator stdout] ${data.toString().trim()}`);
+        });
+      }
+
+      // Capture stderr from worker
+      if (childProcess.stderr) {
+        childProcess.stderr.on('data', (data: Buffer) => {
+          trace?.appendLine(`[OpenSCAD Validator stderr] ${data.toString().trim()}`);
+        });
+      }
+
+      // Set timeout for validation
+      timeout = setTimeout(() => {
+        trace?.appendLine(`[OpenSCAD Validator] Validation timeout after 60s`);
+        if (childProcess && !childProcess.killed) {
+          childProcess.kill('SIGTERM');
+        }
+        responsReceived = true;
+        resolve({
+          valid: false,
+          errors: ['Validation timeout - file took too long to validate'],
+          warnings: []
+        });
+      }, 60000); // 60 second timeout
+
+      // Handle process errors
+      childProcess.on('error', (error: Error) => {
+        trace?.appendLine(`[OpenSCAD Validator] Error event: ${error.message}`);
+        if (timeout) clearTimeout(timeout);
+        responsReceived = true;
+        resolve({
+          valid: false,
+          errors: [`Worker process error: ${error.message}`],
+          warnings: []
+        });
+      });
+
+      // Handle process exit
+      childProcess.on('exit', (code: number, signal: string) => {
+        trace?.appendLine(`[OpenSCAD Validator] Process exited with code ${code}, signal ${signal}`);
+        if (timeout) clearTimeout(timeout);
+        if (!responsReceived) {
+          // If we got here without a message, something went wrong
+          responsReceived = true;
+          resolve({
+            valid: false,
+            errors: [`Worker process exited unexpectedly with code ${code}`],
+            warnings: []
+          });
+        }
+      });
+
+      // Handle messages from worker
+      childProcess.on('message', (response: any) => {
+        trace?.appendLine(`[OpenSCAD Validator] Received message: ${JSON.stringify(response).substring(0, 200)}`);
+        
+        // Handle progress messages without resolving
+        if (response.progress) {
+          trace?.appendLine(`[OpenSCAD Validator] ${response.progress}`);
+          return;
+        }
+        
+        if (timeout) clearTimeout(timeout);
+        
+        if (!responsReceived) {
+          responsReceived = true;
+          if (response.success && response.valid !== undefined) {
+            trace?.appendLine(`[OpenSCAD Validator] Validation completed: valid=${response.valid}, errors=${response.errors?.length || 0}, warnings=${response.warnings?.length || 0}`);
+            resolve({
+              valid: response.valid,
+              errors: response.errors || [],
+              warnings: response.warnings || []
+            });
+          } else if (!response.success && response.error) {
+            trace?.appendLine(`[OpenSCAD Validator] Validation failed: ${response.error}`);
+            resolve({
+              valid: false,
+              errors: [response.error],
+              warnings: response.warnings || []
+            });
+          } else {
+            // Unknown response format
+            trace?.appendLine(`[OpenSCAD Validator] Unknown response format: ${JSON.stringify(response)}`);
+            resolve({
+              valid: false,
+              errors: ['Invalid response from validation worker'],
+              warnings: []
+            });
+          }
+        }
+        
+        // When validation completes, process should exit, but clean up just in case
+        if (childProcess && !childProcess.killed) {
+          childProcess.kill('SIGTERM');
+        }
+      });
+
+      // Send validation request to worker
+      const request = {
+        type: 'validate' as const,
+        scadFilePath,
+        scadContent,
+        libraryFiles,
+        workspaceRoot,
+        timeout: 60000
+      };
+
+      trace?.appendLine(`[OpenSCAD Validator] Sending validation request for: ${scadFilePath}`);
+      childProcess.send(request);
+      
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      trace?.appendLine(`[OpenSCAD Validator] Exception during startup: ${errorMsg}`);
+      resolve({
+        valid: false,
+        errors: [`Validation failed: ${errorMsg}`],
+        warnings: []
+      });
+    }
+  });
 }

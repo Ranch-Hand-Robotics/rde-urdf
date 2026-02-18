@@ -6,7 +6,7 @@ cube([10, 10, 10])
 
 // Undefined variable
 translate([x, y, z])
-sphere(r=5);
+sphere(r=5)
 
 // Unclosed brace
 module test() {
