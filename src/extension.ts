@@ -10,6 +10,8 @@ import { OpenSCADCompletionProvider, OpenSCADHoverProvider } from './openscadCom
 import { URDFXacroCompletionProvider, URDFXacroHoverProvider } from './urdfXacroCompletion';
 import { OpenSCADDefinitionProvider } from './openscadDefinitionProvider';
 import { URDFDefinitionProvider } from './urdfDefinitionProvider';
+import { URDFXacroValidationProvider } from './urdfXacroValidation';
+import { OpenSCADValidationProvider } from './openscadValidation';
 import { Viewer3DProvider } from './3DViewerProvider';
 import * as agents from './agents';
 
@@ -155,6 +157,45 @@ export async function activate(context: vscode.ExtensionContext) {
   urdfXRManager = new WebXRPreviewManager(context, tracing);
   viewProvider = new Viewer3DProvider(context, tracing);
   vscode.window.registerWebviewPanelSerializer('urdfPreview_standalone', urdfManager);
+
+  // Initialize URDF/Xacro validation provider
+  const urdfXacroValidationProvider = new URDFXacroValidationProvider();
+  context.subscriptions.push(urdfXacroValidationProvider);
+
+  // Initialize OpenSCAD validation provider
+  const openscadValidationProvider = new OpenSCADValidationProvider();
+  openscadValidationProvider.setTraceChannel(tracing);
+  context.subscriptions.push(openscadValidationProvider);
+
+  // Validate all open URDF/Xacro documents
+  vscode.workspace.textDocuments.forEach(document => {
+    urdfXacroValidationProvider.validateDocument(document);
+    openscadValidationProvider.validateDocument(document);
+  });
+
+  // Validate on document open
+  context.subscriptions.push(
+    vscode.workspace.onDidOpenTextDocument(document => {
+      urdfXacroValidationProvider.validateDocument(document);
+      openscadValidationProvider.validateDocument(document);
+    })
+  );
+
+  // Validate on document change
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeTextDocument(event => {
+      urdfXacroValidationProvider.validateDocument(event.document);
+      openscadValidationProvider.validateDocument(event.document);
+    })
+  );
+
+  // Clear diagnostics on document close
+  context.subscriptions.push(
+    vscode.workspace.onDidCloseTextDocument(document => {
+      urdfXacroValidationProvider.clearDiagnostics(document);
+      openscadValidationProvider.clearDiagnostics(document);
+    })
+  );
 
   // Start MCP server if URDF/Xacro/OpenSCAD files exist in workspace
   checkAndStartMcpServer(context);
