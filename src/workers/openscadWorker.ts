@@ -11,11 +11,14 @@ interface ConversionRequest {
   libraryFiles: { [virtualPath: string]: string }; // Base64 encoded content
   workspaceRoot?: string;
   timeout?: number; // Custom timeout in milliseconds
+  exportFormat?: 'stl' | 'svg'; // Export format, defaults to 'stl'
 }
 
 interface ConversionResponse {
   success: boolean;
   stlPath?: string;
+  svgPath?: string;
+  outputPath?: string; // Generic output path for any format
   error?: string;
   progress?: string;
 }
@@ -35,7 +38,7 @@ process.on('message', async (message: ConversionRequest) => {
 });
 
 async function convertOpenSCADToSTL(request: ConversionRequest): Promise<void> {
-  const { scadFilePath, libraryFiles, workspaceRoot, timeout = 300000 } = request;
+  const { scadFilePath, libraryFiles, workspaceRoot, timeout = 300000, exportFormat = 'stl' } = request;
   
   try {
     // Send progress update
@@ -93,25 +96,40 @@ async function convertOpenSCADToSTL(request: ConversionRequest): Promise<void> {
 
     const basename = path.basename(scadFilePath, '.scad');
     const dir = path.dirname(scadFilePath);
-    const stlPath = path.join(dir, `${basename}.stl`);
+    
+    // Determine output format and paths
+    const fileExtension = exportFormat === 'svg' ? '.svg' : '.stl';
+    const outputPath = path.join(dir, `${basename}${fileExtension}`);
+    const virtualOutputPath = exportFormat === 'svg' ? '/output.svg' : '/output.stl';
     
     // Read the SCAD file content
     const scadContent = await fs.promises.readFile(scadFilePath, 'utf8');
     
-    sendProgress(`Converting OpenSCAD to STL: ${stlPath}`);
+    sendProgress(`Converting OpenSCAD to ${exportFormat.toUpperCase()}: ${outputPath}`);
 
     // Write the main SCAD file to the virtual filesystem
     instance.FS.writeFile('/input.scad', scadContent);
     
-    // Run OpenSCAD conversion with supported optimizations
-    let args = [
-      '-o', '/output.stl',
-      '/input.scad',
+    // Run OpenSCAD conversion with appropriate settings for format
+    let args: string[];
+    if (exportFormat === 'svg') {
+      // SVG export for 2D designs
+      args = [
+        '-o', virtualOutputPath,
+        '/input.scad',
+      ];
+      sendProgress('Exporting to SVG format...');
+    } else {
+      // STL export for 3D designs with optimizations
+      args = [
+        '-o', virtualOutputPath,
+        '/input.scad',
         '--preview',                // Use preview mode (faster)
-        '--backend=Manifold', // Use Manifold backend for speed
+        '--backend=Manifold',       // Use Manifold backend for speed
         '--export-format=binstl',   // Binary STL for smaller size
       ];
       sendProgress('Using preview mode for faster rendering...');
+    }
     
     sendProgress(`Running OpenSCAD with args: ${args.join(' ')}`);
     
@@ -129,22 +147,26 @@ async function convertOpenSCADToSTL(request: ConversionRequest): Promise<void> {
       throw error;
     }
     
-    const stat: any = instance.FS.stat('/output.stl');
+    const stat: any = instance.FS.stat(virtualOutputPath);
     if (stat) {
-      sendProgress(`Output STL file created: ${stat.size || 'unknown'} bytes`);
+      sendProgress(`Output ${exportFormat.toUpperCase()} file created: ${stat.size || 'unknown'} bytes`);
       
-      // Read and verify the output STL from the virtual filesystem
-      const stlContent = instance.FS.readFile('/output.stl', { encoding: 'binary' });
-      if (stlContent && stlContent.length !== 0) {
-        // Write the STL file to the filesystem
-        await fs.promises.writeFile(stlPath, stlContent, 'binary');
+      // Read and verify the output from the virtual filesystem
+      const encoding = exportFormat === 'svg' ? 'utf8' : 'binary';
+      const outputContent = instance.FS.readFile(virtualOutputPath, { encoding: encoding as any });
+      if (outputContent && outputContent.length !== 0) {
+        // Write the output file to the filesystem
+        await fs.promises.writeFile(outputPath, outputContent, encoding as any);
         
-        sendProgress(`OpenSCAD conversion completed successfully: ${stlPath}`);
+        sendProgress(`OpenSCAD conversion completed successfully: ${outputPath}`);
         
-        // Send success response with the STL path
+        // Send success response with the output path
         const response: ConversionResponse = {
           success: true,
-          stlPath: stlPath
+          outputPath: outputPath,
+          // Keep backwards compatibility
+          ...(exportFormat === 'stl' && { stlPath: outputPath }),
+          ...(exportFormat === 'svg' && { svgPath: outputPath }),
         };
         process.send?.(response);
         process.exit(0);
