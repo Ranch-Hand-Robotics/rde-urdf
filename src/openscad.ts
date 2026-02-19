@@ -627,7 +627,7 @@ export async function exportOpenSCAD(
 
         childProcess.send(request);
         
-      } catch (error:any) {
+      } catch (error: any) {
         if (!cancelled) {
           const errorMsg = error instanceof Error ? error.message : String(error);
           trace.appendLine(`OpenSCAD export failed: ${errorMsg}`);

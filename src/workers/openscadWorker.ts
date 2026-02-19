@@ -88,7 +88,7 @@ async function convertOpenSCADToSTL(request: ConversionRequest): Promise<void> {
         // Decode base64 content and write to virtual filesystem
         const content = Buffer.from(base64Content, 'base64');
         instance.FS.writeFile(virtualPath, content);
-      } catch (error:any) {
+      } catch (error: any) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         sendProgress(`Failed to load library file ${virtualPath}: ${errorMsg}`);
       }
@@ -178,7 +178,7 @@ async function convertOpenSCADToSTL(request: ConversionRequest): Promise<void> {
     };
     process.send?.(response);
     process.exit(1);
-  } catch (error:any) {
+  } catch (error: any) {
     let errorMessage = 'Unknown error occurred';
     
     if (error instanceof Error) {
