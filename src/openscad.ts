@@ -461,7 +461,8 @@ export async function convertOpenSCADToSTLCancellable(
         scadFilePath,
         libraryFiles,
         workspaceRoot,
-        timeout: options?.timeout || 300000  // Default 5 minutes
+        timeout: options?.timeout || 300000,  // Default 5 minutes
+        exportFormat: 'stl' as const
       };
 
       childProcess.send(request);
@@ -481,6 +482,167 @@ export async function convertOpenSCADToSTLCancellable(
     } finally {
       cancellationListener?.dispose();
     }
+  });
+}
+
+/**
+ * Export an OpenSCAD file to a specified format (STL or SVG) using a killable child process
+ */
+export async function exportOpenSCAD(
+  scadFilePath: string, 
+  exportFormat: 'stl' | 'svg',
+  trace: vscode.OutputChannel, 
+  token?: vscode.CancellationToken,
+  options?: {
+    timeout?: number;       // Custom timeout in milliseconds (default: 5 minutes)
+  }
+): Promise<string | null> {
+  let childProcess: any = null;
+  let cancelled = false;
+  
+  return new Promise((resolve, reject) => {
+    // Set up cancellation handling
+    const cancellationListener = token?.onCancellationRequested(() => {
+      cancelled = true;
+      trace.appendLine(`OpenSCAD export cancelled: ${scadFilePath}`);
+      if (childProcess) {
+        trace.appendLine('Killing OpenSCAD worker process...');
+        childProcess.kill('SIGTERM');
+        // Force kill if it doesn't respond to SIGTERM
+        setTimeout(() => {
+          if (childProcess && !childProcess.killed) {
+            childProcess.kill('SIGKILL');
+          }
+        }, 5000);
+      }
+      resolve(null);
+    });
+
+    // Main export logic
+    (async () => {
+      try {
+        // Check if already cancelled
+        if (token?.isCancellationRequested) {
+          resolve(null);
+          return;
+        }
+
+        trace.appendLine(`Starting process-based OpenSCAD export to ${exportFormat.toUpperCase()} for: ${scadFilePath}`);
+        
+        // Get workspace root for variable resolution
+        const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+        
+        // Check and warn if SCAD file is at workspace root
+        await checkAndWarnIfScadFileAtRoot(scadFilePath, workspaceRoot, trace);
+        
+        // Load OpenSCAD libraries and encode them as base64
+        trace.appendLine(`Loading OpenSCAD libraries...`);
+        const libraryPaths = await getAllOpenSCADLibraryPaths(workspaceRoot, scadFilePath);
+        const libraryFiles: { [virtualPath: string]: string } = {};
+        
+        if (cancelled) {
+          resolve(null);
+          return;
+        }
+
+        if (libraryPaths.length > 0) {
+          trace.appendLine(`Found ${libraryPaths.length} library paths: ${libraryPaths.join(', ')}`);
+          await loadLibraryFilesBase64(libraryPaths, libraryFiles, trace);
+        } else {
+          trace.appendLine(`No OpenSCAD library paths found`);
+        }
+
+        if (cancelled) {
+          resolve(null);
+          return;
+        }
+
+        // Spawn the worker process
+        const { spawn } = await import('child_process');
+        const workerPath = path.join(__dirname, 'workers', 'openscadWorker.js');
+        
+        childProcess = spawn(process.execPath, [workerPath], {
+          stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
+          detached: false
+        });
+
+        if (cancelled) {
+          if (childProcess) {
+            childProcess.kill('SIGTERM');
+          }
+          resolve(null);
+          return;
+        }
+
+        // Handle process events
+        childProcess.on('error', (error: Error) => {
+          if (!cancelled) {
+            trace.appendLine(`Worker process error: ${error.message}`);
+            reject(error);
+          }
+        });
+
+        childProcess.on('exit', (code: number, signal: string) => {
+          if (!cancelled) {
+            if (code === 0) {
+              // Success case is handled by the message handler
+            } else {
+              trace.appendLine(`Worker process exited with code ${code}, signal ${signal}`);
+              resolve(null);
+            }
+          }
+        });
+
+        // Handle messages from worker
+        childProcess.on('message', (response: any) => {
+          if (cancelled) {
+            return;
+          }
+
+          if (response.progress) {
+            trace.appendLine(response.progress);
+          } else if (response.success && response.outputPath) {
+            trace.appendLine(`OpenSCAD export completed successfully: ${response.outputPath}`);
+            resolve(response.outputPath);
+          } else if (response.success && (response.stlPath || response.svgPath)) {
+            // Backwards compatibility
+            const outputPath = response.stlPath || response.svgPath;
+            trace.appendLine(`OpenSCAD export completed successfully: ${outputPath}`);
+            resolve(outputPath);
+          } else if (!response.success && response.error) {
+            trace.appendLine(`OpenSCAD export failed: ${response.error}`);
+            vscode.window.showErrorMessage(`Failed to export OpenSCAD file: ${response.error}`);
+            resolve(null);
+          }
+        });
+
+        // Send conversion request to worker
+        const request = {
+          scadFilePath,
+          libraryFiles,
+          workspaceRoot,
+          timeout: options?.timeout || 300000,  // Default 5 minutes
+          exportFormat
+        };
+
+        childProcess.send(request);
+        
+      } catch (error: any) {
+        if (!cancelled) {
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          trace.appendLine(`OpenSCAD export failed: ${errorMsg}`);
+          if (error instanceof Error && error.stack) {
+            trace.appendLine(`Stack trace: ${error.stack}`);
+          }
+          vscode.window.showErrorMessage(`Failed to export OpenSCAD file: ${errorMsg}`);
+          reject(error);
+        } else {
+          resolve(null);
+        }
+      } finally {
+        cancellationListener?.dispose();
+      }
+    })();
   });
 }
 

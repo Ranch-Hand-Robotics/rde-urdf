@@ -14,6 +14,33 @@ The editor includes a preview feature for OpenSCAD files. When a `.scad` file is
 
 **Note**: STL format does not support colors or textures. OpenSCAD models are rendered as single-color geometry in the preview.
 
+## SVG Export for 2D Designs
+
+For 2D OpenSCAD designs, the editor supports exporting to SVG (Scalable Vector Graphics) format. This is particularly useful for creating vector graphics from OpenSCAD's 2D primitives like circles, squares, and polygons.
+
+### How to Export to SVG
+
+1. **From Explorer Context Menu**:
+   - Right-click on any `.scad` file
+   - Select "Export SVG" from the context menu
+   - The SVG file will be created in the same directory with a `.svg` extension
+   - You'll be prompted to open the exported file
+
+2. **From Command Palette**:
+   - Open a `.scad` file in the editor
+   - Press `Ctrl+Shift+P` (or `Cmd+Shift+P` on Mac)
+   - Type "Export SVG" and select "URDF: Export SVG"
+
+### SVG Export Features
+
+- **2D Shape Support**: Works with 2D OpenSCAD primitives (circle, square, polygon, text, etc.)
+- **Vector Graphics**: Preserves scalability and crispness at any resolution
+- **Library Support**: Includes all configured OpenSCAD libraries during export
+- **Progress Indication**: Shows conversion progress with cancellation support
+- **Error Handling**: Clear error messages if the export fails
+
+**Note**: SVG export is designed for 2D designs. For 3D designs, use the existing STL export functionality (automatic on save/preview).
+
 ## OpenSCAD Language Features
 
 The editor provides several language features for OpenSCAD:

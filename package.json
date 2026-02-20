@@ -150,6 +150,12 @@
         "title": "Stop MCP Server",
         "category": "URDF",
         "icon": "$(stop)"
+      },
+      {
+        "command": "urdf-editor.exportSVG",
+        "title": "Export SVG",
+        "category": "URDF",
+        "icon": "$(file-media)"
       }
     ],
     "menus": {
@@ -210,6 +216,11 @@
         },
         {
           "command": "urdf-editor.takeScreenshot",
+          "when": "resourceExtname == .scad",
+          "group": "urdf"
+        },
+        {
+          "command": "urdf-editor.exportSVG",
           "when": "resourceExtname == .scad",
           "group": "urdf"
         }

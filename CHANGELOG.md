@@ -6,6 +6,15 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+### Added
+- **OpenSCAD SVG Export**: 
+  - New "Export SVG" command for .scad files available in context menu and command palette
+  - Exports 2D OpenSCAD designs to SVG (Scalable Vector Graphics) format
+  - Supports all configured OpenSCAD libraries during export
+  - Progress notification with cancellation support
+  - Automatic prompt to open exported SVG file
+  - Uses openscad-wasm-prebuilt for conversion
+
 ### Fixed
 - **Extension Activation**: Removed attempts to set unregistered VS Code configuration settings (`chat.useAgentSkills` and `github.copilot.chat.codeGeneration.useInstructionFiles`) that were causing extension activation failures with "Unable to write to Workspace Settings" errors. GitHub Copilot agents and skills now rely solely on file-based discovery from `.github/agents` and `.github/skills` directories.
 
