@@ -42,6 +42,23 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "chatSkills": [
+      {
+        "path": "./assets/skills/openscad-development/SKILL.md"
+      },
+      {
+        "path": "./assets/skills/openscad-integration/SKILL.md"
+      },
+      {
+        "path": "./assets/skills/urdf-fundamentals/SKILL.md"
+      },
+      {
+        "path": "./assets/skills/urdf-geometry/SKILL.md"
+      },
+      {
+        "path": "./assets/skills/xacro-conversion/SKILL.md"
+      }
+    ],    
     "customEditors": [
       {
         "viewType": "urdf-editor.Viewer3D",

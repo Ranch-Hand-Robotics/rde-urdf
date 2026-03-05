@@ -158,8 +158,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Start MCP server if URDF/Xacro/OpenSCAD files exist in workspace
   checkAndStartMcpServer(context);
-  // Check if agents and skills need to be set up
-  await agents.checkAndOfferAgentsAndSkillsSetup(context);
 
   // Register OpenSCAD IntelliSense completion provider
   const openscadCompletionProvider = vscode.languages.registerCompletionItemProvider(
@@ -504,24 +502,8 @@ export async function activate(context: vscode.ExtensionContext) {
     }
   });
 
-  const setupAgentsCommand = vscode.commands.registerCommand("urdf-editor.setupAgents", async () => {
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    if (!workspaceFolder) {
-      vscode.window.showErrorMessage('No workspace folder open');
-      return;
-    }
-
-    await agents.setupAgentsAndSkills(context, workspaceFolder.uri.fsPath);
-  });
-
-  const resetAgentsSetupCommand = vscode.commands.registerCommand("urdf-editor.resetAgentsSetup", async () => {
-    await agents.resetAgentsSetupState();
-  });
-
   context.subscriptions.push(takeScreenshotCommand);
   context.subscriptions.push(generateOpenSCADDocsCommand);
-  context.subscriptions.push(setupAgentsCommand);
-  context.subscriptions.push(resetAgentsSetupCommand);
 }
 
 export async function deactivate() {
