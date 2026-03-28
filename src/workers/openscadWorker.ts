@@ -32,8 +32,7 @@ process.on('message', async (message: ConversionRequest) => {
       success: false,
       error: error instanceof Error ? error.message : String(error)
     };
-    process.send?.(response);
-    process.exit(1);
+    process.send?.(response, undefined, undefined, () => process.exit(1));
   }
 });
 
@@ -45,7 +44,7 @@ async function convertOpenSCADToSTL(request: ConversionRequest): Promise<void> {
     sendProgress(`Starting OpenSCAD conversion for: ${scadFilePath}`);
     
     const openscad = await createOpenSCAD({
-      print: (text: string) => sendProgress(`OpenSCAD: ${text}`),
+      print: (text: string) => sendProgress(`${text}`),
       printErr: (text: any) => {
         let errorText = text;
         // Check if the error is an object that was toString'd incorrectly
@@ -63,7 +62,12 @@ async function convertOpenSCADToSTL(request: ConversionRequest): Promise<void> {
           // If it's actually an object, extract the message
           errorText = (text as any).message || JSON.stringify(text);
         }
-        sendProgress(`OpenSCAD Error: ${errorText}`);
+
+        const normalizedErrorText = String(errorText ?? '').trim();
+        // OpenSCAD WASM in worker/virtual FS often logs this benign startup warning.
+        if (!normalizedErrorText.includes('Could not initialize localization')) {
+          sendProgress(`${errorText}`);
+        }
       },
     });
 
@@ -75,13 +79,14 @@ async function convertOpenSCADToSTL(request: ConversionRequest): Promise<void> {
     // Load library files into virtual filesystem
     for (const [virtualPath, base64Content] of Object.entries(libraryFiles)) {
       try {
-        // Ensure directory exists
+        // Ensure all parent directories exist (recursive mkdir)
         const dirPath = virtualPath.substring(0, virtualPath.lastIndexOf('/'));
         if (dirPath) {
-          try {
-            instance.FS.mkdir(dirPath);
-          } catch {
-            // Directory might already exist
+          const segments = dirPath.split('/').filter(s => s.length > 0);
+          let current = '';
+          for (const segment of segments) {
+            current += '/' + segment;
+            try { instance.FS.mkdir(current); } catch { /* already exists */ }
           }
         }
         
@@ -135,8 +140,7 @@ async function convertOpenSCADToSTL(request: ConversionRequest): Promise<void> {
     
     // Add timeout handling for long-running operations
     const conversionTimeout = setTimeout(() => {
-      sendProgress(`OpenSCAD conversion timeout after ${timeout}ms - operation taking too long`);
-      process.exit(1);
+      sendProgress(`OpenSCAD conversion timeout after ${timeout}ms - operation taking too long`, () => process.exit(1));
     }, timeout);
     
     try {
@@ -158,8 +162,6 @@ async function convertOpenSCADToSTL(request: ConversionRequest): Promise<void> {
         // Write the output file to the filesystem
         await fs.promises.writeFile(outputPath, outputContent, encoding as any);
         
-        sendProgress(`OpenSCAD conversion completed successfully: ${outputPath}`);
-        
         // Send success response with the output path
         const response: ConversionResponse = {
           success: true,
@@ -168,16 +170,17 @@ async function convertOpenSCADToSTL(request: ConversionRequest): Promise<void> {
           ...(exportFormat === 'stl' && { stlPath: outputPath }),
           ...(exportFormat === 'svg' && { svgPath: outputPath }),
         };
-        process.send?.(response);
-        process.exit(0);
+        process.send?.(response, undefined, undefined, () => process.exit(0));
+        return;
       }
     }
     const response: ConversionResponse = {
       success: false,
       error: 'Output file was not created or is empty'
     };
-    process.send?.(response);
-    process.exit(1);
+    process.send?.(response, undefined, undefined, () => {
+      process.exit(1);
+    });
   } catch (error: any) {
     let errorMessage = 'Unknown error occurred';
     
@@ -207,28 +210,27 @@ async function convertOpenSCADToSTL(request: ConversionRequest): Promise<void> {
       success: false,
       error: errorMessage
     };
-    process.send?.(response);
-    process.exit(1);
+    process.send?.(response, undefined, undefined, () => {
+      process.exit(1);
+    });
   }
 }
 
-function sendProgress(message: string): void {
+function sendProgress(message: string, callback?: () => void): void {
   const response: ConversionResponse = {
     success: true,
     progress: message
   };
-  process.send?.(response);
+  process.send?.(response, undefined, undefined, callback);
 }
 
 // Handle graceful shutdown
 process.on('SIGTERM', () => {
-  sendProgress('OpenSCAD conversion process terminated');
-  process.exit(0);
+  sendProgress('OpenSCAD conversion process terminated', () => process.exit(0));
 });
 
 process.on('SIGINT', () => {
-  sendProgress('OpenSCAD conversion process interrupted');
-  process.exit(0);
+  sendProgress('OpenSCAD conversion process interrupted', () => process.exit(0));
 });
 
 // Prevent the process from hanging

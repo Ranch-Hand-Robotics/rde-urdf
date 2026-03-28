@@ -93,7 +93,7 @@ export function getDefaultOpenSCADLibraryPaths(): string[] {
  */
 export function resolveWorkspaceVariables(libraryPath: string, workspaceRoot?: string): string {
   if (workspaceRoot && libraryPath.includes('${workspaceFolder}')) {
-    return libraryPath.replace(/\$\{workspace\}/g, workspaceRoot);
+    return libraryPath.replace(/\$\{workspaceFolder\}/g, workspaceRoot);
   }
   return libraryPath;
 }
@@ -274,8 +274,8 @@ export async function convertOpenSCADToSTL(scadFilePath: string, trace: vscode.O
     
     const openscad = await createOpenSCAD({
       // Optional callbacks for stdout/stderr
-      print: (text: string) => trace.appendLine(`OpenSCAD: ${text}`),
-      printErr: (text: string) => trace.appendLine(`OpenSCAD Error: ${text}`),
+      print: (text: string) => trace.appendLine(`${text}`),
+      printErr: (text: string) => trace.appendLine(`${text}`),
     });
 
     // Get direct access to the WASM module
@@ -347,6 +347,39 @@ export async function convertOpenSCADToSTLCancellable(
   return new Promise(async (resolve, reject) => {
     let childProcess: any = null;
     let cancelled = false;
+    let completed = false;
+    let hardTimeoutHandle: NodeJS.Timeout | undefined;
+
+    const cleanup = () => {
+      if (hardTimeoutHandle) {
+        clearTimeout(hardTimeoutHandle);
+        hardTimeoutHandle = undefined;
+      }
+      cancellationListener?.dispose();
+      if (childProcess) {
+        childProcess.removeAllListeners('error');
+        childProcess.removeAllListeners('exit');
+        childProcess.removeAllListeners('message');
+      }
+    };
+
+    const resolveOnce = (value: string | null) => {
+      if (completed) {
+        return;
+      }
+      completed = true;
+      cleanup();
+      resolve(value);
+    };
+
+    const rejectOnce = (error: unknown) => {
+      if (completed) {
+        return;
+      }
+      completed = true;
+      cleanup();
+      reject(error);
+    };
     
     // Set up cancellation handling
     const cancellationListener = token?.onCancellationRequested(() => {
@@ -362,13 +395,13 @@ export async function convertOpenSCADToSTLCancellable(
           }
         }, 5000);
       }
-      resolve(null);
+      resolveOnce(null);
     });
 
     try {
       // Check if already cancelled
       if (token?.isCancellationRequested) {
-        resolve(null);
+        resolveOnce(null);
         return;
       }
 
@@ -384,9 +417,9 @@ export async function convertOpenSCADToSTLCancellable(
       trace.appendLine(`Loading OpenSCAD libraries...`);
       const libraryPaths = await getAllOpenSCADLibraryPaths(workspaceRoot, scadFilePath);
       const libraryFiles: { [virtualPath: string]: string } = {};
-      
+
       if (cancelled) {
-        resolve(null);
+        resolveOnce(null);
         return;
       }
 
@@ -398,7 +431,7 @@ export async function convertOpenSCADToSTLCancellable(
       }
 
       if (cancelled) {
-        resolve(null);
+        resolveOnce(null);
         return;
       }
 
@@ -415,15 +448,33 @@ export async function convertOpenSCADToSTLCancellable(
         if (childProcess) {
           childProcess.kill('SIGTERM');
         }
-        resolve(null);
+        resolveOnce(null);
         return;
       }
+
+      const effectiveTimeout = options?.timeout || 300000;
+      hardTimeoutHandle = setTimeout(() => {
+        if (completed || cancelled) {
+          return;
+        }
+        trace.appendLine(`OpenSCAD conversion timed out after ${effectiveTimeout}ms. Terminating worker process...`);
+        if (childProcess && !childProcess.killed) {
+          childProcess.kill('SIGTERM');
+          setTimeout(() => {
+            if (childProcess && !childProcess.killed) {
+              childProcess.kill('SIGKILL');
+            }
+          }, 5000);
+        }
+        vscode.window.showErrorMessage(`OpenSCAD conversion timed out after ${Math.round(effectiveTimeout / 1000)} seconds.`);
+        resolveOnce(null);
+      }, effectiveTimeout);
 
       // Handle process events
       childProcess.on('error', (error: Error) => {
         if (!cancelled) {
           trace.appendLine(`Worker process error: ${error.message}`);
-          reject(error);
+          rejectOnce(error);
         }
       });
 
@@ -433,7 +484,7 @@ export async function convertOpenSCADToSTLCancellable(
             // Success case is handled by the message handler
           } else {
             trace.appendLine(`Worker process exited with code ${code}, signal ${signal}`);
-            resolve(null);
+            resolveOnce(null);
           }
         }
       });
@@ -448,11 +499,11 @@ export async function convertOpenSCADToSTLCancellable(
           trace.appendLine(response.progress);
         } else if (response.success && response.stlPath) {
           trace.appendLine(`OpenSCAD conversion completed successfully: ${response.stlPath}`);
-          resolve(response.stlPath);
+          resolveOnce(response.stlPath);
         } else if (!response.success && response.error) {
           trace.appendLine(`OpenSCAD conversion failed: ${response.error}`);
           vscode.window.showErrorMessage(`Failed to convert OpenSCAD file: ${response.error}`);
-          resolve(null);
+          resolveOnce(null);
         }
       });
 
@@ -461,7 +512,7 @@ export async function convertOpenSCADToSTLCancellable(
         scadFilePath,
         libraryFiles,
         workspaceRoot,
-        timeout: options?.timeout || 300000,  // Default 5 minutes
+        timeout: effectiveTimeout,  // Keep worker-local timeout for additional diagnostics
         exportFormat: 'stl' as const
       };
 
@@ -475,12 +526,10 @@ export async function convertOpenSCADToSTLCancellable(
           trace.appendLine(`Stack trace: ${error.stack}`);
         }
         vscode.window.showErrorMessage(`Failed to convert OpenSCAD file: ${errorMsg}`);
-        reject(error);
+        rejectOnce(error);
       } else {
-        resolve(null);
+        resolveOnce(null);
       }
-    } finally {
-      cancellationListener?.dispose();
     }
   });
 }
@@ -499,8 +548,41 @@ export async function exportOpenSCAD(
 ): Promise<string | null> {
   let childProcess: any = null;
   let cancelled = false;
+  let completed = false;
+  let hardTimeoutHandle: NodeJS.Timeout | undefined;
   
   return new Promise((resolve, reject) => {
+    const cleanup = () => {
+      if (hardTimeoutHandle) {
+        clearTimeout(hardTimeoutHandle);
+        hardTimeoutHandle = undefined;
+      }
+      cancellationListener?.dispose();
+      if (childProcess) {
+        childProcess.removeAllListeners('error');
+        childProcess.removeAllListeners('exit');
+        childProcess.removeAllListeners('message');
+      }
+    };
+
+    const resolveOnce = (value: string | null) => {
+      if (completed) {
+        return;
+      }
+      completed = true;
+      cleanup();
+      resolve(value);
+    };
+
+    const rejectOnce = (error: unknown) => {
+      if (completed) {
+        return;
+      }
+      completed = true;
+      cleanup();
+      reject(error);
+    };
+
     // Set up cancellation handling
     const cancellationListener = token?.onCancellationRequested(() => {
       cancelled = true;
@@ -515,7 +597,7 @@ export async function exportOpenSCAD(
           }
         }, 5000);
       }
-      resolve(null);
+      resolveOnce(null);
     });
 
     // Main export logic
@@ -523,7 +605,7 @@ export async function exportOpenSCAD(
       try {
         // Check if already cancelled
         if (token?.isCancellationRequested) {
-          resolve(null);
+          resolveOnce(null);
           return;
         }
 
@@ -539,9 +621,9 @@ export async function exportOpenSCAD(
         trace.appendLine(`Loading OpenSCAD libraries...`);
         const libraryPaths = await getAllOpenSCADLibraryPaths(workspaceRoot, scadFilePath);
         const libraryFiles: { [virtualPath: string]: string } = {};
-        
+
         if (cancelled) {
-          resolve(null);
+          resolveOnce(null);
           return;
         }
 
@@ -553,7 +635,7 @@ export async function exportOpenSCAD(
         }
 
         if (cancelled) {
-          resolve(null);
+          resolveOnce(null);
           return;
         }
 
@@ -570,15 +652,33 @@ export async function exportOpenSCAD(
           if (childProcess) {
             childProcess.kill('SIGTERM');
           }
-          resolve(null);
+          resolveOnce(null);
           return;
         }
+
+        const effectiveTimeout = options?.timeout || 300000;
+        hardTimeoutHandle = setTimeout(() => {
+          if (completed || cancelled) {
+            return;
+          }
+          trace.appendLine(`OpenSCAD export timed out after ${effectiveTimeout}ms. Terminating worker process...`);
+          if (childProcess && !childProcess.killed) {
+            childProcess.kill('SIGTERM');
+            setTimeout(() => {
+              if (childProcess && !childProcess.killed) {
+                childProcess.kill('SIGKILL');
+              }
+            }, 5000);
+          }
+          vscode.window.showErrorMessage(`OpenSCAD export timed out after ${Math.round(effectiveTimeout / 1000)} seconds.`);
+          resolveOnce(null);
+        }, effectiveTimeout);
 
         // Handle process events
         childProcess.on('error', (error: Error) => {
           if (!cancelled) {
             trace.appendLine(`Worker process error: ${error.message}`);
-            reject(error);
+            rejectOnce(error);
           }
         });
 
@@ -588,7 +688,7 @@ export async function exportOpenSCAD(
               // Success case is handled by the message handler
             } else {
               trace.appendLine(`Worker process exited with code ${code}, signal ${signal}`);
-              resolve(null);
+              resolveOnce(null);
             }
           }
         });
@@ -603,16 +703,16 @@ export async function exportOpenSCAD(
             trace.appendLine(response.progress);
           } else if (response.success && response.outputPath) {
             trace.appendLine(`OpenSCAD export completed successfully: ${response.outputPath}`);
-            resolve(response.outputPath);
+            resolveOnce(response.outputPath);
           } else if (response.success && (response.stlPath || response.svgPath)) {
             // Backwards compatibility
             const outputPath = response.stlPath || response.svgPath;
             trace.appendLine(`OpenSCAD export completed successfully: ${outputPath}`);
-            resolve(outputPath);
+            resolveOnce(outputPath);
           } else if (!response.success && response.error) {
             trace.appendLine(`OpenSCAD export failed: ${response.error}`);
             vscode.window.showErrorMessage(`Failed to export OpenSCAD file: ${response.error}`);
-            resolve(null);
+            resolveOnce(null);
           }
         });
 
@@ -621,7 +721,7 @@ export async function exportOpenSCAD(
           scadFilePath,
           libraryFiles,
           workspaceRoot,
-          timeout: options?.timeout || 300000,  // Default 5 minutes
+          timeout: effectiveTimeout,  // Keep worker-local timeout for additional diagnostics
           exportFormat
         };
 
@@ -635,12 +735,10 @@ export async function exportOpenSCAD(
             trace.appendLine(`Stack trace: ${error.stack}`);
           }
           vscode.window.showErrorMessage(`Failed to export OpenSCAD file: ${errorMsg}`);
-          reject(error);
+          rejectOnce(error);
         } else {
-          resolve(null);
+          resolveOnce(null);
         }
-      } finally {
-        cancellationListener?.dispose();
       }
     })();
   });
