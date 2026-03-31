@@ -264,6 +264,19 @@ export default class URDFPreview
                     try {
                         const scadText = await fs.promises.readFile(this._resource.fsPath, 'utf8');
                         this._scadCustomizerParseResult = parseOpenSCADCustomizerVariables(scadText);
+
+                        // Keep overrides only for currently customizable (visible) variables.
+                        // This ensures variables moved under /* [Hidden] */ are no longer controlled.
+                        const allowedVariableNames = new Set(
+                            this._scadCustomizerParseResult.variables.map(v => v.name)
+                        );
+                        const filteredOverrides: Record<string, OpenSCADCustomizerValue> = {};
+                        for (const [key, value] of Object.entries(this._scadParameterOverrides)) {
+                            if (allowedVariableNames.has(key)) {
+                                filteredOverrides[key] = value;
+                            }
+                        }
+                        this._scadParameterOverrides = filteredOverrides;
                     } catch (parseError: any) {
                         this._scadCustomizerParseResult = {
                             variables: [],
@@ -592,10 +605,9 @@ export default class URDFPreview
 
             case "openscadCustomizerSetValues":
                 if (message.values && typeof message.values === 'object') {
-                    this._scadParameterOverrides = {
-                        ...this._scadParameterOverrides,
-                        ...message.values
-                    };
+                    // Replace current overrides with the active customizer values.
+                    // Avoid merging to prevent stale/hidden variable keys from lingering.
+                    this._scadParameterOverrides = message.values;
                 }
 
                 if (typeof message.autoPreview === 'boolean') {

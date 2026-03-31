@@ -139,11 +139,32 @@ function createScalarInput(variable: CustomizerVariable, value: CustomizerValue)
         if (variable.range?.max !== undefined) textInput.max = `${variable.range.max}`;
         if (variable.range?.step !== undefined) textInput.step = `${variable.range.step}`;
         textInput.value = `${value}`;
-        textInput.addEventListener('input', () => {
+
+        const sliderWrapper = document.createElement('div');
+        sliderWrapper.style.display = 'grid';
+        sliderWrapper.style.gridTemplateColumns = '1fr auto';
+        sliderWrapper.style.alignItems = 'center';
+        sliderWrapper.style.gap = '8px';
+
+        const sliderValue = document.createElement('span');
+        sliderValue.textContent = textInput.value;
+        sliderValue.style.minWidth = '3ch';
+        sliderValue.style.textAlign = 'right';
+        sliderValue.style.fontSize = '12px';
+        sliderValue.style.opacity = '0.9';
+
+        const updateSliderValue = () => {
+          sliderValue.textContent = textInput.value;
           currentCustomizerValues[variable.name] = Number(textInput.value);
           debounceCustomizerApply();
-        });
-        break;
+        };
+
+        textInput.addEventListener('input', updateSliderValue);
+        textInput.addEventListener('change', updateSliderValue);
+
+        sliderWrapper.appendChild(textInput);
+        sliderWrapper.appendChild(sliderValue);
+        return sliderWrapper;
       case 'checkbox':
         textInput.type = 'checkbox';
         textInput.checked = Boolean(value);

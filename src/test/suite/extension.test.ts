@@ -197,4 +197,41 @@ suite('OpenSCAD Customizer Parser Test Suite', () => {
 		assert.strictEqual(result.variables.some(v => v.name === 'text'), false);
 		assert.ok(result.warnings.length >= 2, 'Expected warnings for unsupported customizer expressions');
 	});
+
+	test('parseOpenSCADCustomizerVariables - Hidden section hides following assignments until next tab', () => {
+		const content = [
+			'/* [Main] */',
+			'a = 1;',
+			'/* [Hidden] */',
+			'b = 2;',
+			'c = 3;',
+			'/* [VisibleAgain] */',
+			'd = 4;',
+		].join('\n');
+
+		const result = parseOpenSCADCustomizerVariables(content);
+		const names = result.variables.map(v => v.name);
+
+		assert.strictEqual(names.includes('a'), true);
+		assert.strictEqual(names.includes('b'), false);
+		assert.strictEqual(names.includes('c'), false);
+		assert.strictEqual(names.includes('d'), true);
+	});
+
+	test('parseOpenSCADCustomizerVariables - lowercase hidden marker without spaces is recognized', () => {
+		const content = [
+			'/*[hidden]*/',
+			'x = 1;',
+			'y = "secret";',
+			'/* [VisibleAgain] */',
+			'z = 2;',
+		].join('\n');
+
+		const result = parseOpenSCADCustomizerVariables(content);
+		const names = result.variables.map(v => v.name);
+
+		assert.strictEqual(names.includes('x'), false);
+		assert.strictEqual(names.includes('y'), false);
+		assert.strictEqual(names.includes('z'), true);
+	});
 });

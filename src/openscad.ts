@@ -1626,6 +1626,15 @@ function normalizeTabName(rawName: string): string {
   if (!trimmed) {
     return 'parameters';
   }
+
+  const collapsed = trimmed.replace(/\s+/g, '').toLowerCase();
+  if (collapsed === 'hidden') {
+    return 'Hidden';
+  }
+  if (collapsed === 'global') {
+    return 'Global';
+  }
+
   return trimmed;
 }
 
