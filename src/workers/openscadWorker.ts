@@ -6,12 +6,21 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { createOpenSCAD } from 'openscad-wasm-prebuilt';
 
+type OpenSCADCustomizerValue = string | number | boolean | number[];
+
+interface OpenSCADParameterConfiguration {
+  jsonContent: string;
+  parameterSetName: string;
+}
+
 interface ConversionRequest {
   scadFilePath: string;
   libraryFiles: { [virtualPath: string]: string }; // Base64 encoded content
   workspaceRoot?: string;
   timeout?: number; // Custom timeout in milliseconds
   exportFormat?: 'stl' | 'svg'; // Export format, defaults to 'stl'
+  parameterOverrides?: Record<string, OpenSCADCustomizerValue>;
+  parameterConfiguration?: OpenSCADParameterConfiguration;
 }
 
 interface ConversionResponse {
@@ -37,7 +46,15 @@ process.on('message', async (message: ConversionRequest) => {
 });
 
 async function convertOpenSCADToSTL(request: ConversionRequest): Promise<void> {
-  const { scadFilePath, libraryFiles, workspaceRoot, timeout = 300000, exportFormat = 'stl' } = request;
+  const {
+    scadFilePath,
+    libraryFiles,
+    workspaceRoot,
+    timeout = 300000,
+    exportFormat = 'stl',
+    parameterOverrides,
+    parameterConfiguration
+  } = request;
   
   try {
     // Send progress update
@@ -114,27 +131,42 @@ async function convertOpenSCADToSTL(request: ConversionRequest): Promise<void> {
 
     // Write the main SCAD file to the virtual filesystem
     instance.FS.writeFile('/input.scad', scadContent);
+
+    // Optional: Write parameter configuration file for -p/-P support
+    if (parameterConfiguration?.jsonContent && parameterConfiguration?.parameterSetName) {
+      instance.FS.writeFile('/input.parameters.json', parameterConfiguration.jsonContent);
+    }
     
     // Run OpenSCAD conversion with appropriate settings for format
-    let args: string[];
+    let args: string[] = [
+      '-o', virtualOutputPath
+    ];
+
+    // Append customizer variable overrides using native OpenSCAD CLI behavior.
+    const overrideArgs = buildOverrideArgs(parameterOverrides);
+    if (overrideArgs.length > 0) {
+      args.push(...overrideArgs);
+    }
+
+    // Append parameter configuration set arguments if supplied.
+    if (parameterConfiguration?.jsonContent && parameterConfiguration?.parameterSetName) {
+      args.push('-p', '/input.parameters.json', '-P', parameterConfiguration.parameterSetName);
+    }
+
     if (exportFormat === 'svg') {
-      // SVG export for 2D designs
-      args = [
-        '-o', virtualOutputPath,
-        '/input.scad',
-      ];
       sendProgress('Exporting to SVG format...');
     } else {
       // STL export for 3D designs with optimizations
-      args = [
-        '-o', virtualOutputPath,
-        '/input.scad',
+      args.push(
         '--preview',                // Use preview mode (faster)
         '--backend=Manifold',       // Use Manifold backend for speed
-        '--export-format=binstl',   // Binary STL for smaller size
-      ];
+        '--export-format=binstl'    // Binary STL for smaller size
+      );
       sendProgress('Using preview mode for faster rendering...');
     }
+
+    // Input file should be last argument.
+    args.push('/input.scad');
     
     sendProgress(`Running OpenSCAD with args: ${args.join(' ')}`);
     
@@ -214,6 +246,52 @@ async function convertOpenSCADToSTL(request: ConversionRequest): Promise<void> {
       process.exit(1);
     });
   }
+}
+
+function serializeValue(value: OpenSCADCustomizerValue): string {
+  if (typeof value === 'string') {
+    return JSON.stringify(value);
+  }
+  if (typeof value === 'boolean') {
+    return value ? 'true' : 'false';
+  }
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) {
+      throw new Error('Invalid numeric parameter override value (must be finite).');
+    }
+    return `${value}`;
+  }
+  if (Array.isArray(value)) {
+    if (value.length > 4) {
+      throw new Error('Vector parameter override length must be <= 4.');
+    }
+    for (const item of value) {
+      if (typeof item !== 'number' || !Number.isFinite(item)) {
+        throw new Error('Vector parameter overrides must contain finite numeric values only.');
+      }
+    }
+    return `[${value.join(', ')}]`;
+  }
+
+  throw new Error('Unsupported parameter override value type.');
+}
+
+function buildOverrideArgs(parameterOverrides?: Record<string, OpenSCADCustomizerValue>): string[] {
+  if (!parameterOverrides) {
+    return [];
+  }
+
+  const identifierRegex = /^[A-Za-z_][A-Za-z0-9_]*$/;
+  const args: string[] = [];
+
+  for (const [name, value] of Object.entries(parameterOverrides)) {
+    if (!identifierRegex.test(name)) {
+      continue;
+    }
+    args.push('-D', `${name}=${serializeValue(value)}`);
+  }
+
+  return args;
 }
 
 function sendProgress(message: string, callback?: () => void): void {

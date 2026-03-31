@@ -8,7 +8,14 @@ import * as util from './utils';
 import { trace } from 'console';
 import * as fs from 'fs';
 import * as os from 'os';
-import { convertOpenSCADToSTL, convertOpenSCADToSTLCancellable, isOpenSCADFile } from './openscad';
+import {
+    convertOpenSCADToSTLCancellable,
+    isOpenSCADFile,
+    OpenSCADParameterConfiguration,
+    OpenSCADCustomizerParseResult,
+    OpenSCADCustomizerValue,
+    parseOpenSCADCustomizerVariables
+} from './openscad';
 
 export default class URDFPreview 
 {
@@ -21,6 +28,10 @@ export default class URDFPreview
     private _trace: vscode.OutputChannel;
     private _convertedSTLPath: string | undefined = undefined;
     private _cancellationTokenSource: vscode.CancellationTokenSource | undefined = undefined;
+    private _scadParameterOverrides: Record<string, OpenSCADCustomizerValue> = {};
+    private _scadParameterConfiguration: OpenSCADParameterConfiguration | undefined = undefined;
+    private _scadCustomizerParseResult: OpenSCADCustomizerParseResult | undefined = undefined;
+    private _autoPreviewCustomizer: boolean = true;
 
     private _pendingScreenshots: Array<{
         width: number;
@@ -31,7 +42,11 @@ export default class URDFPreview
 
     public get state() {
         return {
-            resource: this.resource.toString()
+            resource: this.resource.toString(),
+            previewFile: this.resource.fsPath,
+            scadParameterOverrides: this._scadParameterOverrides,
+            scadParameterConfiguration: this._scadParameterConfiguration,
+            autoPreviewCustomizer: this._autoPreviewCustomizer
         };
     }
 
@@ -170,7 +185,9 @@ export default class URDFPreview
                 this._trace, 
                 this._cancellationTokenSource.token,
                 {
-                    timeout: 60000           // 1 minute timeout for fast feedback
+                    timeout: 60000,           // 1 minute timeout for fast feedback
+                    parameterOverrides: this._scadParameterOverrides,
+                    parameterConfiguration: this._scadParameterConfiguration
                 }
             );
             
@@ -244,17 +261,42 @@ export default class URDFPreview
                 // Handle OpenSCAD file - convert to STL and display as 3D model
                 const stlPath = await this.convertOpenSCADToSTL(this._resource.fsPath);
                 if (stlPath) {
+                    try {
+                        const scadText = await fs.promises.readFile(this._resource.fsPath, 'utf8');
+                        this._scadCustomizerParseResult = parseOpenSCADCustomizerVariables(scadText);
+                    } catch (parseError: any) {
+                        this._scadCustomizerParseResult = {
+                            variables: [],
+                            warnings: [{
+                                line: 0,
+                                message: `Failed to parse OpenSCAD customizer variables: ${parseError instanceof Error ? parseError.message : String(parseError)}`
+                            }]
+                        };
+                    }
+
                     const stlUri = vscode.Uri.file(stlPath);
                     
                     this._trace.appendLine("OpenSCAD file previewing: " + this._resource.toString());
                     
                     this._webview.webview.postMessage({ command: 'previewFile', previewFile: this._resource.path});
+
+                    const hasCustomizableContent = (this._scadCustomizerParseResult?.variables.length || 0) > 0;
+                    this._webview.webview.postMessage({
+                        command: 'openscadCustomizerModel',
+                        enabled: hasCustomizableContent,
+                        autoPreview: this._autoPreviewCustomizer,
+                        overrides: this._scadParameterOverrides,
+                        model: this._scadCustomizerParseResult
+                    });
                     this._webview.webview.postMessage({
                         command: 'view3DFile',
                         filename: this._webview.webview.asWebviewUri(stlUri).toString()
                     });
                 }
             } else {
+                this._scadCustomizerParseResult = undefined;
+                this._scadParameterOverrides = {};
+                this._scadParameterConfiguration = undefined;
                 // Handle URDF/Xacro files
                 var [urdfText, packagesNotFound] = await util.processXacro(this._resource.fsPath.toString(), 
                     (packageName :vscode.Uri) => {
@@ -270,6 +312,7 @@ export default class URDFPreview
                 this._trace.appendLine("URDF previewing: " + previewFile);
                 this._trace.append(urdfText);
                 this._webview.webview.postMessage({ command: 'previewFile', previewFile: this._resource.path});
+                this._webview.webview.postMessage({ command: 'openscadCustomizerModel', enabled: false });
                 this._webview.webview.postMessage({ command: 'urdf', urdf: urdfText });
 
                 if (packagesNotFound.length > 0) {
@@ -308,6 +351,10 @@ export default class URDFPreview
             context,
             resource,
             trace);
+
+        preview._scadParameterOverrides = state.scadParameterOverrides || {};
+        preview._scadParameterConfiguration = state.scadParameterConfiguration;
+        preview._autoPreviewCustomizer = state.autoPreviewCustomizer ?? true;
 
         return preview;
     }    
@@ -401,6 +448,19 @@ export default class URDFPreview
                 height: 100%;
                 margin: 0;
                 padding: 0;
+                font-family: var(--vscode-font-family, sans-serif);
+                }
+
+                #previewLayout {
+                width: 100%;
+                height: 100%;
+                display: flex;
+                }
+
+                #renderContainer {
+                flex: 1;
+                min-width: 0;
+                height: 100%;
                 }
 
                 #renderCanvas {
@@ -408,11 +468,101 @@ export default class URDFPreview
                 height: 100%;
                 touch-action: none;
                 }
+
+                #customizerPane {
+                width: 320px;
+                min-width: 260px;
+                max-width: 420px;
+                border-left: 1px solid var(--vscode-panel-border, #3c3c3c);
+                background: var(--vscode-editor-background, #1e1e1e);
+                color: var(--vscode-foreground, #cccccc);
+                display: none;
+                flex-direction: column;
+                }
+
+                #customizerPane.visible {
+                display: flex;
+                }
+
+                #customizerHeader {
+                padding: 10px;
+                border-bottom: 1px solid var(--vscode-panel-border, #3c3c3c);
+                font-weight: 600;
+                }
+
+                #customizerToolbar {
+                padding: 8px 10px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                border-bottom: 1px solid var(--vscode-panel-border, #3c3c3c);
+                }
+
+                #customizerVariables {
+                padding: 10px;
+                overflow-y: auto;
+                flex: 1;
+                }
+
+                .customizer-tab-title {
+                margin-top: 12px;
+                margin-bottom: 6px;
+                font-size: 12px;
+                font-weight: 700;
+                text-transform: uppercase;
+                opacity: 0.8;
+                }
+
+                .customizer-field {
+                margin-bottom: 10px;
+                }
+
+                .customizer-field label {
+                display: block;
+                font-size: 12px;
+                margin-bottom: 4px;
+                }
+
+                .customizer-field input,
+                .customizer-field select {
+                width: 100%;
+                box-sizing: border-box;
+                background: var(--vscode-input-background, #3c3c3c);
+                color: var(--vscode-input-foreground, #cccccc);
+                border: 1px solid var(--vscode-input-border, #3c3c3c);
+                padding: 4px 6px;
+                }
+
+                #customizerWarnings {
+                padding: 8px 10px;
+                border-top: 1px solid var(--vscode-panel-border, #3c3c3c);
+                max-height: 120px;
+                overflow-y: auto;
+                font-size: 12px;
+                color: var(--vscode-editorWarning-foreground, #cca700);
+                }
             </style>
             <title>URDF Preview</title>
             </head>
             <body>
-                <canvas id="renderCanvas" touch-action="none"></canvas>    
+                <div id="previewLayout">
+                    <div id="renderContainer">
+                        <canvas id="renderCanvas" touch-action="none"></canvas>
+                    </div>
+                    <aside id="customizerPane" aria-label="OpenSCAD Customizer">
+                        <div id="customizerHeader">OpenSCAD Customizer</div>
+                        <div id="customizerToolbar">
+                            <label style="display:flex;align-items:center;gap:6px;font-size:12px;">
+                                <input id="customizerAutoPreview" type="checkbox" checked />
+                                Auto Preview
+                            </label>
+                            <button id="customizerApply" type="button">Apply</button>
+                            <button id="customizerReset" type="button">Reset</button>
+                        </div>
+                        <div id="customizerVariables"></div>
+                        <div id="customizerWarnings"></div>
+                    </aside>
+                </div>
                 <script type="module" nonce="${nonce}" src="${webviewUriBabylon}"></script>
                 <script type="module" nonce="${nonce}" src="${webviewUri}"></script>
             </body>
@@ -438,6 +588,64 @@ export default class URDFPreview
                 return;
             case "ready":
                 this.refresh();
+                return;
+
+            case "openscadCustomizerSetValues":
+                if (message.values && typeof message.values === 'object') {
+                    this._scadParameterOverrides = {
+                        ...this._scadParameterOverrides,
+                        ...message.values
+                    };
+                }
+
+                if (typeof message.autoPreview === 'boolean') {
+                    this._autoPreviewCustomizer = message.autoPreview;
+                }
+
+                if (message.applyNow) {
+                    this.refresh();
+                }
+                return;
+
+            case "openscadCustomizerApply":
+                this.refresh();
+                return;
+
+            case "openscadCustomizerReset":
+                this._scadParameterOverrides = {};
+                this._scadParameterConfiguration = undefined;
+                this._webview?.webview.postMessage({
+                    command: 'openscadCustomizerResetValues'
+                });
+                this.refresh();
+                return;
+
+            case "openscadCustomizerSetParameterConfig":
+                if (typeof message.jsonContent === 'string' && typeof message.parameterSetName === 'string') {
+                    this._scadParameterConfiguration = {
+                        jsonContent: message.jsonContent,
+                        parameterSetName: message.parameterSetName
+                    };
+                } else {
+                    this._scadParameterConfiguration = undefined;
+                }
+
+                if (message.applyNow) {
+                    this.refresh();
+                }
+                return;
+
+            case "openscadCustomizerClearParameterConfig":
+                this._scadParameterConfiguration = undefined;
+                if (message.applyNow) {
+                    this.refresh();
+                }
+                return;
+
+            case "openscadCustomizerSetAutoPreview":
+                if (typeof message.value === 'boolean') {
+                    this._autoPreviewCustomizer = message.value;
+                }
                 return;
 
             case "screenshotResult":

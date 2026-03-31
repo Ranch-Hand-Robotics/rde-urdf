@@ -4,7 +4,12 @@ import * as assert from 'assert';
 // as well as import your extension to test it
 import * as vscode from 'vscode';
 import { convertFindToPackageUri, processUrdfContent } from '../../utils';
-import { validateOpenSCAD, getAllOpenSCADLibraryPaths, getDefaultOpenSCADLibraryPaths } from '../../openscad';
+import {
+	validateOpenSCAD,
+	getAllOpenSCADLibraryPaths,
+	getDefaultOpenSCADLibraryPaths,
+	parseOpenSCADCustomizerVariables
+} from '../../openscad';
 import * as path from 'path';
 
 suite('Extension Test Suite', () => {
@@ -149,5 +154,47 @@ suite('Camera Configuration Test Suite', () => {
 		assert.strictEqual(alpha, -60, 'CameraAlpha should default to -60 degrees');
 		assert.strictEqual(beta, 75, 'CameraBeta should default to 75 degrees');
 		assert.strictEqual(distance, 1, 'CameraDistanceToRobot should default to 1');
+	});
+});
+
+suite('OpenSCAD Customizer Parser Test Suite', () => {
+	test('parseOpenSCADCustomizerVariables - parses supported values and tabs', async () => {
+		const testDataPath = path.join(__dirname, '..', 'testdata');
+		const customizerFile = path.join(testDataPath, 'customizer_features.scad');
+		const content = Buffer.from(await vscode.workspace.fs.readFile(vscode.Uri.file(customizerFile))).toString('utf8');
+
+		const result = parseOpenSCADCustomizerVariables(content);
+		assert.ok(result.variables.length > 0, 'Expected parser to find customizer variables');
+
+		const byName = new Map(result.variables.map(v => [v.name, v]));
+
+		assert.strictEqual(byName.get('Numbers')?.widget, 'dropdown');
+		assert.strictEqual(byName.get('Numbers')?.tab, 'Drop down box:');
+		assert.strictEqual(byName.get('slider')?.widget, 'slider');
+		assert.strictEqual(byName.get('stepSlider')?.range?.step, 5);
+		assert.strictEqual(byName.get('Variable')?.widget, 'checkbox');
+		assert.strictEqual(byName.get('String')?.widget, 'textbox');
+		assert.strictEqual(byName.get('String')?.maxLength, 8);
+		assert.strictEqual(byName.get('Vector3')?.widget, 'vector');
+
+		assert.strictEqual(byName.has('debugMode'), false, 'Hidden variables should not be emitted');
+		assert.strictEqual(byName.has('shownAfterBrace'), false, 'Variables after first block brace should not be emitted');
+		assert.ok(result.firstBraceLine !== undefined, 'Expected parser to report first brace line');
+	});
+
+	test('parseOpenSCADCustomizerVariables - warns on unsupported expressions', () => {
+		const content = [
+			'/* [parameters] */',
+			'supported = 1;',
+			'unsupported = 1 + 2;',
+			'text = str("a", "b");',
+			'module stop() {}',
+		].join('\n');
+
+		const result = parseOpenSCADCustomizerVariables(content);
+		assert.strictEqual(result.variables.some(v => v.name === 'supported'), true);
+		assert.strictEqual(result.variables.some(v => v.name === 'unsupported'), false);
+		assert.strictEqual(result.variables.some(v => v.name === 'text'), false);
+		assert.ok(result.warnings.length >= 2, 'Expected warnings for unsupported customizer expressions');
 	});
 });

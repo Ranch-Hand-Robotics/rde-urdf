@@ -29,6 +29,60 @@ export interface OpenSCADModule {
   }): Promise<OpenSCAD>;
 }
 
+export type OpenSCADCustomizerValue = string | number | boolean | number[];
+
+export type OpenSCADCustomizerWidgetType =
+  | 'dropdown'
+  | 'slider'
+  | 'checkbox'
+  | 'spinbox'
+  | 'textbox'
+  | 'vector';
+
+export interface OpenSCADCustomizerOption {
+  label?: string;
+  value: string | number;
+}
+
+export interface OpenSCADCustomizerRangeConstraint {
+  min?: number;
+  max?: number;
+  step?: number;
+}
+
+export interface OpenSCADCustomizerVariable {
+  name: string;
+  valueType: 'string' | 'number' | 'boolean' | 'vector';
+  defaultValue: OpenSCADCustomizerValue;
+  tab: string;
+  hidden: boolean;
+  description?: string;
+  widget: OpenSCADCustomizerWidgetType;
+  options?: OpenSCADCustomizerOption[];
+  range?: OpenSCADCustomizerRangeConstraint;
+  maxLength?: number;
+  rawConstraint?: string;
+  line: number;
+}
+
+export interface OpenSCADCustomizerParseWarning {
+  line: number;
+  message: string;
+}
+
+export interface OpenSCADCustomizerParseResult {
+  variables: OpenSCADCustomizerVariable[];
+  warnings: OpenSCADCustomizerParseWarning[];
+  firstBraceLine?: number;
+}
+
+export interface OpenSCADParameterConfiguration {
+  /** JSON content in OpenSCAD parameter file format */
+  jsonContent: string;
+  /** Parameter set name used with -P */
+  parameterSetName: string;
+}
+
 /**
  * Directories to exclude when copying library files to avoid performance issues
  */
@@ -342,6 +396,8 @@ export async function convertOpenSCADToSTLCancellable(
   token?: vscode.CancellationToken,
   options?: {
     timeout?: number;       // Custom timeout in milliseconds (default: 5 minutes)
+    parameterOverrides?: Record<string, OpenSCADCustomizerValue>;
+    parameterConfiguration?: OpenSCADParameterConfiguration;
   }
 ): Promise<string | null> {
   return new Promise(async (resolve, reject) => {
@@ -513,7 +569,9 @@ export async function convertOpenSCADToSTLCancellable(
         libraryFiles,
         workspaceRoot,
         timeout: effectiveTimeout,  // Keep worker-local timeout for additional diagnostics
-        exportFormat: 'stl' as const
+        exportFormat: 'stl' as const,
+        parameterOverrides: options?.parameterOverrides,
+        parameterConfiguration: options?.parameterConfiguration
       };
 
       childProcess.send(request);
@@ -1248,3 +1306,429 @@ export async function validateOpenSCAD(
     };
   }
 }
+
+function findFirstUncommentedBraceIndex(text: string): number {
+  let inLineComment = false;
+  let inBlockComment = false;
+  let inString = false;
+  let stringQuote = '"';
+
+  for (let i = 0; i < text.length; i++) {
+    const current = text[i];
+    const next = i + 1 < text.length ? text[i + 1] : '';
+
+    if (inLineComment) {
+      if (current === '\n') {
+        inLineComment = false;
+      }
+      continue;
+    }
+
+    if (inBlockComment) {
+      if (current === '*' && next === '/') {
+        inBlockComment = false;
+        i++;
+      }
+      continue;
+    }
+
+    if (inString) {
+      if (current === '\\') {
+        i++;
+        continue;
+      }
+      if (current === stringQuote) {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (current === '/' && next === '/') {
+      inLineComment = true;
+      i++;
+      continue;
+    }
+
+    if (current === '/' && next === '*') {
+      inBlockComment = true;
+      i++;
+      continue;
+    }
+
+    if (current === '"' || current === '\'') {
+      inString = true;
+      stringQuote = current;
+      continue;
+    }
+
+    if (current === '{') {
+      return i;
+    }
+  }
+
+  return -1;
+}
+
+function isNumericLiteral(value: string): boolean {
+  return /^[-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?$/.test(value.trim());
+}
+
+function parseLiteralValue(rawValue: string): {
+  ok: true;
+  value: OpenSCADCustomizerValue;
+  valueType: 'string' | 'number' | 'boolean' | 'vector';
+} | {
+  ok: false;
+} {
+  const value = rawValue.trim();
+
+  if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+    return {
+      ok: true,
+      value: value.slice(1, -1),
+      valueType: 'string'
+    };
+  }
+
+  if (value === 'true' || value === 'false') {
+    return {
+      ok: true,
+      value: value === 'true',
+      valueType: 'boolean'
+    };
+  }
+
+  if (isNumericLiteral(value)) {
+    return {
+      ok: true,
+      value: Number(value),
+      valueType: 'number'
+    };
+  }
+
+  const vectorMatch = value.match(/^\[(.*)\]$/);
+  if (vectorMatch) {
+    const inner = vectorMatch[1].trim();
+    if (inner.length === 0) {
+      return { ok: false };
+    }
+
+    const parts = inner.split(',').map(part => part.trim()).filter(Boolean);
+    if (parts.length === 0 || parts.length > 4) {
+      return { ok: false };
+    }
+
+    const numericVector: number[] = [];
+    for (const part of parts) {
+      if (!isNumericLiteral(part)) {
+        return { ok: false };
+      }
+      numericVector.push(Number(part));
+    }
+
+    return {
+      ok: true,
+      value: numericVector,
+      valueType: 'vector'
+    };
+  }
+
+  return { ok: false };
+}
+
+function parseBracketConstraint(commentText: string): string | undefined {
+  const bracketMatch = commentText.match(/\[(.*)\]/);
+  if (!bracketMatch) {
+    return undefined;
+  }
+  return bracketMatch[1].trim();
+}
+
+function parseNumericToken(value: string): number | undefined {
+  const trimmed = value.trim();
+  if (!isNumericLiteral(trimmed)) {
+    return undefined;
+  }
+  return Number(trimmed);
+}
+
+function parseDropdownOptions(constraint: string, defaultValue: OpenSCADCustomizerValue): OpenSCADCustomizerOption[] | undefined {
+  const parts = constraint.split(',').map(part => part.trim()).filter(Boolean);
+  if (parts.length < 2) {
+    return undefined;
+  }
+
+  const options: OpenSCADCustomizerOption[] = [];
+  for (const part of parts) {
+    const labeled = part.split(':').map(x => x.trim());
+    if (labeled.length === 2) {
+      const [left, right] = labeled;
+      if (typeof defaultValue === 'number') {
+        const n = parseNumericToken(left);
+        if (n === undefined) {
+          return undefined;
+        }
+        options.push({ value: n, label: right });
+      } else {
+        options.push({ value: left, label: right });
+      }
+      continue;
+    }
+
+    if (typeof defaultValue === 'number') {
+      const n = parseNumericToken(part);
+      if (n === undefined) {
+        return undefined;
+      }
+      options.push({ value: n });
+    } else {
+      options.push({ value: part });
+    }
+  }
+
+  return options.length > 1 ? options : undefined;
+}
+
+function parseRangeConstraint(constraint: string): OpenSCADCustomizerRangeConstraint | undefined {
+  const tokens = constraint.split(':').map(token => token.trim());
+
+  if (tokens.length === 1) {
+    const max = parseNumericToken(tokens[0]);
+    if (max === undefined) {
+      return undefined;
+    }
+    return { max };
+  }
+
+  if (tokens.length === 2) {
+    const min = parseNumericToken(tokens[0]);
+    const max = parseNumericToken(tokens[1]);
+    if (min === undefined || max === undefined) {
+      return undefined;
+    }
+    return { min, max };
+  }
+
+  if (tokens.length === 3) {
+    const min = parseNumericToken(tokens[0]);
+    const step = parseNumericToken(tokens[1]);
+    const max = parseNumericToken(tokens[2]);
+    if (min === undefined || step === undefined || max === undefined) {
+      return undefined;
+    }
+    return { min, step, max };
+  }
+
+  return undefined;
+}
+
+function parseSpinboxStep(commentText: string): number | undefined {
+  const stepMatch = commentText.match(/^\s*\.?\d+(?:\.\d+)?\s*$/);
+  if (!stepMatch) {
+    return undefined;
+  }
+  const normalized = commentText.trim().startsWith('.') ? `0${commentText.trim()}` : commentText.trim();
+  const step = Number(normalized);
+  return Number.isFinite(step) ? step : undefined;
+}
+
+function inferWidget(
+  valueType: 'string' | 'number' | 'boolean' | 'vector',
+  defaultValue: OpenSCADCustomizerValue,
+  trailingComment: string | undefined,
+  warnings: OpenSCADCustomizerParseWarning[],
+  line: number
+): {
+  widget: OpenSCADCustomizerWidgetType;
+  options?: OpenSCADCustomizerOption[];
+  range?: OpenSCADCustomizerRangeConstraint;
+  maxLength?: number;
+  rawConstraint?: string;
+} {
+  if (valueType === 'boolean') {
+    return { widget: 'checkbox' };
+  }
+
+  if (valueType === 'vector') {
+    const constraint = trailingComment ? parseBracketConstraint(trailingComment) : undefined;
+    if (constraint) {
+      const range = parseRangeConstraint(constraint);
+      if (range) {
+        return { widget: 'vector', range, rawConstraint: constraint };
+      }
+      warnings.push({
+        line,
+        message: `Unsupported vector constraint '${constraint}'. Falling back to vector spinboxes.`
+      });
+      return { widget: 'vector', rawConstraint: constraint };
+    }
+    return { widget: 'vector' };
+  }
+
+  if (!trailingComment || trailingComment.trim().length === 0) {
+    if (valueType === 'string') {
+      return { widget: 'textbox' };
+    }
+    return { widget: 'spinbox' };
+  }
+
+  const constraint = parseBracketConstraint(trailingComment);
+  if (constraint) {
+    if (valueType === 'string') {
+      const options = parseDropdownOptions(constraint, defaultValue);
+      if (options) {
+        return { widget: 'dropdown', options, rawConstraint: constraint };
+      }
+
+      const maxLength = parseNumericToken(constraint);
+      if (maxLength !== undefined && Number.isInteger(maxLength) && maxLength > 0) {
+        return { widget: 'textbox', maxLength, rawConstraint: constraint };
+      }
+
+      warnings.push({
+        line,
+        message: `Unsupported string constraint '${constraint}'. Falling back to textbox.`
+      });
+      return { widget: 'textbox', rawConstraint: constraint };
+    }
+
+    const options = parseDropdownOptions(constraint, defaultValue);
+    if (options) {
+      return { widget: 'dropdown', options, rawConstraint: constraint };
+    }
+
+    const range = parseRangeConstraint(constraint);
+    if (range) {
+      return { widget: 'slider', range, rawConstraint: constraint };
+    }
+
+    warnings.push({
+      line,
+      message: `Unsupported numeric constraint '${constraint}'. Falling back to spinbox.`
+    });
+    return { widget: 'spinbox', rawConstraint: constraint };
+  }
+
+  if (valueType === 'number') {
+    const step = parseSpinboxStep(trailingComment.trim());
+    if (step !== undefined) {
+      return { widget: 'spinbox', range: { step } };
+    }
+  }
+
+  return valueType === 'string'
+    ? { widget: 'textbox' }
+    : { widget: 'spinbox' };
+}
+
+function normalizeTabName(rawName: string): string {
+  const trimmed = rawName.trim();
+  if (!trimmed) {
+    return 'parameters';
+  }
+  return trimmed;
+}
+
+/**
+ * Parse OpenSCAD customizer-compatible variables from source text.
+ * Rules implemented:
+ * - Only parse assignments before first uncommented '{'
+ * - Variables must be simple literals (string/number/boolean) or numeric vector (<= 4)
+ * - Hidden sections (block comment marker containing [Hidden]) are excluded from output
+ * - Tab sections (block comment markers like [Tab Name]) are captured
+ * - Optional trailing constraints (`// [..]`) are interpreted for widget inference
+ */
+export function parseOpenSCADCustomizerVariables(scadText: string): OpenSCADCustomizerParseResult {
+  const warnings: OpenSCADCustomizerParseWarning[] = [];
+  const variables: OpenSCADCustomizerVariable[] = [];
+
+  const firstBraceIndex = findFirstUncommentedBraceIndex(scadText);
+  const parseRegion = firstBraceIndex >= 0 ? scadText.slice(0, firstBraceIndex) : scadText;
+  const firstBraceLine = firstBraceIndex >= 0 ? scadText.slice(0, firstBraceIndex).split(/\r?\n/).length : undefined;
+  const lines = parseRegion.split(/\r?\n/);
+
+  let currentTab = 'parameters';
+  let pendingDescription: string | undefined;
+
+  const tabRegex = /^\s*\/\*\s*\[([^\]]+)\]\s*\*\/\s*$/;
+  const strictDescriptionRegex = /^\/\/(.*)$/;
+  const assignmentRegex = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+?)\s*;\s*(?:\/\/\s*(.*))?$/;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const lineNumber = i + 1;
+
+    const tabMatch = line.match(tabRegex);
+    if (tabMatch) {
+      currentTab = normalizeTabName(tabMatch[1]);
+      pendingDescription = undefined;
+      continue;
+    }
+
+    const trimmed = line.trim();
+    if (trimmed.length === 0) {
+      continue;
+    }
+
+    const descMatch = line.match(strictDescriptionRegex);
+    if (descMatch) {
+      pendingDescription = descMatch[1].trim();
+      continue;
+    }
+
+    const assignmentMatch = line.match(assignmentRegex);
+    if (!assignmentMatch) {
+      pendingDescription = undefined;
+      continue;
+    }
+
+    const [, name, rawValue, trailingCommentRaw] = assignmentMatch;
+    const literalParse = parseLiteralValue(rawValue);
+    if (!literalParse.ok) {
+      warnings.push({
+        line: lineNumber,
+        message: `Skipping '${name}': value is not a supported literal for customizer.`
+      });
+      pendingDescription = undefined;
+      continue;
+    }
+
+    const hidden = currentTab === 'Hidden';
+    if (hidden) {
+      pendingDescription = undefined;
+      continue;
+    }
+
+    const inferred = inferWidget(
+      literalParse.valueType,
+      literalParse.value,
+      trailingCommentRaw,
+      warnings,
+      lineNumber
+    );
+
+    variables.push({
+      name,
+      valueType: literalParse.valueType,
+      defaultValue: literalParse.value,
+      tab: currentTab,
+      hidden,
+      description: pendingDescription,
+      widget: inferred.widget,
+      options: inferred.options,
+      range: inferred.range,
+      maxLength: inferred.maxLength,
+      rawConstraint: inferred.rawConstraint,
+      line: lineNumber
+    });
+
+    pendingDescription = undefined;
+  }
+
+  return {
+    variables,
+    warnings,
+    firstBraceLine
+  };
+}
+
