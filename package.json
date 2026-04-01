@@ -345,6 +345,12 @@
           "default": [],
           "description": "Additional library paths for OpenSCAD files. Use ${workspace} to reference subdirectories. The SCAD file's directory and OS-specific default locations are automatically included. Note: The workspace root is no longer automatically included to avoid copying large directories."
         },
+        "urdf-editor.OpenSCADCustomizerEnabled": {
+          "type": "boolean",
+          "default": true,
+          "title": "OpenSCAD Customizer Enabled",
+          "description": "Enable or disable the OpenSCAD customizer panel in preview, even when customizer variables are detected."
+        },
         "urdf-editor.openscadRootWarningDismissed": {
           "type": "boolean",
           "default": false,

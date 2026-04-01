@@ -6,7 +6,11 @@ import * as GUI from 'babylonjs-gui';
 
 // Get access to the VS Code API from within the webview context
 let vscode : any | undefined = undefined;
+
+// @ts-ignore
 if (typeof acquireVsCodeApi !== 'undefined') {
+
+  // @ts-ignore
   vscode = acquireVsCodeApi();
 }
 
@@ -48,6 +52,7 @@ interface CustomizerModelPayload {
 let currentCustomizerModel: CustomizerModelPayload | undefined;
 let currentCustomizerValues: Record<string, CustomizerValue> = {};
 let customizerAutoPreview = true;
+let customizerEnabled = false;
 let customizerDebounceHandle: number | undefined;
 
 function forceCanvasRelayout() {
@@ -316,7 +321,7 @@ function resetCustomizerValues() {
     currentCustomizerValues[variable.name] = variable.defaultValue;
   }
 
-  renderCustomizer(currentCustomizerModel, currentCustomizerValues, true, customizerAutoPreview);
+  renderCustomizer(currentCustomizerModel, currentCustomizerValues, customizerEnabled, customizerAutoPreview);
 }
 
 async function apply3DFile(filename: string) {
@@ -460,10 +465,11 @@ async function main() {
         break;
 
         case 'openscadCustomizerModel':
+          customizerEnabled = Boolean(message.enabled);
           renderCustomizer(
             message.model || { variables: [], warnings: [] },
             message.overrides || {},
-            Boolean(message.enabled),
+            customizerEnabled,
             message.autoPreview ?? true
           );
           break;

@@ -21,6 +21,7 @@ export default class URDFPreview
 {
     private _resource: vscode.Uri;
     private _processing: boolean;
+    private _refreshPending: boolean = false;
     private  _context: vscode.ExtensionContext;
     private _disposables: vscode.Disposable[] = [];
     private _urdfEditor: vscode.TextEditor | null = null;
@@ -161,6 +162,9 @@ export default class URDFPreview
 
         vscode.workspace.onDidChangeConfiguration(event => {
             this.updateColors();
+            if (event.affectsConfiguration('urdf-editor.OpenSCADCustomizerEnabled')) {
+                this.refresh();
+            }
         }, this, this._context.subscriptions);
 
         this.updateColors();
@@ -214,9 +218,24 @@ export default class URDFPreview
     }
 
     public async refresh() {
+        this._refreshPending = true;
+
+        // If OpenSCAD conversion is currently running, cancel it so a fresh run can start.
+        if (this._processing && this._cancellationTokenSource) {
+            this._trace.appendLine("Refresh requested while OpenSCAD conversion is in progress. Cancelling current conversion.");
+            this._cancellationTokenSource.cancel();
+            return;
+        }
+
         if (!this._processing) {
+            this._refreshPending = false;
             this.loadResource();
         }
+    }
+
+    private isOpenSCADCustomizerEnabled(): boolean {
+        const config = vscode.workspace.getConfiguration('urdf-editor');
+        return config.get<boolean>('OpenSCADCustomizerEnabled', true);
     }
 
     private updateColors() {
@@ -294,9 +313,10 @@ export default class URDFPreview
                     this._webview.webview.postMessage({ command: 'previewFile', previewFile: this._resource.path});
 
                     const hasCustomizableContent = (this._scadCustomizerParseResult?.variables.length || 0) > 0;
+                    const customizerEnabledInSettings = this.isOpenSCADCustomizerEnabled();
                     this._webview.webview.postMessage({
                         command: 'openscadCustomizerModel',
-                        enabled: hasCustomizableContent,
+                        enabled: hasCustomizableContent && customizerEnabledInSettings,
                         autoPreview: this._autoPreviewCustomizer,
                         overrides: this._scadParameterOverrides,
                         model: this._scadCustomizerParseResult
@@ -348,6 +368,12 @@ export default class URDFPreview
             vscode.window.showErrorMessage(err.message);
         } finally {
             this._processing = false;
+
+            // If another refresh came in while processing, immediately start a fresh pass.
+            if (this._refreshPending) {
+                this._refreshPending = false;
+                this.loadResource();
+            }
         }
     }
 
@@ -424,6 +450,7 @@ export default class URDFPreview
         this._webview?.dispose();    
         this._webview = undefined;
         this._processing = false;
+        this._refreshPending = false;
     }
 
 

@@ -144,16 +144,19 @@ suite('Camera Configuration Test Suite', () => {
 		const alpha = config.get("CameraAlpha");
 		const beta = config.get("CameraBeta");
 		const distance = config.get("CameraDistanceToRobot");
+		const openScadCustomizerEnabled = config.get("OpenSCADCustomizerEnabled");
 		
 		// Verify they are numbers
 		assert.ok(typeof alpha === 'number', 'CameraAlpha should be a number');
 		assert.ok(typeof beta === 'number', 'CameraBeta should be a number');
 		assert.ok(typeof distance === 'number', 'CameraDistanceToRobot should be a number');
+		assert.ok(typeof openScadCustomizerEnabled === 'boolean', 'OpenSCADCustomizerEnabled should be a boolean');
 		
 		// Verify default values in degrees
 		assert.strictEqual(alpha, -60, 'CameraAlpha should default to -60 degrees');
 		assert.strictEqual(beta, 75, 'CameraBeta should default to 75 degrees');
 		assert.strictEqual(distance, 1, 'CameraDistanceToRobot should default to 1');
+		assert.strictEqual(openScadCustomizerEnabled, true, 'OpenSCADCustomizerEnabled should default to true');
 	});
 });
 
@@ -233,5 +236,21 @@ suite('OpenSCAD Customizer Parser Test Suite', () => {
 		assert.strictEqual(names.includes('x'), false);
 		assert.strictEqual(names.includes('y'), false);
 		assert.strictEqual(names.includes('z'), true);
+	});
+
+	test('parseOpenSCADCustomizerVariables - all variables hidden at start', () => {
+		const content = [
+			'/* [Hidden] */',
+			'var1 = 10;',
+			'var2 = 20;',
+			'var3 = [1, 2, 3];',
+			'',
+			'// model code here',
+			'cube(var1);',
+		].join('\n');
+
+		const result = parseOpenSCADCustomizerVariables(content);
+		
+		assert.strictEqual(result.variables.length, 0, 'Should have no visible variables when all are in Hidden section');
 	});
 });
