@@ -125,6 +125,84 @@ The editor includes a built-in MCP server that exposes powerful tools for AI ass
 
 This integrated approach enables a new style of "visual programming" where AI can understand both your code intent and the actual 3D output, creating a powerful feedback loop for rapid prototyping and design iteration.
 
+## OpenSCAD Customizer
+
+The URDF Editor includes an OpenSCAD Customizer panel that lets you interactively adjust parameters in your `.scad` files without editing code directly.
+
+![OpenSCAD Customizer](customizer.png)
+
+### Enabling the Customizer
+
+The Customizer panel appears automatically in the preview sidebar when a `.scad` file is open. Use the **Auto Preview** checkbox to toggle automatic re-rendering whenever a value changes, or use the **Apply** button to trigger rendering manually. **Reset** restores all values to their defaults from the source file.
+
+### Defining Customizable Parameters
+
+Parameters are parsed from top-level variable assignments in your `.scad` file. Follow the standard OpenSCAD Customizer conventions:
+
+**Labels** — place a single-line comment immediately before the assignment to add a description:
+```scad
+// pressure angle
+P = 45;
+```
+
+**Groups** — use a block comment of the form `/* [Group Name] */` to organize parameters into named sections:
+```scad
+/* [Slider] */
+// slider widget for number
+slider = 34; // [10:100]
+```
+
+**Sliders** — append an inline range comment `// [min:max]` to create a slider. Use `// [min:step:max]` for a stepped slider:
+```scad
+slider = 34;     // [10:100]
+stepSlider = 2;  // [0:5:100]
+```
+
+**Dropdowns** — provide a comma-separated list of values to create a combo box. Works for both numbers and strings:
+```scad
+Numbers = 2;      // [0, 1, 2, 3]
+Strings = "foo";  // [foo, bar, baz]
+```
+
+**Checkboxes** — boolean variables automatically render as a checkbox:
+```scad
+Variable = true;
+```
+
+**Textboxes** — string variables become a text input. Append `// [N]` to constrain the input length:
+```scad
+String = "length"; // [8]
+```
+
+**Vectors** — vector variables are supported and can include a range to constrain each component:
+```scad
+Vector3 = [12, 34, 46]; // [0:2:50]
+```
+
+**Hiding parameters** — variables declared inside a `/* [Hidden] */` section are excluded from the Customizer panel:
+```scad
+/* [Hidden] */
+debugMode = true;
+```
+
+### Warnings
+
+The Customizer panel displays a **Warnings** section listing any variables that were skipped. Common reasons include:
+- The value is a computed expression (e.g. `m = round(number_of_planets)`)
+- The literal type is not supported by the Customizer parser
+
+Warnings do not affect rendering — skipped variables retain their values from the source file.
+
+### Disabling the Customizer
+
+To disable the Customizer panel globally, you can adjust the workspace or user setting:
+
+1. Open VS Code settings (`Ctrl+,`)
+2. Search for "OpenSCAD Customizer Enabled"
+3. Uncheck the box or set `"urdf-editor.OpenSCADCustomizerEnabled": false`
+
+When disabled, the Customizer panel will not appear even if customizer variables are detected in the `.scad` file.
+
 ## Acknowledgements
 
 Special thanks to the OpenSCAD community for their work.
