@@ -33,6 +33,7 @@ This extension provides developer tooling for Unified Robot Description Format (
 ### OpenSCAD Support
 - **Integrated Editing**: Full OpenSCAD language support with syntax highlighting
 - **Live Preview**: Automatic STL conversion and 3D rendering
+- **Export Menu**: Export STL, Export SVG, or batch Export Parts from the OpenSCAD context menu
 - **Library Management**: Automatic discovery of libraries from workspace and system paths
 - **Performance Optimizations**: Fast preview mode with configurable timeouts
 - **Documentation Generation**: Extract module/function docs from comments
