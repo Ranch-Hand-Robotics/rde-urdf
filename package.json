@@ -173,6 +173,24 @@
         "title": "Export SVG",
         "category": "URDF",
         "icon": "$(file-media)"
+      },
+      {
+        "command": "urdf-editor.exportScadStl",
+        "title": "Export STL",
+        "category": "URDF",
+        "icon": "$(export)"
+      },
+      {
+        "command": "urdf-editor.exportScadParts",
+        "title": "Export Parts",
+        "category": "URDF",
+        "icon": "$(list-unordered)"
+      }
+    ],
+    "submenus": [
+      {
+        "id": "urdf-editor.exportOpenScadSubmenu",
+        "label": "Export..."
       }
     ],
     "menus": {
@@ -237,9 +255,26 @@
           "group": "urdf"
         },
         {
-          "command": "urdf-editor.exportSVG",
+          "submenu": "urdf-editor.exportOpenScadSubmenu",
           "when": "resourceExtname == .scad",
           "group": "urdf"
+        }
+      ],
+      "urdf-editor.exportOpenScadSubmenu": [
+        {
+          "command": "urdf-editor.exportScadStl",
+          "when": "resourceExtname == .scad",
+          "group": "1_export"
+        },
+        {
+          "command": "urdf-editor.exportSVG",
+          "when": "resourceExtname == .scad",
+          "group": "2_export"
+        },
+        {
+          "command": "urdf-editor.exportScadParts",
+          "when": "resourceExtname == .scad",
+          "group": "3_export"
         }
       ],
       "editor/title": [

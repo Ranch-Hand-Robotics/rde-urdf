@@ -12,6 +12,7 @@ import { OpenSCADDefinitionProvider } from './openscadDefinitionProvider';
 import { URDFDefinitionProvider } from './urdfDefinitionProvider';
 import { Viewer3DProvider } from './3DViewerProvider';
 import * as agents from './agents';
+import { registerOpenSCADExportCommands } from './openscadExport';
 
 export var tracing: vscode.OutputChannel = vscode.window.createOutputChannel("URDF Editor");
 
@@ -333,73 +334,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(exportURDFCommand);
 
-  const exportSVGCommand = vscode.commands.registerCommand("urdf-editor.exportSVG", async (uri?: vscode.Uri) => {
-    // Determine which URI to use
-    let documentUri: vscode.Uri | undefined;
-    if (uri) {
-      // Called from context menu
-      documentUri = uri;
-    } else if (vscode.window.activeTextEditor) {
-      // Called from command palette
-      documentUri = vscode.window.activeTextEditor.document.uri;
-    }
-
-    if (documentUri) {
-      // Check if the file is a .scad file
-      const ext = path.extname(documentUri.fsPath);
-      if (ext !== '.scad') {
-        vscode.window.showErrorMessage('SVG export is only available for .scad (OpenSCAD) files');
-        return;
-      }
-
-      try {
-        // Import the exportOpenSCAD function
-        const { exportOpenSCAD } = await import('./openscad');
-        
-        // Show progress notification
-        await vscode.window.withProgress({
-          location: vscode.ProgressLocation.Notification,
-          title: 'Exporting OpenSCAD to SVG',
-          cancellable: true
-        }, async (progress, token) => {
-          progress.report({ message: 'Converting .scad to .svg...' });
-          
-          // Export the OpenSCAD file to SVG
-          const svgPath = await exportOpenSCAD(
-            documentUri!.fsPath, 
-            'svg',
-            tracing,
-            token
-          );
-          
-          if (svgPath) {
-            vscode.window.showInformationMessage(`SVG exported successfully: ${svgPath}`);
-            
-            // Ask user if they want to open the SVG file
-            const openFile = await vscode.window.showInformationMessage(
-              'Would you like to open the exported SVG file?',
-              'Open',
-              'Cancel'
-            );
-            
-            if (openFile === 'Open') {
-              const svgUri = vscode.Uri.file(svgPath);
-              await vscode.commands.executeCommand('vscode.open', svgUri);
-            }
-          } else {
-            if (!token.isCancellationRequested) {
-              vscode.window.showErrorMessage('Failed to export SVG. Check the output panel for details.');
-            }
-          }
-        });
-      } catch (error) {
-        vscode.window.showErrorMessage(`Failed to export SVG: ${error instanceof Error ? error.message : String(error)}`);
-        tracing.appendLine(`SVG export error: ${error instanceof Error ? error.stack : String(error)}`);
-      }
-    }
-  });
-
-  context.subscriptions.push(exportSVGCommand);
+  // Register OpenSCAD export commands (STL, SVG, and Parts)
+  registerOpenSCADExportCommands(context, tracing);
 
   const takeScreenshotCommand = vscode.commands.registerCommand("urdf-editor.takeScreenshot", async (uri?: vscode.Uri) => {
     if (!urdfManager) {

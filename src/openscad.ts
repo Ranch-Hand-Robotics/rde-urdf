@@ -602,6 +602,7 @@ export async function exportOpenSCAD(
   token?: vscode.CancellationToken,
   options?: {
     timeout?: number;       // Custom timeout in milliseconds (default: 5 minutes)
+    parameterOverrides?: Record<string, OpenSCADCustomizerValue>;
   }
 ): Promise<string | null> {
   let childProcess: any = null;
@@ -780,7 +781,8 @@ export async function exportOpenSCAD(
           libraryFiles,
           workspaceRoot,
           timeout: effectiveTimeout,  // Keep worker-local timeout for additional diagnostics
-          exportFormat
+          exportFormat,
+          parameterOverrides: options?.parameterOverrides
         };
 
         childProcess.send(request);
