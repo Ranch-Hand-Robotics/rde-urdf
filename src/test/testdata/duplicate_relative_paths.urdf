@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+<robot name="duplicate_relative_path_test">
+  <!-- Test that the same relative path appearing multiple times is resolved correctly -->
+  
+  <!-- First link using relative mesh -->
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="test_robot/meshes/base.stl" scale="1 1 1"/>
+      </geometry>
+      <material name="silver">
+        <color rgba="0.8 0.8 0.8 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <!-- Same mesh used in collision - should also be resolved -->
+        <mesh filename="test_robot/meshes/base.stl"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- Second link using the same relative mesh -->
+  <link name="top_link">
+    <visual>
+      <origin xyz="0 0 0.2" rpy="0 0 0"/>
+      <geometry>
+        <!-- Same mesh used again - should also be resolved -->
+        <mesh filename="test_robot/meshes/base.stl" scale="0.5 0.5 0.5"/>
+      </geometry>
+      <material name="blue">
+        <color rgba="0.2 0.2 0.8 1"/>
+      </material>
+    </visual>
+  </link>
+
+  <!-- Joint connecting the links -->
+  <joint name="base_to_top" type="fixed">
+    <parent link="base_link"/>
+    <child link="top_link"/>
+    <origin xyz="0 0 0.15" rpy="0 0 0"/>
+  </joint>
+  
+  <!-- Third link with a different relative path -->
+  <link name="arm_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="test_robot/meshes/arm.dae"/>
+      </geometry>
+    </visual>
+  </link>
+  
+  <joint name="top_to_arm" type="revolute">
+    <parent link="top_link"/>
+    <child link="arm_link"/>
+    <origin xyz="0 0 0.2" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-1.57" upper="1.57" effort="50" velocity="2"/>
+  </joint>
+</robot>
