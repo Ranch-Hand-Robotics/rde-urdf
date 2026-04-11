@@ -5,6 +5,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { createOpenSCAD } from 'openscad-wasm-prebuilt';
+import e from 'express';
 
 type OpenSCADCustomizerValue = string | number | boolean | number[];
 
@@ -122,7 +123,8 @@ async function convertOpenSCADToSTL(request: ConversionRequest): Promise<void> {
     // Determine output format and paths
     const fileExtension = exportFormat === 'svg' ? '.svg' : '.stl';
     const outputPath = path.join(dir, `${basename}${fileExtension}`);
-    const virtualOutputPath = exportFormat === 'svg' ? '/output.svg' : '/output.stl';
+    const virtualOutputPath = exportFormat === 'svg' ? `/${basename}output.svg` : `/${basename}.stl`;
+    const inputVirtualPath = `/${basename}.scad`;
     
     // Read the SCAD file content
     const scadContent = await fs.promises.readFile(scadFilePath, 'utf8');
@@ -130,7 +132,7 @@ async function convertOpenSCADToSTL(request: ConversionRequest): Promise<void> {
     sendProgress(`Converting OpenSCAD to ${exportFormat.toUpperCase()}: ${outputPath}`);
 
     // Write the main SCAD file to the virtual filesystem
-    instance.FS.writeFile('/input.scad', scadContent);
+    instance.FS.writeFile(inputVirtualPath, scadContent);
 
     // Optional: Write parameter configuration file for -p/-P support
     if (parameterConfiguration?.jsonContent && parameterConfiguration?.parameterSetName) {
@@ -166,7 +168,7 @@ async function convertOpenSCADToSTL(request: ConversionRequest): Promise<void> {
     }
 
     // Input file should be last argument.
-    args.push('/input.scad');
+    args.push(inputVirtualPath);
     
     sendProgress(`Running OpenSCAD with args: ${args.join(' ')}`);
     
@@ -206,6 +208,7 @@ async function convertOpenSCADToSTL(request: ConversionRequest): Promise<void> {
         return;
       }
     }
+    
     const response: ConversionResponse = {
       success: false,
       error: 'Output file was not created or is empty'

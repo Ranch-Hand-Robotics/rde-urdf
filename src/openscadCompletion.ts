@@ -85,6 +85,10 @@ export class OpenSCADCompletionProvider implements vscode.CompletionItemProvider
         token: vscode.CancellationToken,
         context: vscode.CompletionContext
     ): vscode.CompletionItem[] {
+        if (isInCommentContext(document, position)) {
+            return [];
+        }
+
         const completions: vscode.CompletionItem[] = [];
 
         // Add modules
@@ -155,6 +159,74 @@ export class OpenSCADCompletionProvider implements vscode.CompletionItemProvider
 
         return completions;
     }
+}
+
+function isInCommentContext(document: vscode.TextDocument, position: vscode.Position): boolean {
+    let inBlockComment = false;
+    let inString: 'single' | 'double' | null = null;
+    let escaped = false;
+
+    for (let line = 0; line <= position.line; line++) {
+        const text = document.lineAt(line).text;
+        const maxColumn = line === position.line ? Math.min(position.character, text.length) : text.length;
+
+        for (let i = 0; i < maxColumn; i++) {
+            const ch = text[i];
+            const next = i + 1 < text.length ? text[i + 1] : '';
+
+            if (inBlockComment) {
+                if (ch === '*' && next === '/') {
+                    inBlockComment = false;
+                    i++;
+                }
+                continue;
+            }
+
+            if (inString) {
+                if (!escaped && ((inString === 'double' && ch === '"') || (inString === 'single' && ch === '\''))) {
+                    inString = null;
+                }
+                escaped = !escaped && ch === '\\';
+                continue;
+            }
+
+            if (ch === '/' && next === '*') {
+                inBlockComment = true;
+                i++;
+                continue;
+            }
+
+            if (ch === '/' && next === '/') {
+                // Inside a line comment from here to end of line.
+                if (line === position.line) {
+                    return true;
+                }
+                break;
+            }
+
+            if (ch === '"') {
+                inString = 'double';
+                escaped = false;
+                continue;
+            }
+
+            if (ch === '\'') {
+                inString = 'single';
+                escaped = false;
+                continue;
+            }
+        }
+
+        // If we're at the target line and still in a block comment, cursor is in comment context.
+        if (line === position.line && inBlockComment) {
+            return true;
+        }
+
+        // Reset single-line comment and string escape tracking on newline.
+        escaped = false;
+    }
+
+    return false;
 }
 
 export class OpenSCADHoverProvider implements vscode.HoverProvider {
