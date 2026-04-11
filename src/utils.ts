@@ -367,6 +367,59 @@ function resolveRelativePaths(
 }
 
 /**
+ * Resolves absolute file paths in URDF content to webview URIs.
+ * This is primarily needed for xacro `$(find package)` expansions that can
+ * produce absolute filesystem paths inside filename attributes.
+ *
+ * @param urdfContent The URDF content that may contain absolute filesystem paths
+ * @param resolvePathFxn Function to convert absolute paths to webview URIs
+ * @returns The URDF content with absolute paths resolved to webview URIs
+ */
+function resolveAbsolutePaths(
+  urdfContent: string,
+  resolvePathFxn: (absolutePath: vscode.Uri) => string
+): string {
+  const filenamePattern = /filename=["']([^"']+)["']/g;
+
+  let resolvedContent = urdfContent;
+  let match;
+  const pathReplacements = new Map<string, string>();
+
+  filenamePattern.lastIndex = 0;
+
+  while ((match = filenamePattern.exec(urdfContent)) !== null) {
+    const originalPath = match[1];
+
+    // Skip protocol-based values (package://, file://, http://, webview URIs, etc.)
+    if (originalPath.includes('://')) {
+      continue;
+    }
+
+    // Handle absolute filesystem paths (Windows and POSIX)
+    if (path.isAbsolute(originalPath) && !pathReplacements.has(originalPath)) {
+      const normalizedPath = path.normalize(originalPath);
+      const vsPath = vscode.Uri.file(normalizedPath);
+      const webviewUri = resolvePathFxn(vsPath);
+      pathReplacements.set(originalPath, webviewUri);
+    }
+  }
+
+  pathReplacements.forEach((webviewUri, originalPath) => {
+    const escapedPath = originalPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    const regexDoubleQuote = new RegExp(`filename="${escapedPath}"`, 'g');
+    const replacementDoubleQuote = `filename="${webviewUri}"`;
+    resolvedContent = resolvedContent.replace(regexDoubleQuote, replacementDoubleQuote);
+
+    const regexSingleQuote = new RegExp(`filename='${escapedPath}'`, 'g');
+    const replacementSingleQuote = `filename='${webviewUri}'`;
+    resolvedContent = resolvedContent.replace(regexSingleQuote, replacementSingleQuote);
+  });
+
+  return resolvedContent;
+}
+
+/**
  * Processes a xacro file with package resolution.
  * This function handles the processing pipeline:
  * 1. Uses XacroParser to parse the xacro file with custom getFileContents
@@ -516,6 +569,9 @@ export async function processXacro(filename: string, resolvePackagesFxn: (packag
       
       // Process relative paths in the final URDF content
       urdfText = resolveRelativePaths(urdfText, filename, resolvePackagesFxn);
+
+      // Process absolute filesystem paths (e.g. from $(find package) expansions)
+      urdfText = resolveAbsolutePaths(urdfText, resolvePackagesFxn);
 
     } catch (err: any) {
       reject(err);
