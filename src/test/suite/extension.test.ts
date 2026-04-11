@@ -4,7 +4,12 @@ import * as assert from 'assert';
 // as well as import your extension to test it
 import * as vscode from 'vscode';
 import { convertFindToPackageUri, processUrdfContent, isRelativePath } from '../../utils';
-import { getAllOpenSCADLibraryPaths, getDefaultOpenSCADLibraryPaths } from '../../openscad';
+import {
+	validateOpenSCAD,
+	getAllOpenSCADLibraryPaths,
+	getDefaultOpenSCADLibraryPaths,
+	parseOpenSCADCustomizerVariables
+} from '../../openscad';
 import * as path from 'path';
 
 suite('Extension Test Suite', () => {
@@ -50,6 +55,29 @@ suite('Extension Test Suite', () => {
 		const expected = '<mesh filename="package://test_package/meshes/test.stl"/>';
 		const result = processUrdfContent(input);
 		assert.strictEqual(result, expected);
+	});
+
+	test('validateOpenSCAD - valid file', async () => {
+		const testDataPath = path.join(__dirname, '..', 'testdata');
+		const validFile = path.join(testDataPath, 'simple_cube.scad');
+		const result = await validateOpenSCAD(validFile);
+		assert.strictEqual(result.valid, true, 'Valid OpenSCAD file should be marked as valid');
+		assert.strictEqual(result.errors.length, 0, 'Valid file should have no errors');
+	});
+
+	test('validateOpenSCAD - invalid file with syntax errors', async () => {
+		const testDataPath = path.join(__dirname, '..', 'testdata');
+		const invalidFile = path.join(testDataPath, 'invalid_syntax.scad');
+		const result = await validateOpenSCAD(invalidFile);
+		assert.strictEqual(result.valid, false, 'Invalid OpenSCAD file should be marked as invalid');
+		assert.ok(result.errors.length > 0, 'Invalid file should have errors');
+	});
+
+	test('validateOpenSCAD - with content string', async () => {
+		const validContent = 'cube([10, 10, 10]);';
+		const result = await validateOpenSCAD('/tmp/test.scad', validContent);
+		assert.strictEqual(result.valid, true, 'Valid OpenSCAD content should be marked as valid');
+		assert.strictEqual(result.errors.length, 0, 'Valid content should have no errors');
 	});
 });
 
@@ -171,15 +199,113 @@ suite('Camera Configuration Test Suite', () => {
 		const alpha = config.get("CameraAlpha");
 		const beta = config.get("CameraBeta");
 		const distance = config.get("CameraDistanceToRobot");
+		const openScadCustomizerEnabled = config.get("OpenSCADCustomizerEnabled");
 		
 		// Verify they are numbers
 		assert.ok(typeof alpha === 'number', 'CameraAlpha should be a number');
 		assert.ok(typeof beta === 'number', 'CameraBeta should be a number');
 		assert.ok(typeof distance === 'number', 'CameraDistanceToRobot should be a number');
+		assert.ok(typeof openScadCustomizerEnabled === 'boolean', 'OpenSCADCustomizerEnabled should be a boolean');
 		
 		// Verify default values in degrees
 		assert.strictEqual(alpha, -60, 'CameraAlpha should default to -60 degrees');
 		assert.strictEqual(beta, 75, 'CameraBeta should default to 75 degrees');
 		assert.strictEqual(distance, 1, 'CameraDistanceToRobot should default to 1');
+		assert.strictEqual(openScadCustomizerEnabled, true, 'OpenSCADCustomizerEnabled should default to true');
+	});
+});
+
+suite('OpenSCAD Customizer Parser Test Suite', () => {
+	test('parseOpenSCADCustomizerVariables - parses supported values and tabs', async () => {
+		const testDataPath = path.join(__dirname, '..', 'testdata');
+		const customizerFile = path.join(testDataPath, 'customizer_features.scad');
+		const content = Buffer.from(await vscode.workspace.fs.readFile(vscode.Uri.file(customizerFile))).toString('utf8');
+
+		const result = parseOpenSCADCustomizerVariables(content);
+		assert.ok(result.variables.length > 0, 'Expected parser to find customizer variables');
+
+		const byName = new Map(result.variables.map(v => [v.name, v]));
+
+		assert.strictEqual(byName.get('Numbers')?.widget, 'dropdown');
+		assert.strictEqual(byName.get('Numbers')?.tab, 'Drop down box:');
+		assert.strictEqual(byName.get('slider')?.widget, 'slider');
+		assert.strictEqual(byName.get('stepSlider')?.range?.step, 5);
+		assert.strictEqual(byName.get('Variable')?.widget, 'checkbox');
+		assert.strictEqual(byName.get('String')?.widget, 'textbox');
+		assert.strictEqual(byName.get('String')?.maxLength, 8);
+		assert.strictEqual(byName.get('Vector3')?.widget, 'vector');
+
+		assert.strictEqual(byName.has('debugMode'), false, 'Hidden variables should not be emitted');
+		assert.strictEqual(byName.has('shownAfterBrace'), false, 'Variables after first block brace should not be emitted');
+		assert.ok(result.firstBraceLine !== undefined, 'Expected parser to report first brace line');
+	});
+
+	test('parseOpenSCADCustomizerVariables - warns on unsupported expressions', () => {
+		const content = [
+			'/* [parameters] */',
+			'supported = 1;',
+			'unsupported = 1 + 2;',
+			'text = str("a", "b");',
+			'module stop() {}',
+		].join('\n');
+
+		const result = parseOpenSCADCustomizerVariables(content);
+		assert.strictEqual(result.variables.some(v => v.name === 'supported'), true);
+		assert.strictEqual(result.variables.some(v => v.name === 'unsupported'), false);
+		assert.strictEqual(result.variables.some(v => v.name === 'text'), false);
+		assert.ok(result.warnings.length >= 2, 'Expected warnings for unsupported customizer expressions');
+	});
+
+	test('parseOpenSCADCustomizerVariables - Hidden section hides following assignments until next tab', () => {
+		const content = [
+			'/* [Main] */',
+			'a = 1;',
+			'/* [Hidden] */',
+			'b = 2;',
+			'c = 3;',
+			'/* [VisibleAgain] */',
+			'd = 4;',
+		].join('\n');
+
+		const result = parseOpenSCADCustomizerVariables(content);
+		const names = result.variables.map(v => v.name);
+
+		assert.strictEqual(names.includes('a'), true);
+		assert.strictEqual(names.includes('b'), false);
+		assert.strictEqual(names.includes('c'), false);
+		assert.strictEqual(names.includes('d'), true);
+	});
+
+	test('parseOpenSCADCustomizerVariables - lowercase hidden marker without spaces is recognized', () => {
+		const content = [
+			'/*[hidden]*/',
+			'x = 1;',
+			'y = "secret";',
+			'/* [VisibleAgain] */',
+			'z = 2;',
+		].join('\n');
+
+		const result = parseOpenSCADCustomizerVariables(content);
+		const names = result.variables.map(v => v.name);
+
+		assert.strictEqual(names.includes('x'), false);
+		assert.strictEqual(names.includes('y'), false);
+		assert.strictEqual(names.includes('z'), true);
+	});
+
+	test('parseOpenSCADCustomizerVariables - all variables hidden at start', () => {
+		const content = [
+			'/* [Hidden] */',
+			'var1 = 10;',
+			'var2 = 20;',
+			'var3 = [1, 2, 3];',
+			'',
+			'// model code here',
+			'cube(var1);',
+		].join('\n');
+
+		const result = parseOpenSCADCustomizerVariables(content);
+		
+		assert.strictEqual(result.variables.length, 0, 'Should have no visible variables when all are in Hidden section');
 	});
 });

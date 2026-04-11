@@ -29,6 +29,60 @@ export interface OpenSCADModule {
   }): Promise<OpenSCAD>;
 }
 
+export type OpenSCADCustomizerValue = string | number | boolean | number[];
+
+export type OpenSCADCustomizerWidgetType =
+  | 'dropdown'
+  | 'slider'
+  | 'checkbox'
+  | 'spinbox'
+  | 'textbox'
+  | 'vector';
+
+export interface OpenSCADCustomizerOption {
+  label?: string;
+  value: string | number;
+}
+
+export interface OpenSCADCustomizerRangeConstraint {
+  min?: number;
+  max?: number;
+  step?: number;
+}
+
+export interface OpenSCADCustomizerVariable {
+  name: string;
+  valueType: 'string' | 'number' | 'boolean' | 'vector';
+  defaultValue: OpenSCADCustomizerValue;
+  tab: string;
+  hidden: boolean;
+  description?: string;
+  widget: OpenSCADCustomizerWidgetType;
+  options?: OpenSCADCustomizerOption[];
+  range?: OpenSCADCustomizerRangeConstraint;
+  maxLength?: number;
+  rawConstraint?: string;
+  line: number;
+}
+
+export interface OpenSCADCustomizerParseWarning {
+  line: number;
+  message: string;
+}
+
+export interface OpenSCADCustomizerParseResult {
+  variables: OpenSCADCustomizerVariable[];
+  warnings: OpenSCADCustomizerParseWarning[];
+  firstBraceLine?: number;
+}
+
+export interface OpenSCADParameterConfiguration {
+  /** JSON content in OpenSCAD parameter file format */
+  jsonContent: string;
+  /** Parameter set name used with -P */
+  parameterSetName: string;
+}
+
 /**
  * Directories to exclude when copying library files to avoid performance issues
  */
@@ -93,7 +147,7 @@ export function getDefaultOpenSCADLibraryPaths(): string[] {
  */
 export function resolveWorkspaceVariables(libraryPath: string, workspaceRoot?: string): string {
   if (workspaceRoot && libraryPath.includes('${workspaceFolder}')) {
-    return libraryPath.replace(/\$\{workspace\}/g, workspaceRoot);
+    return libraryPath.replace(/\$\{workspaceFolder\}/g, workspaceRoot);
   }
   return libraryPath;
 }
@@ -274,8 +328,8 @@ export async function convertOpenSCADToSTL(scadFilePath: string, trace: vscode.O
     
     const openscad = await createOpenSCAD({
       // Optional callbacks for stdout/stderr
-      print: (text: string) => trace.appendLine(`OpenSCAD: ${text}`),
-      printErr: (text: string) => trace.appendLine(`OpenSCAD Error: ${text}`),
+      print: (text: string) => trace.appendLine(`${text}`),
+      printErr: (text: string) => trace.appendLine(`${text}`),
     });
 
     // Get direct access to the WASM module
@@ -342,11 +396,46 @@ export async function convertOpenSCADToSTLCancellable(
   token?: vscode.CancellationToken,
   options?: {
     timeout?: number;       // Custom timeout in milliseconds (default: 5 minutes)
+    parameterOverrides?: Record<string, OpenSCADCustomizerValue>;
+    parameterConfiguration?: OpenSCADParameterConfiguration;
   }
 ): Promise<string | null> {
   return new Promise(async (resolve, reject) => {
     let childProcess: any = null;
     let cancelled = false;
+    let completed = false;
+    let hardTimeoutHandle: NodeJS.Timeout | undefined;
+
+    const cleanup = () => {
+      if (hardTimeoutHandle) {
+        clearTimeout(hardTimeoutHandle);
+        hardTimeoutHandle = undefined;
+      }
+      cancellationListener?.dispose();
+      if (childProcess) {
+        childProcess.removeAllListeners('error');
+        childProcess.removeAllListeners('exit');
+        childProcess.removeAllListeners('message');
+      }
+    };
+
+    const resolveOnce = (value: string | null) => {
+      if (completed) {
+        return;
+      }
+      completed = true;
+      cleanup();
+      resolve(value);
+    };
+
+    const rejectOnce = (error: unknown) => {
+      if (completed) {
+        return;
+      }
+      completed = true;
+      cleanup();
+      reject(error);
+    };
     
     // Set up cancellation handling
     const cancellationListener = token?.onCancellationRequested(() => {
@@ -362,13 +451,13 @@ export async function convertOpenSCADToSTLCancellable(
           }
         }, 5000);
       }
-      resolve(null);
+      resolveOnce(null);
     });
 
     try {
       // Check if already cancelled
       if (token?.isCancellationRequested) {
-        resolve(null);
+        resolveOnce(null);
         return;
       }
 
@@ -384,9 +473,9 @@ export async function convertOpenSCADToSTLCancellable(
       trace.appendLine(`Loading OpenSCAD libraries...`);
       const libraryPaths = await getAllOpenSCADLibraryPaths(workspaceRoot, scadFilePath);
       const libraryFiles: { [virtualPath: string]: string } = {};
-      
+
       if (cancelled) {
-        resolve(null);
+        resolveOnce(null);
         return;
       }
 
@@ -398,7 +487,7 @@ export async function convertOpenSCADToSTLCancellable(
       }
 
       if (cancelled) {
-        resolve(null);
+        resolveOnce(null);
         return;
       }
 
@@ -415,15 +504,33 @@ export async function convertOpenSCADToSTLCancellable(
         if (childProcess) {
           childProcess.kill('SIGTERM');
         }
-        resolve(null);
+        resolveOnce(null);
         return;
       }
+
+      const effectiveTimeout = options?.timeout || 300000;
+      hardTimeoutHandle = setTimeout(() => {
+        if (completed || cancelled) {
+          return;
+        }
+        trace.appendLine(`OpenSCAD conversion timed out after ${effectiveTimeout}ms. Terminating worker process...`);
+        if (childProcess && !childProcess.killed) {
+          childProcess.kill('SIGTERM');
+          setTimeout(() => {
+            if (childProcess && !childProcess.killed) {
+              childProcess.kill('SIGKILL');
+            }
+          }, 5000);
+        }
+        vscode.window.showErrorMessage(`OpenSCAD conversion timed out after ${Math.round(effectiveTimeout / 1000)} seconds.`);
+        resolveOnce(null);
+      }, effectiveTimeout);
 
       // Handle process events
       childProcess.on('error', (error: Error) => {
         if (!cancelled) {
           trace.appendLine(`Worker process error: ${error.message}`);
-          reject(error);
+          rejectOnce(error);
         }
       });
 
@@ -433,7 +540,7 @@ export async function convertOpenSCADToSTLCancellable(
             // Success case is handled by the message handler
           } else {
             trace.appendLine(`Worker process exited with code ${code}, signal ${signal}`);
-            resolve(null);
+            resolveOnce(null);
           }
         }
       });
@@ -448,11 +555,11 @@ export async function convertOpenSCADToSTLCancellable(
           trace.appendLine(response.progress);
         } else if (response.success && response.stlPath) {
           trace.appendLine(`OpenSCAD conversion completed successfully: ${response.stlPath}`);
-          resolve(response.stlPath);
+          resolveOnce(response.stlPath);
         } else if (!response.success && response.error) {
           trace.appendLine(`OpenSCAD conversion failed: ${response.error}`);
           vscode.window.showErrorMessage(`Failed to convert OpenSCAD file: ${response.error}`);
-          resolve(null);
+          resolveOnce(null);
         }
       });
 
@@ -461,7 +568,10 @@ export async function convertOpenSCADToSTLCancellable(
         scadFilePath,
         libraryFiles,
         workspaceRoot,
-        timeout: options?.timeout || 300000  // Default 5 minutes
+        timeout: effectiveTimeout,  // Keep worker-local timeout for additional diagnostics
+        exportFormat: 'stl' as const,
+        parameterOverrides: options?.parameterOverrides,
+        parameterConfiguration: options?.parameterConfiguration
       };
 
       childProcess.send(request);
@@ -474,13 +584,221 @@ export async function convertOpenSCADToSTLCancellable(
           trace.appendLine(`Stack trace: ${error.stack}`);
         }
         vscode.window.showErrorMessage(`Failed to convert OpenSCAD file: ${errorMsg}`);
-        reject(error);
+        rejectOnce(error);
       } else {
-        resolve(null);
+        resolveOnce(null);
       }
-    } finally {
-      cancellationListener?.dispose();
     }
+  });
+}
+
+/**
+ * Export an OpenSCAD file to a specified format (STL or SVG) using a killable child process
+ */
+export async function exportOpenSCAD(
+  scadFilePath: string, 
+  exportFormat: 'stl' | 'svg',
+  trace: vscode.OutputChannel, 
+  token?: vscode.CancellationToken,
+  options?: {
+    timeout?: number;       // Custom timeout in milliseconds (default: 5 minutes)
+  }
+): Promise<string | null> {
+  let childProcess: any = null;
+  let cancelled = false;
+  let completed = false;
+  let hardTimeoutHandle: NodeJS.Timeout | undefined;
+  
+  return new Promise((resolve, reject) => {
+    const cleanup = () => {
+      if (hardTimeoutHandle) {
+        clearTimeout(hardTimeoutHandle);
+        hardTimeoutHandle = undefined;
+      }
+      cancellationListener?.dispose();
+      if (childProcess) {
+        childProcess.removeAllListeners('error');
+        childProcess.removeAllListeners('exit');
+        childProcess.removeAllListeners('message');
+      }
+    };
+
+    const resolveOnce = (value: string | null) => {
+      if (completed) {
+        return;
+      }
+      completed = true;
+      cleanup();
+      resolve(value);
+    };
+
+    const rejectOnce = (error: unknown) => {
+      if (completed) {
+        return;
+      }
+      completed = true;
+      cleanup();
+      reject(error);
+    };
+
+    // Set up cancellation handling
+    const cancellationListener = token?.onCancellationRequested(() => {
+      cancelled = true;
+      trace.appendLine(`OpenSCAD export cancelled: ${scadFilePath}`);
+      if (childProcess) {
+        trace.appendLine('Killing OpenSCAD worker process...');
+        childProcess.kill('SIGTERM');
+        // Force kill if it doesn't respond to SIGTERM
+        setTimeout(() => {
+          if (childProcess && !childProcess.killed) {
+            childProcess.kill('SIGKILL');
+          }
+        }, 5000);
+      }
+      resolveOnce(null);
+    });
+
+    // Main export logic
+    (async () => {
+      try {
+        // Check if already cancelled
+        if (token?.isCancellationRequested) {
+          resolveOnce(null);
+          return;
+        }
+
+        trace.appendLine(`Starting process-based OpenSCAD export to ${exportFormat.toUpperCase()} for: ${scadFilePath}`);
+        
+        // Get workspace root for variable resolution
+        const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+        
+        // Check and warn if SCAD file is at workspace root
+        await checkAndWarnIfScadFileAtRoot(scadFilePath, workspaceRoot, trace);
+        
+        // Load OpenSCAD libraries and encode them as base64
+        trace.appendLine(`Loading OpenSCAD libraries...`);
+        const libraryPaths = await getAllOpenSCADLibraryPaths(workspaceRoot, scadFilePath);
+        const libraryFiles: { [virtualPath: string]: string } = {};
+
+        if (cancelled) {
+          resolveOnce(null);
+          return;
+        }
+
+        if (libraryPaths.length > 0) {
+          trace.appendLine(`Found ${libraryPaths.length} library paths: ${libraryPaths.join(', ')}`);
+          await loadLibraryFilesBase64(libraryPaths, libraryFiles, trace);
+        } else {
+          trace.appendLine(`No OpenSCAD library paths found`);
+        }
+
+        if (cancelled) {
+          resolveOnce(null);
+          return;
+        }
+
+        // Spawn the worker process
+        const { spawn } = await import('child_process');
+        const workerPath = path.join(__dirname, 'workers', 'openscadWorker.js');
+        
+        childProcess = spawn(process.execPath, [workerPath], {
+          stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
+          detached: false
+        });
+
+        if (cancelled) {
+          if (childProcess) {
+            childProcess.kill('SIGTERM');
+          }
+          resolveOnce(null);
+          return;
+        }
+
+        const effectiveTimeout = options?.timeout || 300000;
+        hardTimeoutHandle = setTimeout(() => {
+          if (completed || cancelled) {
+            return;
+          }
+          trace.appendLine(`OpenSCAD export timed out after ${effectiveTimeout}ms. Terminating worker process...`);
+          if (childProcess && !childProcess.killed) {
+            childProcess.kill('SIGTERM');
+            setTimeout(() => {
+              if (childProcess && !childProcess.killed) {
+                childProcess.kill('SIGKILL');
+              }
+            }, 5000);
+          }
+          vscode.window.showErrorMessage(`OpenSCAD export timed out after ${Math.round(effectiveTimeout / 1000)} seconds.`);
+          resolveOnce(null);
+        }, effectiveTimeout);
+
+        // Handle process events
+        childProcess.on('error', (error: Error) => {
+          if (!cancelled) {
+            trace.appendLine(`Worker process error: ${error.message}`);
+            rejectOnce(error);
+          }
+        });
+
+        childProcess.on('exit', (code: number, signal: string) => {
+          if (!cancelled) {
+            if (code === 0) {
+              // Success case is handled by the message handler
+            } else {
+              trace.appendLine(`Worker process exited with code ${code}, signal ${signal}`);
+              resolveOnce(null);
+            }
+          }
+        });
+
+        // Handle messages from worker
+        childProcess.on('message', (response: any) => {
+          if (cancelled) {
+            return;
+          }
+
+          if (response.progress) {
+            trace.appendLine(response.progress);
+          } else if (response.success && response.outputPath) {
+            trace.appendLine(`OpenSCAD export completed successfully: ${response.outputPath}`);
+            resolveOnce(response.outputPath);
+          } else if (response.success && (response.stlPath || response.svgPath)) {
+            // Backwards compatibility
+            const outputPath = response.stlPath || response.svgPath;
+            trace.appendLine(`OpenSCAD export completed successfully: ${outputPath}`);
+            resolveOnce(outputPath);
+          } else if (!response.success && response.error) {
+            trace.appendLine(`OpenSCAD export failed: ${response.error}`);
+            vscode.window.showErrorMessage(`Failed to export OpenSCAD file: ${response.error}`);
+            resolveOnce(null);
+          }
+        });
+
+        // Send conversion request to worker
+        const request = {
+          scadFilePath,
+          libraryFiles,
+          workspaceRoot,
+          timeout: effectiveTimeout,  // Keep worker-local timeout for additional diagnostics
+          exportFormat
+        };
+
+        childProcess.send(request);
+        
+      } catch (error: any) {
+        if (!cancelled) {
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          trace.appendLine(`OpenSCAD export failed: ${errorMsg}`);
+          if (error instanceof Error && error.stack) {
+            trace.appendLine(`Stack trace: ${error.stack}`);
+          }
+          vscode.window.showErrorMessage(`Failed to export OpenSCAD file: ${errorMsg}`);
+          rejectOnce(error);
+        } else {
+          resolveOnce(null);
+        }
+      }
+    })();
   });
 }
 
@@ -876,3 +1194,550 @@ export async function generateAndSaveLibrariesDocumentation(outputPath: string, 
   const markdown = convertLibrariesDocumentationToMarkdown(doc);
   await fs.promises.writeFile(outputPath, markdown, 'utf8');
 }
+
+/**
+ * Result of OpenSCAD validation
+ */
+export interface OpenSCADValidationResult {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
+/**
+ * Validate an OpenSCAD file by attempting to compile it without rendering.
+ * This is useful for checking syntax and compilation errors before full rendering.
+ * 
+ * @param scadFilePath - Path to the OpenSCAD file to validate
+ * @param scadContent - Optional content to validate (if not provided, reads from file)
+ * @param workspaceRoot - Optional workspace root for library resolution
+ * @returns Validation result with any errors and warnings
+ */
+export async function validateOpenSCAD(
+  scadFilePath: string, 
+  scadContent?: string,
+  workspaceRoot?: string
+): Promise<OpenSCADValidationResult> {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  
+  try {
+    // Create OpenSCAD instance with error capturing
+    const openscad = await createOpenSCAD({
+      print: (text: string) => {
+        // Capture warnings from stdout
+        if (text && text.trim()) {
+          warnings.push(text);
+        }
+      },
+      printErr: (text: string) => {
+        // Capture errors from stderr
+        if (text && text.trim()) {
+          errors.push(text);
+        }
+      },
+    });
+
+    const instance = openscad.getInstance();
+
+    // Load OpenSCAD libraries
+    const libraryPaths = await getAllOpenSCADLibraryPaths(workspaceRoot, scadFilePath);
+    if (libraryPaths.length > 0) {
+      // Create a minimal silent trace object for validation
+      const silentTrace = {
+        name: 'silent',
+        append: () => {},
+        appendLine: () => {},
+        replace: () => {},
+        clear: () => {},
+        show: () => {},
+        hide: () => {},
+        dispose: () => {}
+      } as vscode.OutputChannel;
+      
+      await loadLibraryFiles(instance, libraryPaths, silentTrace);
+    }
+
+    // Read file content if not provided
+    const scadText = scadContent || await fs.promises.readFile(scadFilePath, 'utf8');
+    
+    // Write the SCAD file to the virtual filesystem
+    instance.FS.writeFile('/input.scad', scadText);
+    
+    // Try to compile the file without full rendering
+    // Use --export-format=echo to just parse and compile without geometry generation
+    const args = [
+      '--export-format=echo',
+      '/input.scad'
+    ];
+
+    try {
+      instance.callMain(args);
+    } catch (error) {
+      // Compilation errors are captured in printErr callback
+      // callMain throws when OpenSCAD exits with non-zero code
+      // Only add the error message if it's not a generic exit code message
+      if (error instanceof Error) {
+        const msg = error.message.trim();
+        // Filter out generic WASM exit messages - actual errors are in printErr
+        // Match messages that start with exit-related phrases
+        const isExitCodeError = /^(Program (exited|stopped|halted)|Aborted|Exception thrown)/i.test(msg);
+        if (!isExitCodeError && msg) {
+          errors.push(msg);
+        }
+      }
+    }
+
+    // Determine if validation was successful
+    const valid = errors.length === 0;
+
+    return {
+      valid,
+      errors,
+      warnings
+    };
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    errors.push(`Validation failed: ${errorMsg}`);
+    return {
+      valid: false,
+      errors,
+      warnings
+    };
+  }
+}
+
+function findFirstUncommentedBraceIndex(text: string): number {
+  let inLineComment = false;
+  let inBlockComment = false;
+  let inString = false;
+  let stringQuote = '"';
+
+  for (let i = 0; i < text.length; i++) {
+    const current = text[i];
+    const next = i + 1 < text.length ? text[i + 1] : '';
+
+    if (inLineComment) {
+      if (current === '\n') {
+        inLineComment = false;
+      }
+      continue;
+    }
+
+    if (inBlockComment) {
+      if (current === '*' && next === '/') {
+        inBlockComment = false;
+        i++;
+      }
+      continue;
+    }
+
+    if (inString) {
+      if (current === '\\') {
+        i++;
+        continue;
+      }
+      if (current === stringQuote) {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (current === '/' && next === '/') {
+      inLineComment = true;
+      i++;
+      continue;
+    }
+
+    if (current === '/' && next === '*') {
+      inBlockComment = true;
+      i++;
+      continue;
+    }
+
+    if (current === '"' || current === '\'') {
+      inString = true;
+      stringQuote = current;
+      continue;
+    }
+
+    if (current === '{') {
+      return i;
+    }
+  }
+
+  return -1;
+}
+
+function isNumericLiteral(value: string): boolean {
+  return /^[-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?$/.test(value.trim());
+}
+
+function parseLiteralValue(rawValue: string): {
+  ok: true;
+  value: OpenSCADCustomizerValue;
+  valueType: 'string' | 'number' | 'boolean' | 'vector';
+} | {
+  ok: false;
+} {
+  const value = rawValue.trim();
+
+  if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+    return {
+      ok: true,
+      value: value.slice(1, -1),
+      valueType: 'string'
+    };
+  }
+
+  if (value === 'true' || value === 'false') {
+    return {
+      ok: true,
+      value: value === 'true',
+      valueType: 'boolean'
+    };
+  }
+
+  if (isNumericLiteral(value)) {
+    return {
+      ok: true,
+      value: Number(value),
+      valueType: 'number'
+    };
+  }
+
+  const vectorMatch = value.match(/^\[(.*)\]$/);
+  if (vectorMatch) {
+    const inner = vectorMatch[1].trim();
+    if (inner.length === 0) {
+      return { ok: false };
+    }
+
+    const parts = inner.split(',').map(part => part.trim()).filter(Boolean);
+    if (parts.length === 0 || parts.length > 4) {
+      return { ok: false };
+    }
+
+    const numericVector: number[] = [];
+    for (const part of parts) {
+      if (!isNumericLiteral(part)) {
+        return { ok: false };
+      }
+      numericVector.push(Number(part));
+    }
+
+    return {
+      ok: true,
+      value: numericVector,
+      valueType: 'vector'
+    };
+  }
+
+  return { ok: false };
+}
+
+function parseBracketConstraint(commentText: string): string | undefined {
+  const bracketMatch = commentText.match(/\[(.*)\]/);
+  if (!bracketMatch) {
+    return undefined;
+  }
+  return bracketMatch[1].trim();
+}
+
+function parseNumericToken(value: string): number | undefined {
+  const trimmed = value.trim();
+  if (!isNumericLiteral(trimmed)) {
+    return undefined;
+  }
+  return Number(trimmed);
+}
+
+function parseDropdownOptions(constraint: string, defaultValue: OpenSCADCustomizerValue): OpenSCADCustomizerOption[] | undefined {
+  const parts = constraint.split(',').map(part => part.trim()).filter(Boolean);
+  if (parts.length < 2) {
+    return undefined;
+  }
+
+  const options: OpenSCADCustomizerOption[] = [];
+  for (const part of parts) {
+    const labeled = part.split(':').map(x => x.trim());
+    if (labeled.length === 2) {
+      const [left, right] = labeled;
+      if (typeof defaultValue === 'number') {
+        const n = parseNumericToken(left);
+        if (n === undefined) {
+          return undefined;
+        }
+        options.push({ value: n, label: right });
+      } else {
+        options.push({ value: left, label: right });
+      }
+      continue;
+    }
+
+    if (typeof defaultValue === 'number') {
+      const n = parseNumericToken(part);
+      if (n === undefined) {
+        return undefined;
+      }
+      options.push({ value: n });
+    } else {
+      options.push({ value: part });
+    }
+  }
+
+  return options.length > 1 ? options : undefined;
+}
+
+function parseRangeConstraint(constraint: string): OpenSCADCustomizerRangeConstraint | undefined {
+  const tokens = constraint.split(':').map(token => token.trim());
+
+  if (tokens.length === 1) {
+    const max = parseNumericToken(tokens[0]);
+    if (max === undefined) {
+      return undefined;
+    }
+    return { max };
+  }
+
+  if (tokens.length === 2) {
+    const min = parseNumericToken(tokens[0]);
+    const max = parseNumericToken(tokens[1]);
+    if (min === undefined || max === undefined) {
+      return undefined;
+    }
+    return { min, max };
+  }
+
+  if (tokens.length === 3) {
+    const min = parseNumericToken(tokens[0]);
+    const step = parseNumericToken(tokens[1]);
+    const max = parseNumericToken(tokens[2]);
+    if (min === undefined || step === undefined || max === undefined) {
+      return undefined;
+    }
+    return { min, step, max };
+  }
+
+  return undefined;
+}
+
+function parseSpinboxStep(commentText: string): number | undefined {
+  const stepMatch = commentText.match(/^\s*\.?\d+(?:\.\d+)?\s*$/);
+  if (!stepMatch) {
+    return undefined;
+  }
+  const normalized = commentText.trim().startsWith('.') ? `0${commentText.trim()}` : commentText.trim();
+  const step = Number(normalized);
+  return Number.isFinite(step) ? step : undefined;
+}
+
+function inferWidget(
+  valueType: 'string' | 'number' | 'boolean' | 'vector',
+  defaultValue: OpenSCADCustomizerValue,
+  trailingComment: string | undefined,
+  warnings: OpenSCADCustomizerParseWarning[],
+  line: number
+): {
+  widget: OpenSCADCustomizerWidgetType;
+  options?: OpenSCADCustomizerOption[];
+  range?: OpenSCADCustomizerRangeConstraint;
+  maxLength?: number;
+  rawConstraint?: string;
+} {
+  if (valueType === 'boolean') {
+    return { widget: 'checkbox' };
+  }
+
+  if (valueType === 'vector') {
+    const constraint = trailingComment ? parseBracketConstraint(trailingComment) : undefined;
+    if (constraint) {
+      const range = parseRangeConstraint(constraint);
+      if (range) {
+        return { widget: 'vector', range, rawConstraint: constraint };
+      }
+      warnings.push({
+        line,
+        message: `Unsupported vector constraint '${constraint}'. Falling back to vector spinboxes.`
+      });
+      return { widget: 'vector', rawConstraint: constraint };
+    }
+    return { widget: 'vector' };
+  }
+
+  if (!trailingComment || trailingComment.trim().length === 0) {
+    if (valueType === 'string') {
+      return { widget: 'textbox' };
+    }
+    return { widget: 'spinbox' };
+  }
+
+  const constraint = parseBracketConstraint(trailingComment);
+  if (constraint) {
+    if (valueType === 'string') {
+      const options = parseDropdownOptions(constraint, defaultValue);
+      if (options) {
+        return { widget: 'dropdown', options, rawConstraint: constraint };
+      }
+
+      const maxLength = parseNumericToken(constraint);
+      if (maxLength !== undefined && Number.isInteger(maxLength) && maxLength > 0) {
+        return { widget: 'textbox', maxLength, rawConstraint: constraint };
+      }
+
+      warnings.push({
+        line,
+        message: `Unsupported string constraint '${constraint}'. Falling back to textbox.`
+      });
+      return { widget: 'textbox', rawConstraint: constraint };
+    }
+
+    const options = parseDropdownOptions(constraint, defaultValue);
+    if (options) {
+      return { widget: 'dropdown', options, rawConstraint: constraint };
+    }
+
+    const range = parseRangeConstraint(constraint);
+    if (range) {
+      return { widget: 'slider', range, rawConstraint: constraint };
+    }
+
+    warnings.push({
+      line,
+      message: `Unsupported numeric constraint '${constraint}'. Falling back to spinbox.`
+    });
+    return { widget: 'spinbox', rawConstraint: constraint };
+  }
+
+  if (valueType === 'number') {
+    const step = parseSpinboxStep(trailingComment.trim());
+    if (step !== undefined) {
+      return { widget: 'spinbox', range: { step } };
+    }
+  }
+
+  return valueType === 'string'
+    ? { widget: 'textbox' }
+    : { widget: 'spinbox' };
+}
+
+function normalizeTabName(rawName: string): string {
+  const trimmed = rawName.trim();
+  if (!trimmed) {
+    return 'parameters';
+  }
+
+  const collapsed = trimmed.replace(/\s+/g, '').toLowerCase();
+  if (collapsed === 'hidden') {
+    return 'Hidden';
+  }
+  if (collapsed === 'global') {
+    return 'Global';
+  }
+
+  return trimmed;
+}
+
+/**
+ * Parse OpenSCAD customizer-compatible variables from source text.
+ * Rules implemented:
+ * - Only parse assignments before first uncommented '{'
+ * - Variables must be simple literals (string/number/boolean) or numeric vector (<= 4)
+ * - Hidden sections (block comment marker containing [Hidden]) are excluded from output
+ * - Tab sections (block comment markers like [Tab Name]) are captured
+ * - Optional trailing constraints (`// [..]`) are interpreted for widget inference
+ */
+export function parseOpenSCADCustomizerVariables(scadText: string): OpenSCADCustomizerParseResult {
+  const warnings: OpenSCADCustomizerParseWarning[] = [];
+  const variables: OpenSCADCustomizerVariable[] = [];
+
+  const firstBraceIndex = findFirstUncommentedBraceIndex(scadText);
+  const parseRegion = firstBraceIndex >= 0 ? scadText.slice(0, firstBraceIndex) : scadText;
+  const firstBraceLine = firstBraceIndex >= 0 ? scadText.slice(0, firstBraceIndex).split(/\r?\n/).length : undefined;
+  const lines = parseRegion.split(/\r?\n/);
+
+  let currentTab = 'parameters';
+  let pendingDescription: string | undefined;
+
+  const tabRegex = /^\s*\/\*\s*\[([^\]]+)\]\s*\*\/\s*$/;
+  const strictDescriptionRegex = /^\/\/(.*)$/;
+  const assignmentRegex = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+?)\s*;\s*(?:\/\/\s*(.*))?$/;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const lineNumber = i + 1;
+
+    const tabMatch = line.match(tabRegex);
+    if (tabMatch) {
+      currentTab = normalizeTabName(tabMatch[1]);
+      pendingDescription = undefined;
+      continue;
+    }
+
+    const trimmed = line.trim();
+    if (trimmed.length === 0) {
+      continue;
+    }
+
+    const descMatch = line.match(strictDescriptionRegex);
+    if (descMatch) {
+      pendingDescription = descMatch[1].trim();
+      continue;
+    }
+
+    const assignmentMatch = line.match(assignmentRegex);
+    if (!assignmentMatch) {
+      pendingDescription = undefined;
+      continue;
+    }
+
+    const [, name, rawValue, trailingCommentRaw] = assignmentMatch;
+    const literalParse = parseLiteralValue(rawValue);
+    if (!literalParse.ok) {
+      warnings.push({
+        line: lineNumber,
+        message: `Skipping '${name}': value is not a supported literal for customizer.`
+      });
+      pendingDescription = undefined;
+      continue;
+    }
+
+    const hidden = currentTab === 'Hidden';
+    if (hidden) {
+      pendingDescription = undefined;
+      continue;
+    }
+
+    const inferred = inferWidget(
+      literalParse.valueType,
+      literalParse.value,
+      trailingCommentRaw,
+      warnings,
+      lineNumber
+    );
+
+    variables.push({
+      name,
+      valueType: literalParse.valueType,
+      defaultValue: literalParse.value,
+      tab: currentTab,
+      hidden,
+      description: pendingDescription,
+      widget: inferred.widget,
+      options: inferred.options,
+      range: inferred.range,
+      maxLength: inferred.maxLength,
+      rawConstraint: inferred.rawConstraint,
+      line: lineNumber
+    });
+
+    pendingDescription = undefined;
+  }
+
+  return {
+    variables,
+    warnings,
+    firstBraceLine
+  };
+}
+

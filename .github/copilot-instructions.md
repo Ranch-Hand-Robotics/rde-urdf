@@ -162,8 +162,19 @@ parser.rospackCommands = {
 The extension includes a Model Context Protocol (MCP) server (`src/mcp.ts`) that exposes tools for AI assistants:
 
 ### Available MCP Tools
-- **`take_screenshot`**: Captures screenshots of active URDF/Xacro/OpenSCAD previews for visual verification
+- **`take_screenshot`**: **USE FREQUENTLY** - Captures screenshots of active URDF/Xacro/OpenSCAD previews for visual verification
+  - Accepts optional `filename` parameter to screenshot specific file (opens preview if needed)
+  - Accepts optional `width` and `height` parameters (default: 1024x1024)
+  - **CRITICAL**: Use after every OpenSCAD file creation/modification to verify rendering
+  - Timeouts after 30 seconds indicate rendering/syntax errors
 - **`take_screenshot_by_filename`**: Takes screenshot of a specific file by filename, opening a preview if needed
+  - Required: `filename` - path to URDF/Xacro/OpenSCAD file
+  - Optional: `width`, `height` - screenshot dimensions
+- **`take_screenshot_save_to_file`**: Saves screenshot to disk file
+  - **ONLY USE** when user explicitly asks to save/export screenshot for documentation
+  - Required: `saveFilename` - where to save the screenshot
+  - Optional: `sourceFile` - which file to screenshot (uses active preview if omitted)
+  - Optional: `width`, `height` - screenshot dimensions
 - **`get_openscad_libraries`**: Provides comprehensive documentation of available OpenSCAD libraries, modules, and functions
 
 ### MCP Server Features
@@ -171,6 +182,21 @@ The extension includes a Model Context Protocol (MCP) server (`src/mcp.ts`) that
 - **HTTP Transport**: Uses HTTP transport on configurable port (default: 3005)
 - **Session Management**: Supports multiple concurrent AI assistant sessions
 - **Error Handling**: Robust error handling with detailed logging to output channel
+- **Timeout Protection**: Screenshots timeout after 30 seconds to prevent hanging on render errors
+- **Shared Preview Logic**: All screenshot tools use common `getOrCreatePreview()` helper for consistency
+
+### Screenshot Workflow
+1. AI modifies/creates URDF, Xacro, or OpenSCAD file
+2. AI **immediately** calls `take_screenshot` with optional filename parameter
+3. If screenshot succeeds: geometry renders correctly
+4. If screenshot times out: syntax or rendering error exists, check file for issues
+5. AI reports visual confirmation or errors to user
+
+**Always take screenshots after**:
+- Creating new OpenSCAD files
+- Modifying geometry or structure
+- Applying Xacro macros
+- Any change affecting visual appearance
 
 ### Configuration Settings
 Extension settings are defined in `package.json` under `contributes.configuration`. All settings prefixed with `urdf-editor.` and include visual appearance, camera, debug options, and OpenSCAD library paths. Key settings:

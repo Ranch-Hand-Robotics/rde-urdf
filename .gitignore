@@ -405,3 +405,5 @@ FodyWeavers.xsd
 *.sln.iml
 
 src/test/testdata/**/.vscode/*
+
+src/test/testdata/customizer_features.stl

@@ -49,6 +49,7 @@ This extension provides developer tooling for Unified Robot Description Format (
 - **GitHub Copilot Integration**: Custom prompts for URDF/Xacro/OpenSCAD
 - **Model Context Protocol (MCP) Server**: AI visual verification tools
   - Screenshot capture of 3D previews
+  - OpenSCAD validation and error checking
   - OpenSCAD library documentation access
   - Visual feedback loop for code generation
 - **Vibe Coding**: AI can see rendered output and suggest improvements
@@ -168,6 +169,10 @@ The extension includes an MCP server that provides AI assistants with powerful c
 - **Screenshot Tools**: AI can capture and verify visual output of URDF/Xacro/OpenSCAD files
   - `take_screenshot`: Screenshot of currently active preview
   - `take_screenshot_by_filename`: Screenshot any file by path (opens preview if needed)
+- **OpenSCAD Validation**: AI can check OpenSCAD files for compilation errors before declaring completion
+  - `validate_openscad`: Validates an OpenSCAD file by attempting to compile it and returns any syntax or compilation errors
+  - Supports both file paths and inline content validation
+  - Returns detailed error messages and warnings
 - **Library Documentation**: AI can access comprehensive OpenSCAD library information
   - `get_openscad_libraries`: Returns markdown documentation of all available libraries
 

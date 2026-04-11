@@ -10,6 +10,7 @@
 		"sourceMap": true,
 		"rootDir": ".",
 		"strict": true,
+		"skipLibCheck": true,
 		"noImplicitAny": false   /* enable all strict type-checking options */
 		/* Additional Checks */
 		// "noImplicitReturns": true, /* Report error when not all code paths in function return a value. */
