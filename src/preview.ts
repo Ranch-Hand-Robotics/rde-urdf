@@ -149,13 +149,6 @@ export default class URDFPreview
 
         this._webview.webview.html = this._getWebviewContent(this._webview.webview, context.extensionUri);
 
-        vscode.workspace.onDidSaveTextDocument(event => {
-
-            if (event && this.isPreviewOf(event.uri)) {
-                this.refresh();
-            }
-        }, this, this._context.subscriptions);
-
         this._webview.onDidDispose(() => {
             this.dispose();
         }, null, this._context.subscriptions);        
@@ -220,17 +213,16 @@ export default class URDFPreview
     public async refresh() {
         this._refreshPending = true;
 
-        // If OpenSCAD conversion is currently running, cancel it so a fresh run can start.
-        if (this._processing && this._cancellationTokenSource) {
-            this._trace.appendLine("Refresh requested while OpenSCAD conversion is in progress. Cancelling current conversion.");
-            this._cancellationTokenSource.cancel();
+        // Coalesce refresh requests while processing.
+        // Avoid repeatedly cancelling in-flight OpenSCAD conversions, which can churn workers
+        // and cause the renderer to become unresponsive after several rapid refreshes.
+        if (this._processing) {
+            this._trace.appendLine("Refresh requested while processing; deferring until current pass completes.");
             return;
         }
 
-        if (!this._processing) {
-            this._refreshPending = false;
-            this.loadResource();
-        }
+        this._refreshPending = false;
+        this.loadResource();
     }
 
     private isOpenSCADCustomizerEnabled(): boolean {
