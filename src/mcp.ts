@@ -713,7 +713,15 @@ export class UrdfMcpServer {
       }
 
       // Handle the request
-      await transport.handleRequest(req, res, req.body);
+      try {
+        await transport.handleRequest(req, res, req.body);
+      } catch (err: unknown) {
+        // Ignore normal client-disconnect / SSE stream termination errors
+        const msg = err instanceof Error ? err.message : String(err);
+        if (!msg.includes('terminated') && !msg.includes('closed')) {
+          tracing.appendLine(`MCP transport error (POST): ${msg}`);
+        }
+      }
     });
 
     // Reusable handler for GET and DELETE requests
@@ -725,7 +733,15 @@ export class UrdfMcpServer {
       }
       
       const transport = this.transports[sessionId];
-      await transport.handleRequest(req, res);
+      try {
+        await transport.handleRequest(req, res);
+      } catch (err: unknown) {
+        // Ignore normal client-disconnect / SSE stream termination errors
+        const msg = err instanceof Error ? err.message : String(err);
+        if (!msg.includes('terminated') && !msg.includes('closed')) {
+          tracing.appendLine(`MCP transport error (${req.method}): ${msg}`);
+        }
+      }
     };
 
     // Handle GET requests for server-to-client notifications via SSE

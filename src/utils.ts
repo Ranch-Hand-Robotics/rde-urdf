@@ -2,7 +2,7 @@ import * as os from "os";
 import * as vscode from "vscode";
 //import * as child_process from "child_process";
 import { XacroParser } from 'xacro-parser';
-import {XMLSerializer} from 'xmldom';
+import {XMLSerializer} from '@xmldom/xmldom';
 import { JSDOM } from 'jsdom';
 import * as path from "path";
 import * as fs from "fs";
@@ -562,7 +562,7 @@ export async function processXacro(filename: string, resolvePackagesFxn: (packag
       
       // Convert result to string
       const serializer = new XMLSerializer();
-      urdfText = serializer.serializeToString(result.documentElement) as string;
+      urdfText = serializer.serializeToString(result.documentElement as any) as string;
 
       // Process package:// URIs in the final URDF content
       urdfText = resolvePackageUris(urdfText, packageMap, resolvePackagesFxn, packagesNotFound);

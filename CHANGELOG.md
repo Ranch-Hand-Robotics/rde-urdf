@@ -6,6 +6,26 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-04-10
+
+### Added
+- **OpenSCAD Customizer**:
+  - New customizer panel for OpenSCAD files exposing top-level variables as interactive controls
+  - Variable parsing extracts customizer parameters directly from `.scad` files
+  - UI integration with variable filtering and improved input controls
+  - Customizer configuration setting and automatic preview refresh on variable change
+- **Relative Path Support in URDF**:
+  - Fixed resolution of `$(find package_name)` idiom for relative mesh paths
+  - Improved handling of relative paths in URDF/Xacro mesh references
+- **GitHub Copilot Chat Integration**:
+  - Migrated agent and skill registration to VS Code `chatFiles` contributions API
+  - Added `urdf-fundamentals` skill with comprehensive URDF/Xacro syntax documentation
+  - Removed programmatic agent registration in favor of declarative file-based configuration
+
+### Changed
+- Updated VS Code engine requirement to `^1.110.0`
+- Upgraded GitHub Actions workflows to latest action versions
+
 ## [0.5.0] - 2026-02-19
 
 ### Added
