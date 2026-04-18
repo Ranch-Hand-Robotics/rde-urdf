@@ -623,6 +623,7 @@ export async function exportOpenSCAD(
   options?: {
     timeout?: number;       // Custom timeout in milliseconds (default: 5 minutes)
     parameterOverrides?: Record<string, OpenSCADCustomizerValue>;
+    suppressErrorMessage?: boolean;
   }
 ): Promise<string | null> {
   let childProcess: any = null;
@@ -810,7 +811,9 @@ export async function exportOpenSCAD(
             resolveOnce(outputPath);
           } else if (!response.success && response.error) {
             trace.appendLine(`OpenSCAD export failed: ${response.error}`);
-            vscode.window.showErrorMessage(`Failed to export OpenSCAD file: ${response.error}`);
+            if (!options?.suppressErrorMessage) {
+              vscode.window.showErrorMessage(`Failed to export OpenSCAD file: ${response.error}`);
+            }
             resolveOnce(null);
           }
         });
@@ -834,7 +837,9 @@ export async function exportOpenSCAD(
           if (error instanceof Error && error.stack) {
             trace.appendLine(`Stack trace: ${error.stack}`);
           }
-          vscode.window.showErrorMessage(`Failed to export OpenSCAD file: ${errorMsg}`);
+          if (!options?.suppressErrorMessage) {
+            vscode.window.showErrorMessage(`Failed to export OpenSCAD file: ${errorMsg}`);
+          }
           rejectOnce(error);
         } else {
           resolveOnce(null);

@@ -59,6 +59,10 @@ function isLikely2DPart(partName: string): boolean {
   return /(\b2d\b|\bsvg\b|laser\s*cut|lasercut|flat|outline|profile|sheet|panel|plate)/i.test(name);
 }
 
+export function getPreferredExportFormats(partName: string): Array<'stl' | 'svg'> {
+  return isLikely2DPart(partName) ? ['svg', 'stl'] : ['stl', 'svg'];
+}
+
 function sanitizePartNameForFilename(partName: string): string {
   const sanitized = partName
     .replace(/[<>:"/\\|?*\x00-\x1F]/g, '_')
@@ -191,30 +195,44 @@ export function registerOpenSCADExportCommands(
 
         for (let i = 0; i < parts.length; i++) {
           const part = parts[i];
-          const exportFormat = isLikely2DPart(part) ? 'svg' : 'stl';
+          const preferredFormats = getPreferredExportFormats(part);
 
           progress.report({
-            message: `Exporting part ${i + 1}/${parts.length}: ${part} (${exportFormat.toUpperCase()})`,
+            message: `Exporting part ${i + 1}/${parts.length}: ${part}`,
             increment: 100 / parts.length
           });
 
-          const outputPath = await exportOpenSCAD(
-            documentUri.fsPath,
-            exportFormat,
-            tracing,
-            token,
-            {
-              parameterOverrides: {
-                part
-              }
-            }
-          );
+          let outputPath: string | null = null;
+          let outputFormat: 'stl' | 'svg' | null = null;
 
-          if (token.isCancellationRequested) {
-            return;
+          for (const format of preferredFormats) {
+            outputPath = await exportOpenSCAD(
+              documentUri.fsPath,
+              format,
+              tracing,
+              token,
+              {
+                parameterOverrides: {
+                  part
+                },
+                suppressErrorMessage: preferredFormats.length > 1
+              }
+            );
+
+            if (token.isCancellationRequested) {
+              return;
+            }
+
+            if (outputPath) {
+              outputFormat = format;
+              if (format !== preferredFormats[0]) {
+                tracing.appendLine(`Part '${part}' exported as ${format.toUpperCase()} after fallback from ${preferredFormats[0].toUpperCase()}.`);
+              }
+              break;
+            }
           }
 
-          if (!outputPath) {
+          if (!outputPath || !outputFormat) {
             failedParts.push(part);
             continue;
           }
@@ -222,7 +240,7 @@ export function registerOpenSCADExportCommands(
           const dir = path.dirname(outputPath);
           const baseName = path.basename(documentUri.fsPath, '.scad');
           const partName = sanitizePartNameForFilename(part);
-          const desiredPath = path.join(dir, `${baseName}.${partName}.${exportFormat}`);
+          const desiredPath = path.join(dir, `${baseName}.${partName}.${outputFormat}`);
 
           try {
             await fs.promises.rm(desiredPath, { force: true });
