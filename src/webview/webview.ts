@@ -345,17 +345,9 @@ async function apply3DFile(filename: string) {
 
   try {
     if (currentRobotScene.scene) {
-      let scale = BABYLON.Vector3.One();
-      
-      // Apply scaling for files that use mm as default units
-      // OpenSCAD exports STL in mm, so scale down to meters for robotics
-      // GLB, GLTF, DAE typically use meters already
-      if (filename.toLowerCase().endsWith('.stl')) {
-        // STL files from OpenSCAD are in mm, scale down to meters
-        scale = new BABYLON.Vector3(0.001, 0.001, 0.001);
-      }
-      
-      let m = new urdf.Mesh(filename, scale);
+      // Load with scale 1.0; for STL files we auto-detect units after loading
+      // and adjust the scale accordingly (mm → 0.001 scale, already-in-meters → 1.0)
+      let m = new urdf.Mesh(filename, BABYLON.Vector3.One());
       currentRobotScene.currentRobot = new urdf.Robot();
       
       let visual = new urdf.Visual();
@@ -369,6 +361,75 @@ async function apply3DFile(filename: string) {
 
       currentRobotScene.currentRobot.links.set("base_link", link);
       currentRobotScene.currentRobot.create(currentRobotScene.scene);
+
+      // For STL files, detect whether the file uses mm or meter units by
+      // inspecting the bounding box after the mesh has loaded asynchronously.
+      // STL files are unitless; most tooling defaults to mm, but URDF authors
+      // sometimes pre-scale STL files to meters so no URDF scale factor is needed.
+      if (filename.toLowerCase().endsWith('.stl')) {
+        const scene = currentRobotScene.scene;
+        const meshObj = m as any;
+        let retries = 0;
+        // Allow up to ~5 s at 60 fps for large or slow-loading STL files
+        const MAX_RETRIES = 300;
+        // Half-extent threshold (in native file units) that distinguishes mm-scale
+        // from meter-scale geometry. A file whose largest half-extent exceeds this
+        // value (i.e. > 1 m if coordinates were already in meters) is assumed to be
+        // authored in millimeters and will be scaled down by 0.001.
+        const MM_DETECTION_THRESHOLD = 1.0;
+
+        const detectAndAdjustScale = () => {
+          if (meshObj.meshes && meshObj.meshes.length > 0 && meshObj.transform) {
+            // Compute the world-space half-extent across all loaded sub-meshes.
+            // Loading is done with scale 1.0, so coordinates are in the file's
+            // native units (mm or m).
+            let maxHalfExtent = 0;
+            for (const bMesh of meshObj.meshes as BABYLON.AbstractMesh[]) {
+              bMesh.computeWorldMatrix(true);
+              const bb = bMesh.getBoundingInfo();
+              if (bb) {
+                const ext = bb.boundingBox.extendSizeWorld;
+                maxHalfExtent = Math.max(
+                  maxHalfExtent,
+                  Math.abs(ext.x),
+                  Math.abs(ext.y),
+                  Math.abs(ext.z)
+                );
+              }
+            }
+
+            if (maxHalfExtent > MM_DETECTION_THRESHOLD) {
+              // Coordinates are large → file is in mm; scale down to meters
+              meshObj.transform.scaling = new BABYLON.Vector3(0.001, 0.001, 0.001);
+              vscode?.postMessage({
+                command: "trace",
+                text: `STL auto-scale: file is in millimeters (max half-extent ${maxHalfExtent.toFixed(3)} units), applying 0.001 scale factor`,
+              });
+            } else {
+              // Coordinates are already small → file is in meters; no scale needed
+              vscode?.postMessage({
+                command: "trace",
+                text: `STL auto-scale: file is already in meters (max half-extent ${maxHalfExtent.toFixed(3)} units), no scale factor applied`,
+              });
+            }
+          } else if (retries < MAX_RETRIES) {
+            // Mesh not yet loaded; wait for the next render frame and retry
+            retries++;
+            scene.onAfterRenderObservable.addOnce(detectAndAdjustScale);
+          } else {
+            // Timed out waiting for mesh to load; fall back to mm scale as default
+            vscode?.postMessage({
+              command: "trace",
+              text: `STL auto-scale: timed out waiting for mesh to load, applying default 0.001 scale factor`,
+            });
+            if (meshObj.transform) {
+              meshObj.transform.scaling = new BABYLON.Vector3(0.001, 0.001, 0.001);
+            }
+          }
+        };
+
+        scene.onAfterRenderObservable.addOnce(detectAndAdjustScale);
+      }
     }
   } catch (err: any) {
     vscode?.postMessage({
