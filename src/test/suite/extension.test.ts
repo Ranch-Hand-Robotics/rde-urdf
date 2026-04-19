@@ -10,6 +10,7 @@ import {
 	getDefaultOpenSCADLibraryPaths,
 	parseOpenSCADCustomizerVariables
 } from '../../openscad';
+import { getPreferredExportFormats } from '../../openscadExport';
 import * as path from 'path';
 
 suite('Extension Test Suite', () => {
@@ -307,5 +308,21 @@ suite('OpenSCAD Customizer Parser Test Suite', () => {
 		const result = parseOpenSCADCustomizerVariables(content);
 		
 		assert.strictEqual(result.variables.length, 0, 'Should have no visible variables when all are in Hidden section');
+	});
+});
+
+suite('OpenSCAD Parts Export Format Detection Test Suite', () => {
+	test('getPreferredExportFormats - prefers SVG for 2D-like part names', () => {
+		assert.deepStrictEqual(getPreferredExportFormats('panel_2d'), ['svg', 'stl']);
+		assert.deepStrictEqual(getPreferredExportFormats('laser_cut_plate'), ['svg', 'stl']);
+	});
+
+	test('getPreferredExportFormats - prefers STL for 3D-like part names', () => {
+		assert.deepStrictEqual(getPreferredExportFormats('solid_mount'), ['stl', 'svg']);
+		assert.deepStrictEqual(getPreferredExportFormats('assembly_3d'), ['stl', 'svg']);
+	});
+
+	test('getPreferredExportFormats - defaults to STL first with SVG fallback', () => {
+		assert.deepStrictEqual(getPreferredExportFormats('t_edge'), ['stl', 'svg']);
 	});
 });

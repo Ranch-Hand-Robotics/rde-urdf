@@ -41,6 +41,45 @@ For 2D OpenSCAD designs, the editor supports exporting to SVG (Scalable Vector G
 
 **Note**: SVG export is designed for 2D designs. For 3D designs, use the existing STL export functionality (automatic on save/preview).
 
+## Export Parts (Batch Export)
+
+The OpenSCAD context menu includes an **Export...** submenu with **Export STL**, **Export SVG**, and **Export Parts**.
+
+**Export Parts** batch-exports each named part by iterating a part list and running OpenSCAD once per part using customizer override `-D part=...`.
+
+### Part List Formats Supported
+
+The exporter detects part names from either of these forms:
+
+1. **Customizer dropdown style** (recommended)
+```scad
+part = "assembly"; // [assembly, t_edge, t_edge_half, t_edge_debug, mid, mid_t, edge, corner]
+```
+
+2. **Array style**
+```scad
+part = ["assembly", "t_edge", "mid", "corner"];
+```
+
+### How Export Format Is Chosen Per Part
+
+- If a part name suggests 2D (for example: `2d`, `svg`, `laser cut`, `flat`, `outline`, `profile`, `sheet`, `panel`, `plate`), it exports as **SVG**.
+- Otherwise, it exports as **STL**.
+
+### Output File Naming
+
+Output files are renamed to include the part name:
+
+- `<source>.<part>.stl`
+- `<source>.<part>.svg`
+
+Example for `robot.scad`:
+
+- `robot.assembly.stl`
+- `robot.t_edge.svg`
+
+If a target filename already exists, it is overwritten with the latest export.
+
 ## OpenSCAD Language Features
 
 The editor provides several language features for OpenSCAD:

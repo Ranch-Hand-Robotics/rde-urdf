@@ -402,6 +402,7 @@ export async function convertOpenSCADToSTLCancellable(
 ): Promise<string | null> {
   return new Promise(async (resolve, reject) => {
     let childProcess: any = null;
+    let childProcessExited = false;
     let cancelled = false;
     let completed = false;
     let hardTimeoutHandle: NodeJS.Timeout | undefined;
@@ -436,21 +437,47 @@ export async function convertOpenSCADToSTLCancellable(
       cleanup();
       reject(error);
     };
-    
-    // Set up cancellation handling
-    const cancellationListener = token?.onCancellationRequested(() => {
-      cancelled = true;
-      trace.appendLine(`OpenSCAD conversion cancelled: ${scadFilePath}`);
-      if (childProcess) {
-        trace.appendLine('Killing OpenSCAD worker process...');
-        childProcess.kill('SIGTERM');
-        // Force kill if it doesn't respond to SIGTERM
-        setTimeout(() => {
-          if (childProcess && !childProcess.killed) {
+
+    const terminateWorkerProcess = async (reason: string): Promise<void> => {
+      if (!childProcess || childProcessExited) {
+        return;
+      }
+
+      trace.appendLine(reason);
+
+      await new Promise<void>((done) => {
+        let settled = false;
+        const finish = () => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          done();
+        };
+
+        const killTimeout = setTimeout(() => {
+          if (childProcess && !childProcessExited && !childProcess.killed) {
             childProcess.kill('SIGKILL');
           }
+          finish();
         }, 5000);
-      }
+
+        childProcess.once('exit', () => {
+          clearTimeout(killTimeout);
+          finish();
+        });
+
+        if (!childProcess.killed) {
+          childProcess.kill('SIGTERM');
+        }
+      });
+    };
+    
+    // Set up cancellation handling
+    const cancellationListener = token?.onCancellationRequested(async () => {
+      cancelled = true;
+      trace.appendLine(`OpenSCAD conversion cancelled: ${scadFilePath}`);
+      await terminateWorkerProcess('Killing OpenSCAD worker process...');
       resolveOnce(null);
     });
 
@@ -501,29 +528,21 @@ export async function convertOpenSCADToSTLCancellable(
       });
 
       if (cancelled) {
-        if (childProcess) {
-          childProcess.kill('SIGTERM');
-        }
+        await terminateWorkerProcess('OpenSCAD conversion was cancelled before worker initialization completed.');
         resolveOnce(null);
         return;
       }
 
       const effectiveTimeout = options?.timeout || 300000;
       hardTimeoutHandle = setTimeout(() => {
-        if (completed || cancelled) {
-          return;
-        }
-        trace.appendLine(`OpenSCAD conversion timed out after ${effectiveTimeout}ms. Terminating worker process...`);
-        if (childProcess && !childProcess.killed) {
-          childProcess.kill('SIGTERM');
-          setTimeout(() => {
-            if (childProcess && !childProcess.killed) {
-              childProcess.kill('SIGKILL');
-            }
-          }, 5000);
-        }
-        vscode.window.showErrorMessage(`OpenSCAD conversion timed out after ${Math.round(effectiveTimeout / 1000)} seconds.`);
-        resolveOnce(null);
+        void (async () => {
+          if (completed || cancelled) {
+            return;
+          }
+          await terminateWorkerProcess(`OpenSCAD conversion timed out after ${effectiveTimeout}ms. Terminating worker process...`);
+          vscode.window.showErrorMessage(`OpenSCAD conversion timed out after ${Math.round(effectiveTimeout / 1000)} seconds.`);
+          resolveOnce(null);
+        })();
       }, effectiveTimeout);
 
       // Handle process events
@@ -535,6 +554,7 @@ export async function convertOpenSCADToSTLCancellable(
       });
 
       childProcess.on('exit', (code: number, signal: string) => {
+        childProcessExited = true;
         if (!cancelled) {
           if (code === 0) {
             // Success case is handled by the message handler
@@ -602,9 +622,12 @@ export async function exportOpenSCAD(
   token?: vscode.CancellationToken,
   options?: {
     timeout?: number;       // Custom timeout in milliseconds (default: 5 minutes)
+    parameterOverrides?: Record<string, OpenSCADCustomizerValue>;
+    suppressErrorMessage?: boolean;
   }
 ): Promise<string | null> {
   let childProcess: any = null;
+  let childProcessExited = false;
   let cancelled = false;
   let completed = false;
   let hardTimeoutHandle: NodeJS.Timeout | undefined;
@@ -641,20 +664,46 @@ export async function exportOpenSCAD(
       reject(error);
     };
 
-    // Set up cancellation handling
-    const cancellationListener = token?.onCancellationRequested(() => {
-      cancelled = true;
-      trace.appendLine(`OpenSCAD export cancelled: ${scadFilePath}`);
-      if (childProcess) {
-        trace.appendLine('Killing OpenSCAD worker process...');
-        childProcess.kill('SIGTERM');
-        // Force kill if it doesn't respond to SIGTERM
-        setTimeout(() => {
-          if (childProcess && !childProcess.killed) {
+    const terminateWorkerProcess = async (reason: string): Promise<void> => {
+      if (!childProcess || childProcessExited) {
+        return;
+      }
+
+      trace.appendLine(reason);
+
+      await new Promise<void>((done) => {
+        let settled = false;
+        const finish = () => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          done();
+        };
+
+        const killTimeout = setTimeout(() => {
+          if (childProcess && !childProcessExited && !childProcess.killed) {
             childProcess.kill('SIGKILL');
           }
+          finish();
         }, 5000);
-      }
+
+        childProcess.once('exit', () => {
+          clearTimeout(killTimeout);
+          finish();
+        });
+
+        if (!childProcess.killed) {
+          childProcess.kill('SIGTERM');
+        }
+      });
+    };
+
+    // Set up cancellation handling
+    const cancellationListener = token?.onCancellationRequested(async () => {
+      cancelled = true;
+      trace.appendLine(`OpenSCAD export cancelled: ${scadFilePath}`);
+      await terminateWorkerProcess('Killing OpenSCAD worker process...');
       resolveOnce(null);
     });
 
@@ -707,29 +756,21 @@ export async function exportOpenSCAD(
         });
 
         if (cancelled) {
-          if (childProcess) {
-            childProcess.kill('SIGTERM');
-          }
+          await terminateWorkerProcess('OpenSCAD export was cancelled before worker initialization completed.');
           resolveOnce(null);
           return;
         }
 
         const effectiveTimeout = options?.timeout || 300000;
         hardTimeoutHandle = setTimeout(() => {
-          if (completed || cancelled) {
-            return;
-          }
-          trace.appendLine(`OpenSCAD export timed out after ${effectiveTimeout}ms. Terminating worker process...`);
-          if (childProcess && !childProcess.killed) {
-            childProcess.kill('SIGTERM');
-            setTimeout(() => {
-              if (childProcess && !childProcess.killed) {
-                childProcess.kill('SIGKILL');
-              }
-            }, 5000);
-          }
-          vscode.window.showErrorMessage(`OpenSCAD export timed out after ${Math.round(effectiveTimeout / 1000)} seconds.`);
-          resolveOnce(null);
+          void (async () => {
+            if (completed || cancelled) {
+              return;
+            }
+            await terminateWorkerProcess(`OpenSCAD export timed out after ${effectiveTimeout}ms. Terminating worker process...`);
+            vscode.window.showErrorMessage(`OpenSCAD export timed out after ${Math.round(effectiveTimeout / 1000)} seconds.`);
+            resolveOnce(null);
+          })();
         }, effectiveTimeout);
 
         // Handle process events
@@ -741,6 +782,7 @@ export async function exportOpenSCAD(
         });
 
         childProcess.on('exit', (code: number, signal: string) => {
+          childProcessExited = true;
           if (!cancelled) {
             if (code === 0) {
               // Success case is handled by the message handler
@@ -769,7 +811,9 @@ export async function exportOpenSCAD(
             resolveOnce(outputPath);
           } else if (!response.success && response.error) {
             trace.appendLine(`OpenSCAD export failed: ${response.error}`);
-            vscode.window.showErrorMessage(`Failed to export OpenSCAD file: ${response.error}`);
+            if (!options?.suppressErrorMessage) {
+              vscode.window.showErrorMessage(`Failed to export OpenSCAD file: ${response.error}`);
+            }
             resolveOnce(null);
           }
         });
@@ -780,7 +824,8 @@ export async function exportOpenSCAD(
           libraryFiles,
           workspaceRoot,
           timeout: effectiveTimeout,  // Keep worker-local timeout for additional diagnostics
-          exportFormat
+          exportFormat,
+          parameterOverrides: options?.parameterOverrides
         };
 
         childProcess.send(request);
@@ -792,7 +837,9 @@ export async function exportOpenSCAD(
           if (error instanceof Error && error.stack) {
             trace.appendLine(`Stack trace: ${error.stack}`);
           }
-          vscode.window.showErrorMessage(`Failed to export OpenSCAD file: ${errorMsg}`);
+          if (!options?.suppressErrorMessage) {
+            vscode.window.showErrorMessage(`Failed to export OpenSCAD file: ${errorMsg}`);
+          }
           rejectOnce(error);
         } else {
           resolveOnce(null);
