@@ -10,7 +10,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as z from 'zod';
 import { tracing } from './extension';
-import * as express from 'express';
+import express, { type Application, type Request, type Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import {urdfManager} from "./extension";
 import { generateOpenSCADLibrariesDocumentation, convertLibrariesDocumentationToMarkdown, validateOpenSCAD } from './openscad';
@@ -24,7 +24,7 @@ import { generateOpenSCADLibrariesDocumentation, convertLibrariesDocumentationTo
  */
 export class UrdfMcpServer {
   private server: McpServer;
-  private app: express.Application;
+  private app: Application;
   private transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
   private isRunning = false;
   private port: number;
@@ -725,7 +725,7 @@ export class UrdfMcpServer {
     });
 
     // Reusable handler for GET and DELETE requests
-    const handleSessionRequest = async (req: express.Request, res: express.Response) => {
+    const handleSessionRequest = async (req: Request, res: Response) => {
       const sessionId = req.headers['mcp-session-id'] as string | undefined;
       if (!sessionId || !this.transports[sessionId]) {
         res.status(400).send('Invalid or missing session ID');

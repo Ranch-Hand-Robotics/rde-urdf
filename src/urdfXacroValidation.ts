@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { DOMParser } from 'xmldom';
+import { DOMParser } from '@xmldom/xmldom';
 
 /**
  * URDF/Xacro Validation Provider
@@ -125,7 +125,7 @@ export class URDFXacroValidationProvider {
         try {
             const parser = new DOMParser({
                 errorHandler: errorHandler
-            });
+            } as any);
             parser.parseFromString(text, 'text/xml');
         } catch (e) {
             // If parsing completely fails, add a generic error
@@ -197,7 +197,7 @@ export class URDFXacroValidationProvider {
                     error: () => {},
                     fatalError: () => {}
                 }
-            });
+            } as any);
             const doc = parser.parseFromString(text, 'text/xml');
             
             // Check for root robot element
@@ -323,7 +323,7 @@ export class URDFXacroValidationProvider {
     /**
      * Validates geometry elements (box, cylinder, sphere, mesh)
      */
-    private validateGeometry(doc: Document, text: string, diagnostics: vscode.Diagnostic[]): void {
+    private validateGeometry(doc: any, text: string, diagnostics: vscode.Diagnostic[]): void {
         // Validate box elements
         const boxes = doc.getElementsByTagName('box');
         for (let i = 0; i < boxes.length; i++) {
@@ -418,7 +418,7 @@ export class URDFXacroValidationProvider {
     /**
      * Check if element has a Xacro-namespaced attribute
      */
-    private hasXacroAttribute(element: Element, attrName: string): boolean {
+    private hasXacroAttribute(element: any, attrName: string): boolean {
         // Check for xacro:attribute_name
         const attrs = element.attributes;
         for (let i = 0; i < attrs.length; i++) {
@@ -438,7 +438,7 @@ export class URDFXacroValidationProvider {
         text: string, 
         tagName: string, 
         index: number,
-        parentElement?: Element
+        parentElement?: any
     ): vscode.Range {
         // Get or create cached pattern for this tag
         let pattern = this.elementPatternCache.get(tagName);

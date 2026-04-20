@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { validateOpenSCAD } from './openscad';
+import { validateOpenSCADWithWorker } from './openscad';
 
 /**
  * OpenSCAD Validation Provider
@@ -14,9 +14,17 @@ export class OpenSCADValidationProvider {
     private diagnosticCollection: vscode.DiagnosticCollection;
     private validationTimeout: NodeJS.Timeout | null = null;
     private readonly VALIDATION_DELAY = 500; // ms - debounce rapid typing
+    private trace: vscode.OutputChannel | undefined;
 
     constructor() {
         this.diagnosticCollection = vscode.languages.createDiagnosticCollection('openscad');
+    }
+
+    /**
+     * Set the trace output channel for validation logging
+     */
+    public setTraceChannel(trace: vscode.OutputChannel): void {
+        this.trace = trace;
     }
 
     /**
@@ -50,11 +58,12 @@ export class OpenSCADValidationProvider {
             // Get workspace root for library resolution
             const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
             
-            // Validate using OpenSCAD compiler
-            const result = await validateOpenSCAD(
+            // Validate using OpenSCAD compiler in a worker to avoid blocking UI
+            const result = await validateOpenSCADWithWorker(
                 document.uri.fsPath,
                 text,
-                workspaceRoot
+                workspaceRoot,
+                this.trace
             );
 
             // Process errors
