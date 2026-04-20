@@ -10,6 +10,14 @@ This extension provides developer tooling for Unified Robot Description Format (
 - **Link & Joint Visualization**: Visual representation of robot structure
 - **Interactive Controls**: Camera controls, rotation gizmos, and axis visualization
 - **Collision Visualization**: Toggle collision geometry display
+- **Real-time Validation**: Inline error highlighting with detailed diagnostics
+  - XML syntax validation with line/column precision
+  - URDF structure validation (required elements and attributes)
+  - Character set validation (UTF-8 compliance)
+  - Geometry validation (box size, cylinder/sphere radius, mesh filename)
+  - Joint type validation (revolute, continuous, prismatic, fixed, floating, planar)
+  - Link reference validation (parent/child link existence checks)
+  - Xacro-aware validation (recognizes properties and expressions)
 - **Schema Validation**: XML schema validation for URDF and Xacro files
 - **Syntax Highlighting**: Full syntax support for URDF, Xacro, and OpenSCAD
 
@@ -34,6 +42,11 @@ This extension provides developer tooling for Unified Robot Description Format (
 - **Integrated Editing**: Full OpenSCAD language support with syntax highlighting
 - **Live Preview**: Automatic STL conversion and 3D rendering
 - **Export Menu**: Export STL, Export SVG, or batch Export Parts from the OpenSCAD context menu
+- **Real-time Validation**: Compiler-based syntax checking with inline error highlighting
+  - Syntax error detection with precise line/column reporting
+  - Runtime error detection from OpenSCAD compiler
+  - Warning messages for potential issues
+  - Debounced validation to avoid excessive compilation
 - **Library Management**: Automatic discovery of libraries from workspace and system paths
 - **Performance Optimizations**: Fast preview mode with configurable timeouts
 - **Documentation Generation**: Extract module/function docs from comments

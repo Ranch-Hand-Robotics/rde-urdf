@@ -1,7 +1,7 @@
 // This file implements an express web server which renders a URDF using Babylon_ROS and serves it to the client using a dev tunnel.
 
 import * as vscode from 'vscode';
-import * as express from 'express';
+import express, { type Application } from 'express';
 import * as path from 'path';
 import { createServer } from 'http';
 import * as util from './utils';
@@ -10,7 +10,7 @@ export default class WebXRPreviewManager {
   private _context: vscode.ExtensionContext;
   private _trace: vscode.OutputChannel;
 
-  private _app: express.Application;
+  private _app: Application;
   private _server: any;
   private _port: number;
   private uri: vscode.Uri | undefined;

@@ -1,11 +1,10 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
-// OpenSCAD conversion worker process
+// OpenSCAD conversion and validation worker process
 
 import * as fs from 'fs';
 import * as path from 'path';
 import { createOpenSCAD } from 'openscad-wasm-prebuilt';
-import e from 'express';
 
 type OpenSCADCustomizerValue = string | number | boolean | number[];
 
@@ -15,6 +14,7 @@ interface OpenSCADParameterConfiguration {
 }
 
 interface ConversionRequest {
+  type: 'convert';
   scadFilePath: string;
   libraryFiles: { [virtualPath: string]: string }; // Base64 encoded content
   workspaceRoot?: string;
@@ -23,6 +23,17 @@ interface ConversionRequest {
   parameterOverrides?: Record<string, OpenSCADCustomizerValue>;
   parameterConfiguration?: OpenSCADParameterConfiguration;
 }
+
+interface ValidationRequest {
+  type: 'validate';
+  scadFilePath: string;
+  scadContent: string;
+  libraryFiles: { [virtualPath: string]: string }; // Base64 encoded content
+  workspaceRoot?: string;
+  timeout?: number; // Custom timeout in milliseconds
+}
+
+type WorkerRequest = ConversionRequest | ValidationRequest;
 
 interface ConversionResponse {
   success: boolean;
@@ -33,12 +44,55 @@ interface ConversionResponse {
   progress?: string;
 }
 
+interface ValidationResponse {
+  success: boolean;
+  valid?: boolean;
+  errors?: string[];
+  warnings?: string[];
+  error?: string;
+  progress?: string;
+}
+
+type WorkerResponse = ConversionResponse | ValidationResponse;
+
+async function writeLibraryFilesToVirtualFS(
+  instance: any,
+  libraryFiles: { [virtualPath: string]: string },
+  progressType: 'conversion' | 'validation'
+): Promise<void> {
+  for (const [virtualPath, base64Content] of Object.entries(libraryFiles)) {
+    try {
+      // Ensure all parent directories exist (recursive mkdir)
+      const dirPath = virtualPath.substring(0, virtualPath.lastIndexOf('/'));
+      if (dirPath) {
+        const segments = dirPath.split('/').filter(s => s.length > 0);
+        let current = '';
+        for (const segment of segments) {
+          current += '/' + segment;
+          try { instance.FS.mkdir(current); } catch { /* already exists */ }
+        }
+      }
+
+      // Decode base64 content and write to virtual filesystem
+      const content = Buffer.from(base64Content, 'base64');
+      instance.FS.writeFile(virtualPath, content);
+    } catch (error: any) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      sendProgress(`Failed to load library file ${virtualPath}: ${errorMsg}`, progressType);
+    }
+  }
+}
+
 // Listen for messages from parent process
-process.on('message', async (message: ConversionRequest) => {
+process.on('message', async (message: WorkerRequest) => {
   try {
-    await convertOpenSCADToSTL(message);
+    if (message.type === 'convert') {
+      await convertOpenSCADToSTL(message);
+    } else if (message.type === 'validate') {
+      await validateOpenSCADWorker(message);
+    }
   } catch (error) {
-    const response: ConversionResponse = {
+    const response: WorkerResponse = {
       success: false,
       error: error instanceof Error ? error.message : String(error)
     };
@@ -93,29 +147,7 @@ async function convertOpenSCADToSTL(request: ConversionRequest): Promise<void> {
     const instance = openscad.getInstance();
 
     sendProgress('Loading OpenSCAD libraries...');
-    
-    // Load library files into virtual filesystem
-    for (const [virtualPath, base64Content] of Object.entries(libraryFiles)) {
-      try {
-        // Ensure all parent directories exist (recursive mkdir)
-        const dirPath = virtualPath.substring(0, virtualPath.lastIndexOf('/'));
-        if (dirPath) {
-          const segments = dirPath.split('/').filter(s => s.length > 0);
-          let current = '';
-          for (const segment of segments) {
-            current += '/' + segment;
-            try { instance.FS.mkdir(current); } catch { /* already exists */ }
-          }
-        }
-        
-        // Decode base64 content and write to virtual filesystem
-        const content = Buffer.from(base64Content, 'base64');
-        instance.FS.writeFile(virtualPath, content);
-      } catch (error: any) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        sendProgress(`Failed to load library file ${virtualPath}: ${errorMsg}`);
-      }
-    }
+    await writeLibraryFilesToVirtualFS(instance, libraryFiles, 'conversion');
 
     const basename = path.basename(scadFilePath, '.scad');
     const dir = path.dirname(scadFilePath);
@@ -174,7 +206,7 @@ async function convertOpenSCADToSTL(request: ConversionRequest): Promise<void> {
     
     // Add timeout handling for long-running operations
     const conversionTimeout = setTimeout(() => {
-      sendProgress(`OpenSCAD conversion timeout after ${timeout}ms - operation taking too long`, () => process.exit(1));
+      sendProgress(`OpenSCAD conversion timeout after ${timeout}ms - operation taking too long`, 'conversion', () => process.exit(1));
     }, timeout);
     
     try {
@@ -297,21 +329,144 @@ function buildOverrideArgs(parameterOverrides?: Record<string, OpenSCADCustomize
   return args;
 }
 
-function sendProgress(message: string, callback?: () => void): void {
-  const response: ConversionResponse = {
-    success: true,
-    progress: message
-  };
-  process.send?.(response, undefined, undefined, callback);
+function sendProgress(
+  message: string,
+  type: 'conversion' | 'validation' = 'conversion',
+  callback?: () => void
+): void {
+  if (type === 'conversion') {
+    const response: ConversionResponse = {
+      success: true,
+      progress: message
+    };
+    process.send?.(response, undefined, undefined, callback);
+  } else {
+    const response: ValidationResponse = {
+      success: true,
+      progress: message
+    };
+    process.send?.(response, undefined, undefined, callback);
+  }
+}
+
+/**
+ * Validate OpenSCAD file in worker to avoid blocking the main thread
+ */
+async function validateOpenSCADWorker(request: ValidationRequest): Promise<void> {
+  const { scadFilePath, scadContent, libraryFiles, timeout = 60000 } = request;
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  try {
+    sendProgress(`Starting OpenSCAD validation for: ${scadFilePath}`, 'validation');
+
+    // Create OpenSCAD instance with error capturing
+    const openscad = await createOpenSCAD({
+      print: (text: string) => {
+        // Capture warnings from stdout
+        if (text && text.trim()) {
+          warnings.push(text);
+          sendProgress(`Warning: ${text}`, 'validation');
+        }
+      },
+      printErr: (text: string) => {
+        // Capture errors from stderr
+        if (text && text.trim()) {
+          errors.push(text);
+          sendProgress(`Error: ${text}`, 'validation');
+        }
+      },
+    });
+
+    const instance = openscad.getInstance();
+
+    sendProgress('Loading OpenSCAD libraries...', 'validation');
+    await writeLibraryFilesToVirtualFS(instance, libraryFiles, 'validation');
+
+    const basename = path.basename(scadFilePath, '.scad');
+    const virtualFileName = `/${basename}.scad`;
+    
+    sendProgress('Compiling OpenSCAD file...', 'validation');
+
+    // Write the SCAD file to the virtual filesystem with its actual name
+    instance.FS.writeFile(virtualFileName, scadContent);
+    
+    // Try to compile the file without full rendering
+    // Use fast preview mode for validation
+    const args = [
+      '-o', '/tmp/validation.stl',  // Dummy output file to avoid GUI mode
+      virtualFileName,
+      '--preview',                  // Use preview mode (faster)
+      '--backend=Manifold',        // Use Manifold backend for speed
+      '--export-format=binstl'     // Binary STL for smaller size
+    ];
+
+    // Add timeout handling for long-running operations
+    const validationTimeout = setTimeout(() => {
+      sendProgress(`OpenSCAD validation timeout after ${timeout}ms`, 'validation');
+      process.exit(1);
+    }, timeout);
+
+    try {
+      instance.callMain(args);
+      clearTimeout(validationTimeout);
+    } catch (error) {
+      clearTimeout(validationTimeout);
+      // Compilation errors are captured in printErr callback
+      // callMain throws when OpenSCAD exits with non-zero code
+      // Only add the error message if it's not a generic exit code message
+      if (error instanceof Error) {
+        const msg = error.message.trim();
+        // Filter out generic WASM exit messages - actual errors are in printErr
+        // Match messages that start with exit-related phrases
+        const isExitCodeError = /^(Program (exited|stopped|halted)|Aborted|Exception thrown)/i.test(msg);
+        // Also filter out GUI mode errors - these aren't real validation errors
+        const isGuiError = /GUI mode|display/i.test(msg);
+        if (!isExitCodeError && !isGuiError && msg) {
+          errors.push(msg);
+        }
+      }
+    }
+
+    // Send validation result
+    const valid = errors.length === 0;
+    const response: ValidationResponse = {
+      success: true,
+      valid,
+      errors,
+      warnings
+    };
+    process.send?.(response);
+    process.exit(0);
+  } catch (error: any) {
+    let errorMessage = 'Validation failed: ';
+    
+    if (error instanceof Error) {
+      errorMessage += error.message;
+    } else if (error && typeof error === 'object') {
+      errorMessage += error.message || JSON.stringify(error);
+    } else if (error) {
+      errorMessage += String(error);
+    }
+    
+    const response: ValidationResponse = {
+      success: false,
+      valid: false,
+      errors: [...errors, errorMessage],
+      warnings
+    };
+    process.send?.(response);
+    process.exit(1);
+  }
 }
 
 // Handle graceful shutdown
 process.on('SIGTERM', () => {
-  sendProgress('OpenSCAD conversion process terminated', () => process.exit(0));
+  sendProgress('OpenSCAD conversion process terminated', 'conversion', () => process.exit(0));
 });
 
 process.on('SIGINT', () => {
-  sendProgress('OpenSCAD conversion process interrupted', () => process.exit(0));
+  sendProgress('OpenSCAD conversion process interrupted', 'conversion', () => process.exit(0));
 });
 
 // Prevent the process from hanging
