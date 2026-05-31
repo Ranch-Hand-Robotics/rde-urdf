@@ -3,7 +3,28 @@
 'use strict';
 
 const path = require('path');
+const fs = require('fs');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
+
+const localBabylonRosDistDir = path.resolve(__dirname, '..', 'babylon_ros', 'dist');
+const packageBabylonRosDistDir = path.resolve(
+  __dirname,
+  'node_modules',
+  '@ranchhandrobotics',
+  'babylon_ros',
+  'dist',
+);
+const babylonRosDistDir = fs.existsSync(localBabylonRosDistDir)
+  ? localBabylonRosDistDir
+  : packageBabylonRosDistDir;
+const openscadCopyCandidates = [
+  // New/actual babylon_ros layout (built from local fork or downloaded collateral)
+  path.join(babylonRosDistDir, 'openscad-wasm-build', 'dist'),
+  // Back-compat layout used by some older package variants
+  path.join(babylonRosDistDir, 'openscad-wasm'),
+];
+const openscadCopySource = openscadCopyCandidates.find((candidate) => fs.existsSync(path.join(candidate, 'openscad.wasm')));
+const openscadNodeWorkerSource = path.join(babylonRosDistDir, 'workers', 'openscadWorker.node.js');
 
 //@ts-check
 /** @typedef {import('webpack').Configuration} WebpackConfig **/
@@ -28,7 +49,8 @@ const extensionConfig = {
     // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
     extensions: ['.ts', '.js'],
     alias: {
-      'handlebars' : 'handlebars/dist/handlebars.js'
+      'handlebars' : 'handlebars/dist/handlebars.js',
+      '@ranchhandrobotics/babylon_ros/openscad': path.join(babylonRosDistDir, 'openscad.js'),
     }
   },
   module: {
@@ -59,6 +81,17 @@ const extensionConfig = {
         { from: 'language-configuration.json', to: 'language-configuration.json' },
         { from: 'CHANGELOG.md', to: 'CHANGELOG.md' },
         { from: 'README.md', to: 'README.md' },
+        // Copy openscad-wasm runtime files from babylon_ros so MCP/preview tools use the same local build.
+        ...(openscadCopySource
+          ? [{ from: openscadCopySource, to: 'openscad-wasm' }]
+          : [{
+              from: path.resolve(__dirname, 'node_modules', '@ranchhandrobotics', 'babylon_ros', 'dist', 'openscad-wasm'),
+              to: 'openscad-wasm',
+              noErrorOnMissing: true,
+            }]),
+        ...(fs.existsSync(openscadNodeWorkerSource)
+          ? [{ from: openscadNodeWorkerSource, to: 'workers/openscadWorker.node.js' }]
+          : []),
         // If you need to copy any other assets, add them here
       ],
     }),
@@ -119,38 +152,4 @@ const webviewConfig = {
   ],
 };
 
-const workerConfig = {
-  target: 'node',
-  mode: 'none',
-  entry: './src/workers/openscadWorker.ts',
-  output: {
-    path: path.resolve(__dirname, 'dist/workers'),
-    filename: 'openscadWorker.js',
-    libraryTarget: 'commonjs2'
-  },
-  externals: {
-    vscode: 'commonjs vscode'
-  },
-  resolve: {
-    extensions: ['.ts', '.js']
-  },
-  module: {
-    rules: [
-      {
-        test: /\.ts$/,
-        exclude: /node_modules/,
-        use: [
-          {
-            loader: 'ts-loader'
-          }
-        ]
-      }
-    ]
-  },
-  devtool: 'source-map',
-  infrastructureLogging: {
-    level: "log",
-  },
-};
-
-module.exports = [ extensionConfig, webviewConfig, workerConfig ];
+module.exports = [ extensionConfig, webviewConfig ];

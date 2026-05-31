@@ -54,6 +54,9 @@ export default class WebXRPreviewManager {
         workspaceFolders.forEach((folder) => {
             this._app.use(express.static(folder.uri.fsPath));
         });
+    } else if (this.uri && this.uri.fsPath) {
+        // Single-file mode: serve the file's directory
+        this._app.use(express.static(path.dirname(this.uri.fsPath)));
     }
 
 

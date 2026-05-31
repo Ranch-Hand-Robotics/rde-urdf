@@ -199,17 +199,17 @@ I was the maintainer of Microsoft's [Visual Studio Code ROS Extension](http://ak
 
 This extension relies on the [Xacro-Parser](https://www.npmjs.com/package/xacro-parser) by [GKJohnson](https://github.com/gkjohnson) for stand alone Xacro parsing without requiring ROS.
 
-This extension also uses the [openscad-wasm-prebuilt](https://www.npmjs.com/package/openscad-wasm-prebuilt) package for OpenSCAD processing, which is a prebuilt version of OpenSCAD for use in web applications. **Important**: This package is licensed under GPL-2.0-or-later.
+This extension uses OpenSCAD WebAssembly runtime artifacts from [openscad-wasm](https://github.com/Ranch-Hand-Robotics/openscad-wasm) (integrated via [@ranchhandrobotics/babylon_ros](https://github.com/Ranch-Hand-Robotics/babylon_ros)) for OpenSCAD processing. **Important**: these runtime components are licensed under GPL-2.0-or-later.
 
 The code for this extension unapologetically uses AI generated code.
 
 ## License
 Some of the code in this extension is based on the [Visual Studio Code ROS Extension](http://aka.ms/ros/vscode) which is licensed under the MIT License. It also depends on Babylon ROS and Babylon Collada Loader by Polyhobbyist, both of which are MIT licensed.
 
-**Important Licensing Note**: This extension includes the GPL-2.0 licensed openscad-wasm-prebuilt dependency. While the main extension code is MIT licensed, the combination creates a complex licensing situation. Please see:
+**Important Licensing Note**: This extension distributes GPL-2.0-or-later OpenSCAD runtime components together with MIT-licensed extension code. This creates a mixed-license distribution model. Please see:
 
 - [LICENSE-COMPATIBILITY.md](LICENSE-COMPATIBILITY.md) - Comprehensive licensing guide and compliance checklist
-- [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt) - Full GPL-2.0 license text and attribution
+- [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt) - OpenSCAD WASM attribution and full GPL-2.0 license text
 
 When redistributing this extension, you must comply with both MIT and GPL-2.0 license requirements.
 

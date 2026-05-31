@@ -49,6 +49,29 @@ interface CustomizerModelPayload {
   warnings: CustomizerParseWarning[];
 }
 
+function parseCustomizerFallback(scadText: string): CustomizerModelPayload | undefined {
+  const parser = (urdf as any).parseOpenSCADCustomizer
+    || (urdf as any).parseOpenSCADCustomizerVariables;
+
+  if (typeof parser !== 'function') {
+    return undefined;
+  }
+
+  try {
+    const parsed = parser(scadText, 'model.scad') || parser(scadText);
+    if (!parsed || !Array.isArray(parsed.variables)) {
+      return undefined;
+    }
+
+    return {
+      variables: parsed.variables,
+      warnings: Array.isArray(parsed.warnings) ? parsed.warnings : []
+    };
+  } catch {
+    return undefined;
+  }
+}
+
 let currentCustomizerModel: CustomizerModelPayload | undefined;
 let currentCustomizerValues: Record<string, CustomizerValue> = {};
 let customizerAutoPreview = true;
@@ -329,6 +352,8 @@ async function apply3DFile(filename: string) {
     return;
   }
 
+  const hadExistingRobot = Boolean(currentRobotScene.currentRobot);
+
   currentRobotScene.clearAxisGizmos();
   currentRobotScene.clearRotationGizmos();
   currentRobotScene.clearStatus();
@@ -345,30 +370,49 @@ async function apply3DFile(filename: string) {
 
   try {
     if (currentRobotScene.scene) {
+      const cleanFilename = filename.split('#')[0].split('?')[0];
+      const lowerFilename = cleanFilename.toLowerCase();
+
       let scale = BABYLON.Vector3.One();
-      
-      // Apply scaling for files that use mm as default units
-      // OpenSCAD exports STL in mm, so scale down to meters for robotics
-      // GLB, GLTF, DAE typically use meters already
-      if (filename.toLowerCase().endsWith('.stl')) {
-        // STL files from OpenSCAD are in mm, scale down to meters
+      if (lowerFilename.endsWith('.stl') || lowerFilename.endsWith('.glb') || lowerFilename.endsWith('.gltf')) {
+        // OpenSCAD exports STL/GLB in mm, while the robot scene is in meters.
         scale = new BABYLON.Vector3(0.001, 0.001, 0.001);
       }
-      
-      let m = new urdf.Mesh(filename, scale);
-      currentRobotScene.currentRobot = new urdf.Robot();
-      
-      let visual = new urdf.Visual();
-      visual.material = new urdf.Material();
-      visual.material.name = "default";
-      visual.material.color = new BABYLON.Color4(.8, .8, .8, 1); // Bright white for better visibility
-      visual.geometry = m;
 
-      let link = new urdf.Link();
+      const mesh = new urdf.Mesh(filename, scale);
+      mesh.setLoadCompleteCallback(() => {
+        currentRobotScene?.frameModel();
+
+        // OpenSCAD standalone meshes are often small (mm -> m scaling). Keep
+        // camera close enough that debug modifier geometry (# / %) is clearly visible.
+        // Apply this only on first load to avoid resetting user zoom on refresh.
+        if (currentRobotScene?.camera &&
+            !hadExistingRobot &&
+            (lowerFilename.endsWith('.stl') || lowerFilename.endsWith('.glb') || lowerFilename.endsWith('.gltf'))) {
+          currentRobotScene.camera.minZ = 0.0001;
+          currentRobotScene.camera.maxZ = Math.max(currentRobotScene.camera.maxZ, 1000);
+          currentRobotScene.camera.radius = Math.min(currentRobotScene.camera.radius, 0.15);
+        }
+      });
+
+      currentRobotScene.currentRobot = new urdf.Robot();
+
+      const visual = new urdf.Visual();
+      // Preserve embedded GLB/GLTF materials; only apply fallback material to legacy formats.
+      if (!lowerFilename.endsWith('.glb') && !lowerFilename.endsWith('.gltf')) {
+        visual.material = new urdf.Material();
+        visual.material.name = "default";
+        visual.material.color = new BABYLON.Color4(.8, .8, .8, 1); // Bright white for STL/DAE/OBJ
+      }
+      visual.geometry = mesh;
+
+      const link = new urdf.Link();
       link.visuals.push(visual);
 
       currentRobotScene.currentRobot.links.set("base_link", link);
       currentRobotScene.currentRobot.create(currentRobotScene.scene);
+
+      // For standalone 3D files we reframe on load so mesh scale/units are always visible.
     }
   } catch (err: any) {
     vscode?.postMessage({
@@ -465,13 +509,33 @@ async function main() {
         break;
 
         case 'openscadCustomizerModel':
-          customizerEnabled = Boolean(message.enabled);
-          renderCustomizer(
-            message.model || { variables: [], warnings: [] },
-            message.overrides || {},
-            customizerEnabled,
-            message.autoPreview ?? true
-          );
+          {
+            let modelPayload: CustomizerModelPayload =
+              message.model || { variables: [], warnings: [] };
+            let enabled = Boolean(message.enabled);
+
+            if (
+              !enabled
+              && (!Array.isArray(modelPayload.variables)
+                || modelPayload.variables.length === 0)
+              && typeof message.scadText === 'string'
+              && message.scadText.length > 0
+            ) {
+              const fallbackModel = parseCustomizerFallback(message.scadText);
+              if (fallbackModel && fallbackModel.variables.length > 0) {
+                modelPayload = fallbackModel;
+                enabled = true;
+              }
+            }
+
+            customizerEnabled = enabled;
+            renderCustomizer(
+              modelPayload,
+              message.overrides || {},
+              customizerEnabled,
+              message.autoPreview ?? true
+            );
+          }
           break;
 
         case 'openscadCustomizerResetValues':

@@ -1,6 +1,6 @@
 ---
 name: openscad-integration
-description: Create OpenSCAD files for complex 3D geometry in URDF, leveraging available libraries and automatic STL conversion
+description: Use when creating URDF or Xacro files which require non-trivial geometry
 ---
 
 # OpenSCAD Integration for URDF Skill

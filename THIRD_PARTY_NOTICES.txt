@@ -3,14 +3,31 @@ THIRD PARTY NOTICES
 
 This project includes software licensed under various open source licenses.
 
-1. openscad-wasm-prebuilt
-   Source: https://github.com/lorenzowritescode/openscad-wasm
+1. openscad-wasm (bundled via @ranchhandrobotics/babylon_ros)
+   Source: https://github.com/Ranch-Hand-Robotics/openscad-wasm
    License: GPL-2.0-or-later
    
-   This package is a WebAssembly build of OpenSCAD. The full text of the GPL-2.0 
-   license is included below and in the file GPL-2.0-LICENSE.txt.
+   This project distributes OpenSCAD WebAssembly runtime artifacts as part of
+   OpenSCAD preview/export features. These runtime artifacts are sourced from
+   openscad-wasm and are licensed under GPL-2.0-or-later.
 
-2. Other Dependencies
+   Corresponding source code is available from:
+   - This extension: https://github.com/Ranch-Hand-Robotics/rde-urdf
+   - babylon_ros integration layer: https://github.com/Ranch-Hand-Robotics/babylon_ros
+   - openscad-wasm runtime source: https://github.com/Ranch-Hand-Robotics/openscad-wasm
+
+   The full GPL-2.0 license text is included below.
+
+2. Liberation Fonts (embedded via openscad.fonts.js)
+   Source: https://github.com/liberationfonts/liberation-fonts
+   License: SIL Open Font License 1.1 (OFL-1.1)
+
+   The bundled OpenSCAD fonts helper (`openscad.fonts.js`) includes embedded
+   Liberation font binaries used for fallback text rendering in OpenSCAD output.
+   Distributions including `openscad.fonts.js` should include OFL-1.1 attribution
+   and license text for these fonts.
+
+3. Other Dependencies
    This project also includes dependencies under MIT, Apache, and other licenses.
    See package.json for a complete list of dependencies and their licenses.
 

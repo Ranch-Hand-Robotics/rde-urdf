@@ -1,7 +1,8 @@
 ---
 name: urdf-agent
 description: Expert in URDF/Xacro robot description files, OpenSCAD 3D modeling, and ROS robotics development
-tools: ['read', 'edit', 'search', 'web', 'urdf-mcp']
+tools: [read, edit, search, web, 'urdf/*']
+user-invocable: true
 ---
 
 # URDF/Xacro/OpenSCAD Robotics Agent

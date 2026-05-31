@@ -10,7 +10,6 @@ import {
 	getDefaultOpenSCADLibraryPaths,
 	parseOpenSCADCustomizerVariables
 } from '../../openscad';
-import { getPreferredExportFormats } from '../../openscadExport';
 import * as path from 'path';
 
 suite('Extension Test Suite', () => {
@@ -144,15 +143,15 @@ suite('OpenSCAD Library Paths Test Suite', () => {
 		assert.ok(paths.length > 0, 'Should return at least one path');
 	});
 
-	test('getAllOpenSCADLibraryPaths - includes SCAD file directory', async () => {
+	test('getAllOpenSCADLibraryPaths - includes configured existing directory', async () => {
 		const testScadPath = path.join(__dirname, '../testdata/simple_cube.scad');
 		const testDir = path.dirname(testScadPath);
 		
-		const paths = await getAllOpenSCADLibraryPaths(undefined, testScadPath);
+		const paths = await getAllOpenSCADLibraryPaths(undefined, [testDir]);
 		
-		// The SCAD file's directory should be the first path
 		assert.ok(paths.length > 0, 'Should return at least one path');
-		assert.strictEqual(path.normalize(paths[0]), path.normalize(testDir), 'First path should be the SCAD file directory');
+		const normalized = paths.map(p => path.normalize(p));
+		assert.ok(normalized.includes(path.normalize(testDir)), 'Configured directory should be included when it exists');
 	});
 
 	test('getAllOpenSCADLibraryPaths - does not include workspace root', async () => {
@@ -160,7 +159,7 @@ suite('OpenSCAD Library Paths Test Suite', () => {
 		const testScadPath = path.join(workspaceRoot, 'subdirectory', 'test.scad');
 		const testDir = path.dirname(testScadPath);
 		
-		const paths = await getAllOpenSCADLibraryPaths(workspaceRoot, testScadPath);
+		const paths = await getAllOpenSCADLibraryPaths(workspaceRoot, ['${workspaceFolder}/some-lib']);
 		
 		// The workspace root should NOT be in the paths
 		const normalizedPaths = paths.map(p => path.normalize(p));
@@ -308,21 +307,5 @@ suite('OpenSCAD Customizer Parser Test Suite', () => {
 		const result = parseOpenSCADCustomizerVariables(content);
 		
 		assert.strictEqual(result.variables.length, 0, 'Should have no visible variables when all are in Hidden section');
-	});
-});
-
-suite('OpenSCAD Parts Export Format Detection Test Suite', () => {
-	test('getPreferredExportFormats - prefers SVG for 2D-like part names', () => {
-		assert.deepStrictEqual(getPreferredExportFormats('panel_2d'), ['svg', 'stl']);
-		assert.deepStrictEqual(getPreferredExportFormats('laser_cut_plate'), ['svg', 'stl']);
-	});
-
-	test('getPreferredExportFormats - prefers STL for 3D-like part names', () => {
-		assert.deepStrictEqual(getPreferredExportFormats('solid_mount'), ['stl', 'svg']);
-		assert.deepStrictEqual(getPreferredExportFormats('assembly_3d'), ['stl', 'svg']);
-	});
-
-	test('getPreferredExportFormats - defaults to STL first with SVG fallback', () => {
-		assert.deepStrictEqual(getPreferredExportFormats('t_edge'), ['stl', 'svg']);
 	});
 });

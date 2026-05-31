@@ -9,7 +9,7 @@ import { trace } from 'console';
 import * as fs from 'fs';
 import * as os from 'os';
 import {
-    convertOpenSCADToSTLCancellable,
+    convertOpenSCADWithNodeWorker,
     isOpenSCADFile,
     OpenSCADParameterConfiguration,
     OpenSCADCustomizerParseResult,
@@ -28,7 +28,6 @@ export default class URDFPreview
     _webview: vscode.WebviewPanel | undefined = undefined;
     private _trace: vscode.OutputChannel;
     private _convertedSTLPath: string | undefined = undefined;
-    private _cancellationTokenSource: vscode.CancellationTokenSource | undefined = undefined;
     private _scadParameterOverrides: Record<string, OpenSCADCustomizerValue> = {};
     private _scadParameterConfiguration: OpenSCADParameterConfiguration | undefined = undefined;
     private _scadCustomizerParseResult: OpenSCADCustomizerParseResult | undefined = undefined;
@@ -66,6 +65,11 @@ export default class URDFPreview
             workspaceFolders.forEach((folder) => {
                 paths.push(vscode.Uri.file(folder.uri.fsPath));
             });
+        } else {
+            // Single-file mode: add the open file's directory
+            if (resource && resource.fsPath) {
+                paths.push(vscode.Uri.file(path.dirname(resource.fsPath)));
+            }
         }
 
         paths.push(vscode.Uri.file(path.join(context.extensionPath, 'dist')));
@@ -165,40 +169,44 @@ export default class URDFPreview
         this._disposables = subscriptions;
     }
 
-    // Convert OpenSCAD file to STL with cancellation support
-    private async convertOpenSCADToSTL(scadFilePath: string): Promise<string | null> {
-        // Cancel any existing conversion
-        if (this._cancellationTokenSource) {
-            this._trace.appendLine("Cancelling Previous Conversion for " + scadFilePath);
-            this._cancellationTokenSource.cancel();
-        }
-        
-        // Create new cancellation token
-        this._cancellationTokenSource = new vscode.CancellationTokenSource();
-        
-        try {
-            const result = await convertOpenSCADToSTLCancellable(
-                scadFilePath, 
-                this._trace, 
-                this._cancellationTokenSource.token,
-                {
-                    timeout: 60000,           // 1 minute timeout for fast feedback
-                    parameterOverrides: this._scadParameterOverrides,
-                    parameterConfiguration: this._scadParameterConfiguration
-                }
-            );
-            
-            if (result) {
-                this._convertedSTLPath = result;
+    // Convert OpenSCAD file using worker process to avoid blocking extension host
+    private async convertOpenSCAD(scadFilePath: string): Promise<string | null> {
+        const scadUri = vscode.Uri.file(scadFilePath);
+        const workspaceFolder = vscode.workspace.getWorkspaceFolder(scadUri);
+        const workspaceRoot = workspaceFolder?.uri.fsPath
+            ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
+            ?? path.dirname(scadFilePath);
+
+        const config = vscode.workspace.getConfiguration('urdf-editor', scadUri);
+        const configuredLibraryPaths = config.get<string[]>('OpenSCADLibraryPaths', []);
+
+        // Also pass workspace folders as library roots so shared workspace-local
+        // OpenSCAD libraries can be resolved by include/use statements.
+        const workspaceLibraryPaths = (vscode.workspace.workspaceFolders ?? [])
+            .map(folder => folder.uri.fsPath);
+
+        const combinedLibraryPaths = Array.from(new Set([
+            ...configuredLibraryPaths,
+            ...workspaceLibraryPaths,
+        ]));
+
+        const result = await convertOpenSCADWithNodeWorker(
+            scadFilePath,
+            this._trace,
+            {
+                timeout: 60000,           // 1 minute timeout for fast feedback
+                workspaceRoot,
+                configuredLibraryPaths: combinedLibraryPaths,
+                parameterOverrides: this._scadParameterOverrides,
+                parameterConfiguration: this._scadParameterConfiguration,
+                outputFormat: 'glb'
             }
-            return result;
-        } finally {
-            // Clean up cancellation token
-            if (this._cancellationTokenSource) {
-                this._cancellationTokenSource.dispose();
-                this._cancellationTokenSource = undefined;
-            }
+        );
+
+        if (result) {
+            this._convertedSTLPath = result;
         }
+        return result;
     }
 
     // Check if file is OpenSCAD
@@ -270,10 +278,11 @@ export default class URDFPreview
             // Check if this is an OpenSCAD file
             if (this.isOpenSCADFile(this._resource.fsPath)) {
                 // Handle OpenSCAD file - convert to STL and display as 3D model
-                const stlPath = await this.convertOpenSCADToSTL(this._resource.fsPath);
+                const stlPath = await this.convertOpenSCAD(this._resource.fsPath);
                 if (stlPath) {
+                    let scadText = '';
                     try {
-                        const scadText = await fs.promises.readFile(this._resource.fsPath, 'utf8');
+                        scadText = await fs.promises.readFile(this._resource.fsPath, 'utf8');
                         this._scadCustomizerParseResult = parseOpenSCADCustomizerVariables(scadText);
 
                         // Keep overrides only for currently customizable (visible) variables.
@@ -311,7 +320,8 @@ export default class URDFPreview
                         enabled: hasCustomizableContent && customizerEnabledInSettings,
                         autoPreview: this._autoPreviewCustomizer,
                         overrides: this._scadParameterOverrides,
-                        model: this._scadCustomizerParseResult
+                        model: this._scadCustomizerParseResult,
+                        scadText
                     });
                     this._webview.webview.postMessage({
                         command: 'view3DFile',
@@ -421,13 +431,6 @@ export default class URDFPreview
     }
     
     public dispose() {
-        // Cancel any ongoing OpenSCAD conversion
-        if (this._cancellationTokenSource) {
-            this._cancellationTokenSource.cancel();
-            this._cancellationTokenSource.dispose();
-            this._cancellationTokenSource = undefined;
-        }
-
         while (this._disposables.length) {
             const disposable = this._disposables.pop();
             if (disposable) {
@@ -572,6 +575,28 @@ export default class URDFPreview
                 overflow-y: auto;
                 font-size: 12px;
                 color: var(--vscode-editorWarning-foreground, #cca700);
+                }
+
+                /* Map babylon_ros built-in customizer CSS variables to
+                   VS Code theme tokens so the panel always matches the
+                   user's color scheme. */
+                :root {
+                --customizer-text:
+                    var(--vscode-editor-foreground, #e5e7eb);
+                --customizer-label:
+                    var(--vscode-editor-foreground, #e5e7eb);
+                --customizer-border:
+                    var(--vscode-input-border,
+                        var(--vscode-panel-border, #4b5563));
+                --customizer-input-bg:
+                    var(--vscode-input-background, #0f172a);
+                --customizer-field-bg:
+                    var(--vscode-sideBar-background, transparent);
+                --customizer-tab-border:
+                    var(--vscode-panel-border,
+                        var(--vscode-tab-border, #4b5563));
+                --customizer-tab-active:
+                    var(--vscode-button-background, #3b82f6);
                 }
             </style>
             <title>URDF Preview</title>

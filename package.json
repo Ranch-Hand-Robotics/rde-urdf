@@ -35,6 +35,7 @@
     "url": "https://github.com/sponsors/Ranch-Hand-Robotics"
   },
   "activationEvents": [
+    "onLanguage:xml",
     "onWebviewPanel:urdfPreview",
     "workspaceContains:**/*.urdf",
     "workspaceContains:**/*.xacro",
@@ -42,12 +43,23 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "chatPromptFiles": [
+      {
+        "path": "./dist/assets/agents/urdf.agent.md"
+      },
+      {
+        "path": "./dist/assets/agents/openscad-artist.agent.md"
+      }
+    ],
     "chatSkills": [
       {
         "path": "./assets/skills/openscad-development/SKILL.md"
       },
       {
         "path": "./assets/skills/openscad-integration/SKILL.md"
+      },
+      {
+        "path": "./assets/skills/openscad-librarian/SKILL.md"
       },
       {
         "path": "./assets/skills/urdf-fundamentals/SKILL.md"
@@ -477,7 +489,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.3",
     "@polyhobbyist/babylon-collada-loader": "^0.0.8",
-    "@ranchhandrobotics/babylon_ros": "^0.5.0",
+    "@ranchhandrobotics/babylon_ros": "^0.6.0",
     "@vscode/debugadapter": "^1.66.0",
     "babylonjs": "~7.16.0",
     "babylonjs-gui": "~7.16.0",
