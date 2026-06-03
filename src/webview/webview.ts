@@ -78,6 +78,25 @@ let customizerAutoPreview = true;
 let customizerEnabled = false;
 let customizerDebounceHandle: number | undefined;
 
+function setErrorOverlay(errorText?: string) {
+  const overlay = document.getElementById('openscadErrorOverlay');
+  const textElement = document.getElementById('openscadErrorText');
+
+  if (!overlay || !textElement) {
+    return;
+  }
+
+  const normalized = (errorText ?? '').trim();
+  if (normalized.length === 0) {
+    overlay.classList.remove('visible');
+    textElement.textContent = '';
+    return;
+  }
+
+  textElement.textContent = normalized;
+  overlay.classList.add('visible');
+}
+
 function forceCanvasRelayout() {
   if (!currentRobotScene?.engine) {
     return;
@@ -415,6 +434,7 @@ async function apply3DFile(filename: string) {
       // For standalone 3D files we reframe on load so mesh scale/units are always visible.
     }
   } catch (err: any) {
+    setErrorOverlay(err?.stack || err?.message || String(err));
     vscode?.postMessage({
       command: "error",
       text: err.message,
@@ -452,6 +472,7 @@ async function main() {
   const customizerApplyButton = document.getElementById('customizerApply');
   const customizerResetButton = document.getElementById('customizerReset');
   const customizerAutoPreviewInput = document.getElementById('customizerAutoPreview') as HTMLInputElement | null;
+  const errorDismissButton = document.getElementById('openscadErrorClose') as HTMLButtonElement | null;
 
   customizerApplyButton?.addEventListener('click', () => {
     vscode?.postMessage({
@@ -480,6 +501,10 @@ async function main() {
       debounceCustomizerApply();
     }
   });
+
+  errorDismissButton?.addEventListener('click', () => {
+    setErrorOverlay();
+  });
   
   window.addEventListener("resize", function () {
     if (currentRobotScene !== undefined && currentRobotScene.engine !== undefined) {
@@ -495,9 +520,11 @@ async function main() {
     const message = event.data; // The JSON data our extension sent
     switch (message.command) {
         case 'view3DFile':
+          setErrorOverlay();
           apply3DFile(message.filename);
         break;
         case 'urdf':
+          setErrorOverlay();
           currentRobotScene.applyURDF(message.urdf);
         break;
         case 'previewFile':
@@ -541,6 +568,12 @@ async function main() {
         case 'openscadCustomizerResetValues':
           resetCustomizerValues();
         break;
+        case 'error':
+          setErrorOverlay(message.text || 'OpenSCAD render failed.');
+        break;
+        case 'clearErrorOverlay':
+          setErrorOverlay();
+        break;
         case 'colors':
           if (currentRobotScene.camera && currentRobotScene.ground && currentRobotScene.scene) {
             // Use new API methods if available, otherwise fall back to direct property access
@@ -552,15 +585,18 @@ async function main() {
               beta: message.defaultCameraBeta,
               radius: message.defaultCameraRadius
             });
-            
-            // Also set the current camera position to match the defaults
-            currentRobotScene.camera.alpha = message.defaultCameraAlpha;
-            currentRobotScene.camera.beta = message.defaultCameraBeta;
-            
-            if (typeof robotSceneAny.setCameraRadius === 'function') {
-              robotSceneAny.setCameraRadius(message.cameraRadius);
-            } else {
-              currentRobotScene.camera.radius = message.cameraRadius;
+
+            // Keep the user's current camera pose intact on live preview refreshes.
+            // The configured camera values are defaults for reset / first load only.
+            if (!currentRobotScene.hasBeenFramed) {
+              currentRobotScene.camera.alpha = message.defaultCameraAlpha;
+              currentRobotScene.camera.beta = message.defaultCameraBeta;
+
+              if (typeof robotSceneAny.setCameraRadius === 'function') {
+                robotSceneAny.setCameraRadius(message.cameraRadius);
+              } else {
+                currentRobotScene.camera.radius = message.cameraRadius;
+              }
             }
 
             if (typeof robotSceneAny.setBackgroundColor === 'function') {
