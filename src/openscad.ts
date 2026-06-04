@@ -104,6 +104,8 @@ export const convertOpenSCADCancellable = impl.convertOpenSCADCancellable as (
     parameterOverrides?: Record<string, OpenSCADCustomizerValue>;
     parameterConfiguration?: OpenSCADParameterConfiguration;
     outputFormat?: 'stl' | 'glb';
+    workspaceRoot?: string;
+    configuredLibraryPaths?: string[];
   },
 ) => Promise<string | null>;
 export const convertOpenSCADWithNodeWorker = impl.convertOpenSCADWithNodeWorker as (
@@ -127,6 +129,8 @@ export const exportOpenSCAD = impl.exportOpenSCAD as (
     timeout?: number;
     parameterOverrides?: Record<string, OpenSCADCustomizerValue>;
     suppressErrorMessage?: boolean;
+    workspaceRoot?: string;
+    configuredLibraryPaths?: string[];
   },
 ) => Promise<string | null>;
 export const generateOpenSCADLibrariesDocumentation = impl.generateOpenSCADLibrariesDocumentation as (

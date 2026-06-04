@@ -90,6 +90,10 @@ export function registerOpenSCADExportCommands(context: vscode.ExtensionContext,
 
         try {
             const { exportOpenSCAD } = await import('./openscad');
+            const workspaceFolder = vscode.workspace.getWorkspaceFolder(documentUri);
+            const workspaceRoot = workspaceFolder?.uri.fsPath;
+            const config = vscode.workspace.getConfiguration('urdf-editor');
+            const configuredLibraryPaths = config.get<string[]>('OpenSCADLibraryPaths', []);
 
             await vscode.window.withProgress(
                 {
@@ -100,7 +104,10 @@ export function registerOpenSCADExportCommands(context: vscode.ExtensionContext,
                 async (progress, token) => {
                     progress.report({ message: 'Converting .scad to .stl...' });
 
-                    const stlPath = await exportOpenSCAD(documentUri.fsPath, 'stl', tracing, token);
+                    const stlPath = await exportOpenSCAD(documentUri.fsPath, 'stl', tracing, token, {
+                        workspaceRoot,
+                        configuredLibraryPaths,
+                    });
 
                     if (stlPath) {
                         vscode.window.showInformationMessage(`STL exported successfully: ${stlPath}`);
@@ -130,6 +137,10 @@ export function registerOpenSCADExportCommands(context: vscode.ExtensionContext,
 
         try {
             const { exportOpenSCAD } = await import('./openscad');
+            const workspaceFolder = vscode.workspace.getWorkspaceFolder(documentUri);
+            const workspaceRoot = workspaceFolder?.uri.fsPath;
+            const config = vscode.workspace.getConfiguration('urdf-editor');
+            const configuredLibraryPaths = config.get<string[]>('OpenSCADLibraryPaths', []);
 
             await vscode.window.withProgress(
                 {
@@ -140,7 +151,10 @@ export function registerOpenSCADExportCommands(context: vscode.ExtensionContext,
                 async (progress, token) => {
                     progress.report({ message: 'Converting .scad to .svg...' });
 
-                    const svgPath = await exportOpenSCAD(documentUri.fsPath, 'svg', tracing, token);
+                    const svgPath = await exportOpenSCAD(documentUri.fsPath, 'svg', tracing, token, {
+                        workspaceRoot,
+                        configuredLibraryPaths,
+                    });
 
                     if (svgPath) {
                         vscode.window.showInformationMessage(`SVG exported successfully: ${svgPath}`);
@@ -211,11 +225,17 @@ export function registerOpenSCADExportCommands(context: vscode.ExtensionContext,
 
                         let outputPath: string | null = null;
                         let outputFormat: 'stl' | 'svg' | null = null;
+                        const workspaceFolder = vscode.workspace.getWorkspaceFolder(documentUri);
+                        const workspaceRoot = workspaceFolder?.uri.fsPath;
+                        const config = vscode.workspace.getConfiguration('urdf-editor');
+                        const configuredLibraryPaths = config.get<string[]>('OpenSCADLibraryPaths', []);
 
                         for (const format of preferredFormats) {
                             outputPath = await exportOpenSCAD(documentUri.fsPath, format, tracing, token, {
                                 parameterOverrides: { part },
                                 suppressErrorMessage: preferredFormats.length > 1,
+                                workspaceRoot,
+                                configuredLibraryPaths,
                             });
 
                             if (token.isCancellationRequested) {
