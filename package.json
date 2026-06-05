@@ -489,7 +489,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.3",
     "@polyhobbyist/babylon-collada-loader": "^0.0.8",
-    "@ranchhandrobotics/babylon_ros": "^0.6.0",
+    "@ranchhandrobotics/babylon_ros": "^0.6.2",
     "@vscode/debugadapter": "^1.66.0",
     "babylonjs": "~7.16.0",
     "babylonjs-gui": "~7.16.0",
