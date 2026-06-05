@@ -50,7 +50,7 @@ function extractOpenSCADParts(scadText: string): string[] {
 }
 
 function isLikely2DPart(partName: string): boolean {
-    const name = partName.toLowerCase();
+    const name = partName.toLowerCase().replace(/[_-]+/g, ' ');
 
     if (/(\b3d\b|\bstl\b|solid|volume)/i.test(name)) {
         return false;
@@ -92,8 +92,11 @@ export function registerOpenSCADExportCommands(context: vscode.ExtensionContext,
             const { exportOpenSCAD } = await import('./openscad');
             const workspaceFolder = vscode.workspace.getWorkspaceFolder(documentUri);
             const workspaceRoot = workspaceFolder?.uri.fsPath;
-            const config = vscode.workspace.getConfiguration('urdf-editor');
-            const configuredLibraryPaths = config.get<string[]>('OpenSCADLibraryPaths', []);
+            const config = vscode.workspace.getConfiguration('urdf-editor', documentUri);
+            const configuredLibraryPaths = [
+                ...config.get<string[]>('OpenSCADLibraryPaths', []),
+                ...(vscode.workspace.workspaceFolders ?? []).map(f => f.uri.fsPath),
+            ];
 
             await vscode.window.withProgress(
                 {
@@ -139,8 +142,11 @@ export function registerOpenSCADExportCommands(context: vscode.ExtensionContext,
             const { exportOpenSCAD } = await import('./openscad');
             const workspaceFolder = vscode.workspace.getWorkspaceFolder(documentUri);
             const workspaceRoot = workspaceFolder?.uri.fsPath;
-            const config = vscode.workspace.getConfiguration('urdf-editor');
-            const configuredLibraryPaths = config.get<string[]>('OpenSCADLibraryPaths', []);
+            const config = vscode.workspace.getConfiguration('urdf-editor', documentUri);
+            const configuredLibraryPaths = [
+                ...config.get<string[]>('OpenSCADLibraryPaths', []),
+                ...(vscode.workspace.workspaceFolders ?? []).map(f => f.uri.fsPath),
+            ];
 
             await vscode.window.withProgress(
                 {
@@ -227,8 +233,11 @@ export function registerOpenSCADExportCommands(context: vscode.ExtensionContext,
                         let outputFormat: 'stl' | 'svg' | null = null;
                         const workspaceFolder = vscode.workspace.getWorkspaceFolder(documentUri);
                         const workspaceRoot = workspaceFolder?.uri.fsPath;
-                        const config = vscode.workspace.getConfiguration('urdf-editor');
-                        const configuredLibraryPaths = config.get<string[]>('OpenSCADLibraryPaths', []);
+                        const config = vscode.workspace.getConfiguration('urdf-editor', documentUri);
+                        const configuredLibraryPaths = [
+                            ...config.get<string[]>('OpenSCADLibraryPaths', []),
+                            ...(vscode.workspace.workspaceFolders ?? []).map(f => f.uri.fsPath),
+                        ];
 
                         for (const format of preferredFormats) {
                             outputPath = await exportOpenSCAD(documentUri.fsPath, format, tracing, token, {

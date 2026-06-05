@@ -10,6 +10,7 @@ import {
 	getDefaultOpenSCADLibraryPaths,
 	parseOpenSCADCustomizerVariables
 } from '../../openscad';
+import { getPreferredExportFormats } from '../../openscadExport';
 import * as path from 'path';
 
 suite('Extension Test Suite', () => {
@@ -240,6 +241,20 @@ suite('OpenSCAD Customizer Parser Test Suite', () => {
 		assert.ok(result.firstBraceLine !== undefined, 'Expected parser to report first brace line');
 	});
 
+
+suite('OpenSCAD Export Parts Heuristic Test Suite', () => {
+	test('getPreferredExportFormats - prefers SVG for underscore-delimited 2D parts', () => {
+		assert.deepStrictEqual(getPreferredExportFormats('front_panel_2d'), ['svg', 'stl']);
+	});
+
+	test('getPreferredExportFormats - prefers SVG for underscore-delimited laser parts', () => {
+		assert.deepStrictEqual(getPreferredExportFormats('front_laser_cut'), ['svg', 'stl']);
+	});
+
+	test('getPreferredExportFormats - still prefers STL for clearly 3D parts', () => {
+		assert.deepStrictEqual(getPreferredExportFormats('main_body_3d'), ['stl', 'svg']);
+	});
+});
 	test('parseOpenSCADCustomizerVariables - warns on unsupported expressions', () => {
 		const content = [
 			'/* [parameters] */',
