@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="img/favicon.ico" />
+    <title>Configuration - Robot Developer Extensions for URDF editing</title>
+    <link rel="stylesheet" href="css/theme.css" />
+    <link rel="stylesheet" href="css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Configuration";
+        var mkdocs_page_input_path = "Configuration.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="index.html" class="icon icon-home"> Robot Developer Extensions for URDF editing
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="./search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="index.html">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="IntelliSense.html">IntelliSense</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Configuration</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#ros-package-discovery">ROS Package Discovery</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#how-package-discovery-works">How Package Discovery Works</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#package-search-order">Package Search Order</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#ros-distro-configuration">ROS Distro Configuration</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#custom-package-search-paths">Custom Package Search Paths</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#openscad-configuration">OpenSCAD Configuration</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#library-paths">Library Paths</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#documentation-generation">Documentation Generation</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#visual-configuration">Visual Configuration</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#background-and-grid">Background and Grid</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#camera-and-mirror">Camera and Mirror</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#debug-configuration">Debug Configuration</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#example-complete-configuration">Example Complete Configuration</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="WebXRPreview.html">WebXR Preview</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="OpenSCAD.html">OpenSCAD</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="mcp.html">Model Context Protocol</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="Support.html">Support</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Robot Developer Extensions for URDF editing</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html" class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Configuration</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/ranch-hand-robotics/rde-urdf/edit/main/docs/Configuration.md" class="icon icon-github"> Edit on GitHub</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="configuration-guide">Configuration Guide</h1>
+<p>This guide covers all configuration options available in the URDF Editor extension.</p>
+<h2 id="ros-package-discovery">ROS Package Discovery</h2>
+<p>The extension automatically discovers ROS packages from multiple sources. Understanding how this works helps you configure the extension for your specific ROS setup.</p>
+<h3 id="how-package-discovery-works">How Package Discovery Works</h3>
+<p>The extension searches for ROS packages by looking for <code>package.xml</code> files in the configured directories. For each <code>package.xml</code> file found, it:</p>
+<ol>
+<li>Parses the XML content</li>
+<li>Extracts the package name from the <code>&lt;name&gt;</code> element</li>
+<li>Maps the package name to the directory containing the <code>package.xml</code> file</li>
+</ol>
+<p><strong>Example package.xml structure:</strong>
+<div class="highlight"><pre><span></span><code><span class="cp">&lt;?xml version=&quot;1.0&quot;?&gt;</span>
+<span class="nt">&lt;package</span><span class="w"> </span><span class="na">format=</span><span class="s">&quot;2&quot;</span><span class="nt">&gt;</span>
+<span class="w">  </span><span class="nt">&lt;name&gt;</span>robot_state_publisher<span class="nt">&lt;/name&gt;</span>
+<span class="w">  </span><span class="nt">&lt;version&gt;</span>3.0.0<span class="nt">&lt;/version&gt;</span>
+<span class="w">  </span><span class="nt">&lt;description&gt;</span>The<span class="w"> </span>robot_state_publisher<span class="w"> </span>package<span class="nt">&lt;/description&gt;</span>
+<span class="w">  </span><span class="cm">&lt;!-- ... other elements ... --&gt;</span>
+<span class="nt">&lt;/package&gt;</span>
+</code></pre></div></p>
+<p>In this example, the package name "robot_state_publisher" would be associated with the directory containing this <code>package.xml</code> file.</p>
+<h3 id="package-search-order">Package Search Order</h3>
+<p>Packages are discovered in this order of precedence:</p>
+<ol>
+<li><strong>Workspace Folders</strong> (highest precedence)</li>
+<li>Current VS Code workspace directories</li>
+<li>
+<p>Allows local development overrides</p>
+</li>
+<li>
+<p><strong>ROS Distro Directory</strong></p>
+</li>
+<li>System-installed ROS packages</li>
+<li>
+<p>Configured via <code>ROS2.distro</code> and <code>ROS2.pixiRoot</code> settings</p>
+</li>
+<li>
+<p><strong>User-Specified Search Paths</strong></p>
+</li>
+<li>Additional directories you configure</li>
+<li>Useful for overlay workspaces or custom installations</li>
+</ol>
+<h3 id="ros-distro-configuration">ROS Distro Configuration</h3>
+<p>Configure your ROS distribution using the ROS2 extension settings:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;ROS2.distro&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;kilted&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;ROS2.pixiRoot&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/path/to/pixi/ros/installation&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<ul>
+<li><strong><code>ROS2.distro</code></strong>: Your ROS distribution name (e.g., "kilted", "humble", "jazzy")</li>
+<li><strong><code>ROS2.pixiRoot</code></strong>: Base path for pixi-managed ROS installations</li>
+</ul>
+<p><strong>Path Resolution Logic:</strong>
+- If <code>pixiRoot</code> is set: uses <code>${pixiRoot}/share</code>
+- If <code>pixiRoot</code> is not set: uses <code>/opt/ros/${distro}/share</code></p>
+<h3 id="custom-package-search-paths">Custom Package Search Paths</h3>
+<p>Add additional directories to search for ROS packages:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;urdf-editor.PackageSearchPaths&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;${workspaceFolder}/../other_ws/src&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;/opt/ros/custom_distro/share&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;/home/user/ros_packages&quot;</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><strong>Variable Substitution:</strong>
+- <code>${workspaceFolder}</code> → Your workspace root directory</p>
+<p><strong>Use Cases:</strong>
+- Overlay workspaces: <code>"${workspaceFolder}/../overlay_ws/src"</code>
+- Custom ROS installations: <code>"/opt/ros/my_custom_build/share"</code>
+- Shared package repositories: <code>"/shared/ros_packages"</code></p>
+<h2 id="openscad-configuration">OpenSCAD Configuration</h2>
+<h3 id="library-paths">Library Paths</h3>
+<p>The extension automatically loads OpenSCAD libraries from:</p>
+<ul>
+<li><strong>SCAD file directory</strong>: The directory containing the SCAD file being previewed (highest priority)</li>
+<li><strong>Workspace root</strong>: The current workspace folder</li>
+<li><strong>Windows</strong>: <code>%USERPROFILE%\Documents\OpenSCAD\libraries</code></li>
+<li><strong>Linux</strong>: <code>$HOME/.local/share/OpenSCAD/libraries</code></li>
+<li><strong>macOS</strong>: <code>$HOME/Documents/OpenSCAD/libraries</code></li>
+</ul>
+<p>This means SCAD files in the same directory or subdirectories can reference each other without any configuration.</p>
+<p>Add additional custom library paths:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;urdf-editor.OpenSCADLibraryPaths&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;${workspaceFolder}/scad_libs&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;C:\\MyLibraries\\OpenSCAD&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;/usr/local/share/openscad/libraries&quot;</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="documentation-generation">Documentation Generation</h3>
+<p>Generate comprehensive documentation for your OpenSCAD libraries:</p>
+<ol>
+<li>Open Command Palette (<code>Ctrl+Shift+P</code>)</li>
+<li>Run "URDF: Generate OpenSCAD Libraries Documentation"</li>
+<li>Choose save location for the markdown file</li>
+</ol>
+<p>The generated documentation includes:
+- Header comments from library files
+- Module and function signatures
+- Parameter documentation
+- Usage examples</p>
+<h2 id="visual-configuration">Visual Configuration</h2>
+<h3 id="background-and-grid">Background and Grid</h3>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;urdf-editor.BackgroundColor&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;#000000&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;urdf-editor.GridMainColor&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;#00FF00&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;urdf-editor.GridMinorColor&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;#001100&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;urdf-editor.GridMinorOpacity&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.5</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;urdf-editor.GridRatio&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.1</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;urdf-editor.GridFrequency&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="camera-and-mirror">Camera and Mirror</h3>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;urdf-editor.CameraDistanceToRobot&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;urdf-editor.MirrorReflectivity&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><strong>Mirror Reflectivity:</strong>
+- <code>0.0</code> (default): Mirror disabled
+- <code>&gt; 0.0</code>: Enable mirror with opacity
+- Mirror color automatically derives from grid main color (toned down by 70%)
+- Provides visual depth and ground reference in 3D preview</p>
+<p><strong>Camera Distance:</strong>
+- Distance in meters from camera to robot origin
+- Adjust based on robot size for optimal viewing</p>
+<h2 id="debug-configuration">Debug Configuration</h2>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;urdf-editor.DebugUI&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;urdf-editor.mcpServerPort&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3005</span>
+<span class="p">}</span>
+</code></pre></div>
+<h2 id="example-complete-configuration">Example Complete Configuration</h2>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="c1">// ROS Configuration</span>
+<span class="w">  </span><span class="nt">&quot;ROS2.distro&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;kilted&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;ROS2.pixiRoot&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/home/user/pixi/envs/ros_env&quot;</span><span class="p">,</span>
+
+<span class="w">  </span><span class="c1">// Package Search Paths</span>
+<span class="w">  </span><span class="nt">&quot;urdf-editor.PackageSearchPaths&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;${workspaceFolder}/../overlay_ws/src&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;/opt/ros/custom_packages&quot;</span>
+<span class="w">  </span><span class="p">],</span>
+
+<span class="w">  </span><span class="c1">// OpenSCAD Libraries</span>
+<span class="w">  </span><span class="nt">&quot;urdf-editor.OpenSCADLibraryPaths&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;${workspaceFolder}/scad_libs&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;/usr/local/share/openscad/libraries&quot;</span>
+<span class="w">  </span><span class="p">],</span>
+
+<span class="w">  </span><span class="c1">// Visual Settings</span>
+<span class="w">  </span><span class="nt">&quot;urdf-editor.BackgroundColor&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;#1a1a1a&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;urdf-editor.GridMainColor&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;#00FF00&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;urdf-editor.CameraDistanceToRobot&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">2.0</span><span class="p">,</span>
+
+<span class="w">  </span><span class="c1">// Debug</span>
+<span class="w">  </span><span class="nt">&quot;urdf-editor.DebugUI&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="p">}</span>
+</code></pre></div>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="IntelliSense.html" class="btn btn-neutral float-left" title="IntelliSense"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="WebXRPreview.html" class="btn btn-neutral float-right" title="WebXR Preview">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/ranch-hand-robotics/rde-urdf" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
+    
+      <span><a href="IntelliSense.html" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="WebXRPreview.html" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = ".";</script>
+    <script src="js/theme_extra.js"></script>
+    <script src="js/theme.js"></script>
+      <script src="search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
