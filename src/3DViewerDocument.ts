@@ -29,6 +29,11 @@ export class Viewer3DDocument implements vscode.CustomDocument {
         workspaceFolders.forEach((folder) => {
             paths.push(vscode.Uri.file(folder.uri.fsPath));
         });
+    } else {
+        // Single-file mode: add the open file's directory
+        if (this.uri && this.uri.fsPath) {
+            paths.push(vscode.Uri.file(path.dirname(this.uri.fsPath)));
+        }
     }
 
     paths.push(vscode.Uri.file(path.join(this._context.extensionPath, 'dist')));

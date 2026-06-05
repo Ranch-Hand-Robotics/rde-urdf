@@ -1,6 +1,6 @@
 ---
 name: openscad-development
-description: OpenSCAD development workflow with screenshot validation for openscad
+description: Use this skill when modifying OpenSCAD files (*.scad)
 ---
 
 # OpenSCAD Development with Screenshot Validation

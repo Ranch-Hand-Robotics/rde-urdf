@@ -9,7 +9,7 @@ import { trace } from 'console';
 import * as fs from 'fs';
 import * as os from 'os';
 import {
-    convertOpenSCADToSTLCancellable,
+    convertOpenSCADWithNodeWorker,
     isOpenSCADFile,
     OpenSCADParameterConfiguration,
     OpenSCADCustomizerParseResult,
@@ -28,11 +28,11 @@ export default class URDFPreview
     _webview: vscode.WebviewPanel | undefined = undefined;
     private _trace: vscode.OutputChannel;
     private _convertedSTLPath: string | undefined = undefined;
-    private _cancellationTokenSource: vscode.CancellationTokenSource | undefined = undefined;
     private _scadParameterOverrides: Record<string, OpenSCADCustomizerValue> = {};
     private _scadParameterConfiguration: OpenSCADParameterConfiguration | undefined = undefined;
     private _scadCustomizerParseResult: OpenSCADCustomizerParseResult | undefined = undefined;
     private _autoPreviewCustomizer: boolean = true;
+    private _lastOpenSCADWorkerLogLines: string[] = [];
 
     private _pendingScreenshots: Array<{
         width: number;
@@ -66,6 +66,11 @@ export default class URDFPreview
             workspaceFolders.forEach((folder) => {
                 paths.push(vscode.Uri.file(folder.uri.fsPath));
             });
+        } else {
+            // Single-file mode: add the open file's directory
+            if (resource && resource.fsPath) {
+                paths.push(vscode.Uri.file(path.dirname(resource.fsPath)));
+            }
         }
 
         paths.push(vscode.Uri.file(path.join(context.extensionPath, 'dist')));
@@ -165,40 +170,94 @@ export default class URDFPreview
         this._disposables = subscriptions;
     }
 
-    // Convert OpenSCAD file to STL with cancellation support
-    private async convertOpenSCADToSTL(scadFilePath: string): Promise<string | null> {
-        // Cancel any existing conversion
-        if (this._cancellationTokenSource) {
-            this._trace.appendLine("Cancelling Previous Conversion for " + scadFilePath);
-            this._cancellationTokenSource.cancel();
-        }
-        
-        // Create new cancellation token
-        this._cancellationTokenSource = new vscode.CancellationTokenSource();
-        
-        try {
-            const result = await convertOpenSCADToSTLCancellable(
-                scadFilePath, 
-                this._trace, 
-                this._cancellationTokenSource.token,
-                {
-                    timeout: 60000,           // 1 minute timeout for fast feedback
-                    parameterOverrides: this._scadParameterOverrides,
-                    parameterConfiguration: this._scadParameterConfiguration
-                }
-            );
-            
-            if (result) {
-                this._convertedSTLPath = result;
+    // Convert OpenSCAD file using worker process to avoid blocking extension host
+    private async convertOpenSCAD(scadFilePath: string): Promise<string | null> {
+        const scadUri = vscode.Uri.file(scadFilePath);
+        const workspaceFolder = vscode.workspace.getWorkspaceFolder(scadUri);
+        const workspaceRoot = workspaceFolder?.uri.fsPath
+            ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
+            ?? path.dirname(scadFilePath);
+
+        const config = vscode.workspace.getConfiguration('urdf-editor', scadUri);
+        const configuredLibraryPaths = config.get<string[]>('OpenSCADLibraryPaths', []);
+
+        // Also pass workspace folders as library roots so shared workspace-local
+        // OpenSCAD libraries can be resolved by include/use statements.
+        const workspaceLibraryPaths = (vscode.workspace.workspaceFolders ?? [])
+            .map(folder => folder.uri.fsPath);
+
+        const combinedLibraryPaths = Array.from(new Set([
+            ...configuredLibraryPaths,
+            ...workspaceLibraryPaths,
+        ]));
+
+        this._lastOpenSCADWorkerLogLines = [];
+        const traceProxy = {
+            appendLine: (line: string) => {
+                const text = `${line ?? ''}`;
+                this._lastOpenSCADWorkerLogLines.push(text);
+                this._trace.appendLine(text);
+            },
+            append: (text: string) => {
+                const value = `${text ?? ''}`;
+                this._lastOpenSCADWorkerLogLines.push(value);
+                this._trace.append(value);
             }
-            return result;
-        } finally {
-            // Clean up cancellation token
-            if (this._cancellationTokenSource) {
-                this._cancellationTokenSource.dispose();
-                this._cancellationTokenSource = undefined;
+        };
+
+        const result = await convertOpenSCADWithNodeWorker(
+            scadFilePath,
+            traceProxy,
+            {
+                timeout: 60000,           // 1 minute timeout for fast feedback
+                workspaceRoot,
+                configuredLibraryPaths: combinedLibraryPaths,
+                parameterOverrides: this._scadParameterOverrides,
+                parameterConfiguration: this._scadParameterConfiguration,
+                outputFormat: 'glb'
             }
+        );
+
+        // Keep only the latest chunk to avoid unbounded growth.
+        if (this._lastOpenSCADWorkerLogLines.length > 400) {
+            this._lastOpenSCADWorkerLogLines = this._lastOpenSCADWorkerLogLines.slice(-400);
         }
+
+        if (result) {
+            this._convertedSTLPath = result;
+        }
+        return result;
+    }
+
+    private getOpenSCADFailureDetailsFromLastRun(): string | undefined {
+        if (this._lastOpenSCADWorkerLogLines.length === 0) {
+            return undefined;
+        }
+
+        const interesting = this._lastOpenSCADWorkerLogLines
+            .map(line => `${line ?? ''}`.trim())
+            .filter(line => line.length > 0)
+            .filter(line => {
+                const lower = line.toLowerCase();
+                return !lower.includes("unknown error") &&  // Don't tell user we don't know what happened 
+                       (lower.includes('error')
+                        || lower.includes("warning")
+                        || lower.includes("can't parse file")
+                        || lower.includes('did not generate valid output'));
+            });
+
+        const candidateLines = interesting.length > 0
+            ? interesting
+            : this._lastOpenSCADWorkerLogLines
+                .map(line => `${line ?? ''}`.trim())
+                .filter(line => line.length > 0)
+                .slice(-20);
+
+        if (candidateLines.length === 0) {
+            return undefined;
+        }
+
+        return candidateLines.join('\n');
     }
 
     // Check if file is OpenSCAD
@@ -270,10 +329,11 @@ export default class URDFPreview
             // Check if this is an OpenSCAD file
             if (this.isOpenSCADFile(this._resource.fsPath)) {
                 // Handle OpenSCAD file - convert to STL and display as 3D model
-                const stlPath = await this.convertOpenSCADToSTL(this._resource.fsPath);
+                const stlPath = await this.convertOpenSCAD(this._resource.fsPath);
                 if (stlPath) {
+                    let scadText = '';
                     try {
-                        const scadText = await fs.promises.readFile(this._resource.fsPath, 'utf8');
+                        scadText = await fs.promises.readFile(this._resource.fsPath, 'utf8');
                         this._scadCustomizerParseResult = parseOpenSCADCustomizerVariables(scadText);
 
                         // Keep overrides only for currently customizable (visible) variables.
@@ -303,6 +363,7 @@ export default class URDFPreview
                     this._trace.appendLine("OpenSCAD file previewing: " + this._resource.toString());
                     
                     this._webview.webview.postMessage({ command: 'previewFile', previewFile: this._resource.path});
+                    this._webview.webview.postMessage({ command: 'clearErrorOverlay' });
 
                     const hasCustomizableContent = (this._scadCustomizerParseResult?.variables.length || 0) > 0;
                     const customizerEnabledInSettings = this.isOpenSCADCustomizerEnabled();
@@ -311,11 +372,19 @@ export default class URDFPreview
                         enabled: hasCustomizableContent && customizerEnabledInSettings,
                         autoPreview: this._autoPreviewCustomizer,
                         overrides: this._scadParameterOverrides,
-                        model: this._scadCustomizerParseResult
+                        model: this._scadCustomizerParseResult,
+                        scadText
                     });
                     this._webview.webview.postMessage({
                         command: 'view3DFile',
                         filename: this._webview.webview.asWebviewUri(stlUri).toString()
+                    });
+                } else {
+                    const failureDetails = this.getOpenSCADFailureDetailsFromLastRun();
+                    this._webview.webview.postMessage({
+                        command: 'error',
+                        text: failureDetails
+                            || 'OpenSCAD conversion failed. No renderable output was generated.'
                     });
                 }
             } else {
@@ -337,6 +406,7 @@ export default class URDFPreview
                 this._trace.appendLine("URDF previewing: " + previewFile);
                 this._trace.append(urdfText);
                 this._webview.webview.postMessage({ command: 'previewFile', previewFile: this._resource.path});
+                this._webview.webview.postMessage({ command: 'clearErrorOverlay' });
                 this._webview.webview.postMessage({ command: 'openscadCustomizerModel', enabled: false });
                 this._webview.webview.postMessage({ command: 'urdf', urdf: urdfText });
 
@@ -357,6 +427,10 @@ export default class URDFPreview
             }
 
         } catch (err : any) {
+            this._webview?.webview.postMessage({
+                command: 'error',
+                text: err?.stack || err?.message || String(err)
+            });
             vscode.window.showErrorMessage(err.message);
         } finally {
             this._processing = false;
@@ -421,13 +495,6 @@ export default class URDFPreview
     }
     
     public dispose() {
-        // Cancel any ongoing OpenSCAD conversion
-        if (this._cancellationTokenSource) {
-            this._cancellationTokenSource.cancel();
-            this._cancellationTokenSource.dispose();
-            this._cancellationTokenSource = undefined;
-        }
-
         while (this._disposables.length) {
             const disposable = this._disposables.pop();
             if (disposable) {
@@ -493,6 +560,7 @@ export default class URDFPreview
                 flex: 1;
                 min-width: 0;
                 height: 100%;
+                position: relative;
                 }
 
                 #renderCanvas {
@@ -573,6 +641,150 @@ export default class URDFPreview
                 font-size: 12px;
                 color: var(--vscode-editorWarning-foreground, #cca700);
                 }
+
+                                #openscadErrorOverlay {
+                                position: absolute;
+                                inset: 16px;
+                                z-index: 40;
+                                display: none;
+                                align-items: stretch;
+                                justify-content: stretch;
+                                pointer-events: none;
+                                }
+
+                                #openscadErrorOverlay.visible {
+                                display: flex;
+                                }
+
+                                #openscadErrorPanel {
+                                pointer-events: auto;
+                                width: min(880px, 100%);
+                                max-height: calc(100% - 8px);
+                                margin: auto;
+                                display: grid;
+                                grid-template-rows: auto auto minmax(120px, 1fr);
+                                border-radius: 12px;
+                                border: 1px solid var(--vscode-inputValidation-errorBorder,
+                                        var(--vscode-editorError-foreground, #f87171));
+                                background: linear-gradient(
+                                        160deg,
+                                        color-mix(in srgb,
+                                            var(--vscode-editor-background, #111827) 90%,
+                                            #0a0f1c 10%),
+                                        color-mix(in srgb,
+                                            var(--vscode-editor-background, #111827) 82%,
+                                            #120815 18%)
+                                );
+                                box-shadow:
+                                        0 16px 48px rgba(0, 0, 0, 0.5),
+                                        0 0 0 1px color-mix(in srgb,
+                                            var(--vscode-editorError-foreground, #f87171) 36%,
+                                            transparent);
+                                backdrop-filter: blur(8px);
+                                overflow: hidden;
+                                }
+
+                                #openscadErrorHeader {
+                                display: flex;
+                                align-items: center;
+                                justify-content: space-between;
+                                gap: 12px;
+                                padding: 10px 12px;
+                                border-bottom: 1px solid var(--vscode-panel-border, #3c3c3c);
+                                background: color-mix(in srgb,
+                                    var(--vscode-editor-background, #111827) 75%,
+                                    transparent);
+                                }
+
+                                .openscad-error-title {
+                                display: flex;
+                                align-items: center;
+                                gap: 8px;
+                                font-size: 12px;
+                                font-weight: 700;
+                                letter-spacing: 0.03em;
+                                text-transform: uppercase;
+                                color: var(--vscode-editorError-foreground, #f87171);
+                                }
+
+                                .openscad-error-pulse {
+                                width: 8px;
+                                height: 8px;
+                                border-radius: 999px;
+                                background: var(--vscode-editorError-foreground, #f87171);
+                                box-shadow: 0 0 10px var(--vscode-editorError-foreground, #f87171);
+                                animation: openscadErrorPulse 1.6s infinite;
+                                }
+
+                                @keyframes openscadErrorPulse {
+                                0% { opacity: 0.65; transform: scale(0.95); }
+                                50% { opacity: 1; transform: scale(1.12); }
+                                100% { opacity: 0.65; transform: scale(0.95); }
+                                }
+
+                                #openscadErrorClose {
+                                background: var(--vscode-button-secondaryBackground,
+                                    var(--vscode-button-background, #374151));
+                                color: var(--vscode-button-secondaryForeground,
+                                    var(--vscode-button-foreground, #f9fafb));
+                                border: 1px solid var(--vscode-button-border, transparent);
+                                border-radius: 6px;
+                                padding: 3px 9px;
+                                font-size: 12px;
+                                cursor: pointer;
+                                }
+
+                                #openscadErrorClose:hover {
+                                background: var(--vscode-button-secondaryHoverBackground,
+                                    var(--vscode-button-hoverBackground, #4b5563));
+                                }
+
+                                #openscadErrorSubtitle {
+                                padding: 8px 12px;
+                                border-bottom: 1px solid var(--vscode-panel-border, #3c3c3c);
+                                color: var(--vscode-descriptionForeground,
+                                    var(--vscode-foreground, #d1d5db));
+                                font-size: 12px;
+                                }
+
+                                #openscadErrorText {
+                                margin: 0;
+                                padding: 12px;
+                                overflow: auto;
+                                white-space: pre-wrap;
+                                word-break: break-word;
+                                font-family: var(--vscode-editor-font-family,
+                                    var(--vscode-font-family, monospace));
+                                font-size: 12px;
+                                line-height: 1.5;
+                                color: var(--vscode-editor-foreground, #e5e7eb);
+                                background: color-mix(in srgb,
+                                    var(--vscode-textCodeBlock-background,
+                                        var(--vscode-editor-background, #0b1020)) 92%,
+                                    black 8%);
+                                }
+
+                /* Map babylon_ros built-in customizer CSS variables to
+                   VS Code theme tokens so the panel always matches the
+                   user's color scheme. */
+                :root {
+                --customizer-text:
+                    var(--vscode-editor-foreground, #e5e7eb);
+                --customizer-label:
+                    var(--vscode-editor-foreground, #e5e7eb);
+                --customizer-border:
+                    var(--vscode-input-border,
+                        var(--vscode-panel-border, #4b5563));
+                --customizer-input-bg:
+                    var(--vscode-input-background, #0f172a);
+                --customizer-field-bg:
+                    var(--vscode-sideBar-background, transparent);
+                --customizer-tab-border:
+                    var(--vscode-panel-border,
+                        var(--vscode-tab-border, #4b5563));
+                --customizer-tab-active:
+                    var(--vscode-button-background, #3b82f6);
+                }
             </style>
             <title>URDF Preview</title>
             </head>
@@ -580,6 +792,18 @@ export default class URDFPreview
                 <div id="previewLayout">
                     <div id="renderContainer">
                         <canvas id="renderCanvas" touch-action="none"></canvas>
+                        <div id="openscadErrorOverlay" role="alert" aria-live="assertive" aria-label="OpenSCAD Error Overlay">
+                            <section id="openscadErrorPanel">
+                                <header id="openscadErrorHeader">
+                                    <div class="openscad-error-title">
+                                        <span class="openscad-error-pulse" aria-hidden="true"></span>
+                                        OpenSCAD Render Error
+                                    </div>
+                                    <button id="openscadErrorClose" type="button" title="Dismiss error overlay">Dismiss</button>
+                                </header>
+                                <pre id="openscadErrorText"></pre>
+                            </section>
+                        </div>
                     </div>
                     <aside id="customizerPane" aria-label="OpenSCAD Customizer">
                         <div id="customizerHeader">OpenSCAD Customizer</div>

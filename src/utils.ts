@@ -82,13 +82,17 @@ export async function convertFindToPackageUriInFile(filePath: string): Promise<s
  * the package name from the `<name>` element. Workspace packages take precedence over ROS distro
  * packages to allow for local development overrides.
  * 
+ * **Single-File Mode Support:**
+ * - In single-file mode (no workspace), package discovery still works via ROS distro and user paths
+ * - Relative mesh paths are resolved relative to the open file's directory
+ * 
  * **Configuration Settings Used:**
  * - `ROS2.distro`: ROS distribution name (e.g., "kilted", "humble")
  * - `ROS2.pixiRoot`: Base path for pixi-managed ROS installations
  * - `urdf-editor.PackageSearchPaths`: Array of additional directories to search
  * 
  * **Variable Substitution:**
- * - `${workspaceFolder}` in `PackageSearchPaths` is replaced with the workspace root path
+ * - `${workspaceFolder}` in `PackageSearchPaths` is replaced with the workspace root path (if available)
  * 
  * @returns Promise resolving to a Map where keys are package names and values are absolute paths
  *          to the package directories containing the package.xml files
@@ -104,12 +108,12 @@ export async function getPackages(): Promise<Map<string, string>> {
 
     // Get the workspace path from vscode api:
     const workspaceFolders = vscode.workspace.workspaceFolders;
-    if (!workspaceFolders) {
-      return packages;
-    }
+    
+    // Single-file mode: gracefully degrade to ROS distro + user paths only
+    // Workspace is not required for basic package resolution
 
     // Collect all directories to scan (workspace folders + ROS distro if configured)
-    const directoriesToScan: vscode.WorkspaceFolder[] = [...workspaceFolders];
+    const directoriesToScan: vscode.WorkspaceFolder[] = workspaceFolders ? [...workspaceFolders] : [];
 
     // === ROS Distro Package Discovery ===
     // Check for ROS distro configuration
@@ -134,7 +138,7 @@ export async function getPackages(): Promise<Map<string, string>> {
         const rosWorkspaceFolder: vscode.WorkspaceFolder = {
           uri: vscode.Uri.file(rosSharePath),
           name: `ROS ${distro}`,
-          index: workspaceFolders.length
+          index: directoriesToScan.length
         };
         directoriesToScan.push(rosWorkspaceFolder);
       }
@@ -149,7 +153,7 @@ export async function getPackages(): Promise<Map<string, string>> {
       // Resolve ${workspaceFolder} variable if present
       let resolvedPath = searchPath;
       if (resolvedPath.includes('${workspaceFolder}')) {
-        const workspaceRoot = workspaceFolders[0]?.uri.fsPath || '';
+        const workspaceRoot = workspaceFolders?.[0]?.uri.fsPath || '';
         resolvedPath = resolvedPath.replace('${workspaceFolder}', workspaceRoot);
       }
       

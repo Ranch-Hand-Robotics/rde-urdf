@@ -32,8 +32,19 @@ export class UrdfMcpServer {
 
   constructor(port: number = 3005) {
     this.port = port;
-    this.app = express();
-    this.app.use(express.json());
+
+    const expressModule = express as unknown as {
+      (...args: any[]): express.Application;
+      default?: {
+        (...args: any[]): express.Application;
+        json: typeof express.json;
+      };
+      json: typeof express.json;
+    };
+
+    const expressFactory = expressModule.default ?? expressModule;
+    this.app = expressFactory();
+    this.app.use(expressFactory.json());
     
     this.server = new McpServer(
       {

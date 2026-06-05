@@ -82,8 +82,8 @@ export class OpenSCADCompletionProvider implements vscode.CompletionItemProvider
     provideCompletionItems(
         document: vscode.TextDocument,
         position: vscode.Position,
-        token: vscode.CancellationToken,
-        context: vscode.CompletionContext
+        _token: vscode.CancellationToken,
+        _context: vscode.CompletionContext
     ): vscode.CompletionItem[] {
         if (isInCommentContext(document, position)) {
             return [];
@@ -197,7 +197,6 @@ function isInCommentContext(document: vscode.TextDocument, position: vscode.Posi
             }
 
             if (ch === '/' && next === '/') {
-                // Inside a line comment from here to end of line.
                 if (line === position.line) {
                     return true;
                 }
@@ -217,12 +216,10 @@ function isInCommentContext(document: vscode.TextDocument, position: vscode.Posi
             }
         }
 
-        // If we're at the target line and still in a block comment, cursor is in comment context.
         if (line === position.line && inBlockComment) {
             return true;
         }
 
-        // Reset single-line comment and string escape tracking on newline.
         escaped = false;
     }
 
@@ -233,7 +230,7 @@ export class OpenSCADHoverProvider implements vscode.HoverProvider {
     async provideHover(
         document: vscode.TextDocument,
         position: vscode.Position,
-        token: vscode.CancellationToken
+        _token: vscode.CancellationToken
     ): Promise<vscode.Hover | undefined> {
         const range = document.getWordRangeAtPosition(position);
         if (!range) {
@@ -242,7 +239,6 @@ export class OpenSCADHoverProvider implements vscode.HoverProvider {
 
         const word = document.getText(range);
 
-        // Check modules
         const module = openscadModules.find(m => m.name === word);
         if (module) {
             const markdown = new vscode.MarkdownString();
@@ -251,7 +247,6 @@ export class OpenSCADHoverProvider implements vscode.HoverProvider {
             return new vscode.Hover(markdown, range);
         }
 
-        // Check transformations
         const transform = openscadTransforms.find(t => t.name === word);
         if (transform) {
             const markdown = new vscode.MarkdownString();
@@ -260,7 +255,6 @@ export class OpenSCADHoverProvider implements vscode.HoverProvider {
             return new vscode.Hover(markdown, range);
         }
 
-        // Check boolean operations
         const boolean = openscadBooleans.find(b => b.name === word);
         if (boolean) {
             const markdown = new vscode.MarkdownString();
@@ -269,7 +263,6 @@ export class OpenSCADHoverProvider implements vscode.HoverProvider {
             return new vscode.Hover(markdown, range);
         }
 
-        // Check 2D to 3D operations
         const op2d3d = openscad2Dto3D.find(o => o.name === word);
         if (op2d3d) {
             const markdown = new vscode.MarkdownString();
@@ -278,7 +271,6 @@ export class OpenSCADHoverProvider implements vscode.HoverProvider {
             return new vscode.Hover(markdown, range);
         }
 
-        // Check special variables
         const variable = openscadVariables.find(v => v.name === word);
         if (variable) {
             const markdown = new vscode.MarkdownString();
@@ -287,7 +279,6 @@ export class OpenSCADHoverProvider implements vscode.HoverProvider {
             return new vscode.Hover(markdown, range);
         }
 
-        // Check keywords
         const keyword = openscadKeywords.find(k => k.name === word);
         if (keyword) {
             const markdown = new vscode.MarkdownString();
@@ -296,7 +287,6 @@ export class OpenSCADHoverProvider implements vscode.HoverProvider {
             return new vscode.Hover(markdown, range);
         }
 
-        // Check user-defined modules/functions in current file and includes
         const userDoc = await this.getUserDefinedDocumentation(document, word);
         if (userDoc) {
             const markdown = new vscode.MarkdownString(userDoc);
@@ -307,17 +297,14 @@ export class OpenSCADHoverProvider implements vscode.HoverProvider {
     }
 
     private async getUserDefinedDocumentation(document: vscode.TextDocument, symbolName: string): Promise<string | undefined> {
-        // Import the definition provider dynamically to avoid circular dependency
         const { OpenSCADDefinitionProvider } = await import('./openscadDefinitionProvider');
         const definitionProvider = new OpenSCADDefinitionProvider(tracing);
 
-        // Check current file first
         let doc = definitionProvider.getSymbolDocumentation(document, symbolName);
         if (doc) {
             return doc;
         }
 
-        // Check included files
         const includedFiles = await this.findIncludedFiles(document);
         for (const filePath of includedFiles) {
             try {
@@ -327,7 +314,7 @@ export class OpenSCADHoverProvider implements vscode.HoverProvider {
                 if (doc) {
                     return doc + `\n\n*From: ${filePath}*`;
                 }
-            } catch (error) {
+            } catch {
                 // Continue to next file
             }
         }
@@ -336,16 +323,16 @@ export class OpenSCADHoverProvider implements vscode.HoverProvider {
     }
 
     private async findIncludedFiles(document: vscode.TextDocument): Promise<string[]> {
-        const path = require('path');
-        const fs = require('fs');
-        
+        const path = await import('path');
+        const fs = await import('fs');
+
         const text = document.getText();
         const files: string[] = [];
         const documentDir = path.dirname(document.uri.fsPath);
-        
+
         const includePattern = /(?:include|use)\s*<([^>]+)>/g;
         let match;
-        
+
         while ((match = includePattern.exec(text)) !== null) {
             const includedFile = match[1];
             const fullPath = path.resolve(documentDir, includedFile);
@@ -353,7 +340,7 @@ export class OpenSCADHoverProvider implements vscode.HoverProvider {
                 files.push(fullPath);
             }
         }
-        
+
         return files;
     }
 }
