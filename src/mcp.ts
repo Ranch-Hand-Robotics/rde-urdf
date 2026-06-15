@@ -771,11 +771,28 @@ export class UrdfMcpServer {
     }
 
     try {
-      // Start the Express HTTP server
-      this.httpServer = this.app.listen(this.port, () => {
-        this.isRunning = true;
-        tracing.appendLine(`URDF MCP Server started on port ${this.port}`);
+      // Start the Express HTTP server and wait until the port is actually bound.
+      // This avoids a startup race where clients attempt the first MCP request
+      // before the listener is ready, which surfaces as "fetch failed".
+      this.httpServer = await new Promise<any>((resolve, reject) => {
+        const server = this.app.listen(this.port);
+
+        const onListening = () => {
+          server.off('error', onError);
+          resolve(server);
+        };
+
+        const onError = (err: unknown) => {
+          server.off('listening', onListening);
+          reject(err);
+        };
+
+        server.once('listening', onListening);
+        server.once('error', onError);
       });
+
+      this.isRunning = true;
+      tracing.appendLine(`URDF MCP Server started on port ${this.port}`);
     } catch (error) {
       const message = `Failed to start MCP server: ${error instanceof Error ? error.message : String(error)}`;
       tracing.appendLine(message);
