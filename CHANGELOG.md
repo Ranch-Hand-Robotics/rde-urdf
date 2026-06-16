@@ -6,6 +6,15 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-06
+
+### Added
+- **OpenSCAD Rendering Enhancements**:
+  - OpenSCAD Transparency support
+  - Debug tools for improved inspection and troubleshooting
+  - Text rendering support
+  - Full Color rendering support
+
 ## [1.6.0] - 2026-04-10
 
 ### Added

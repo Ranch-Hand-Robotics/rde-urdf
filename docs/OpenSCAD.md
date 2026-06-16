@@ -22,7 +22,7 @@ For 2D OpenSCAD designs, the editor supports exporting to SVG (Scalable Vector G
 
 1. **From Explorer Context Menu**:
    - Right-click on any `.scad` file
-   - Select "Export SVG" from the context menu
+   - Select "Export... Export SVG" from the context menu
    - The SVG file will be created in the same directory with a `.svg` extension
    - You'll be prompted to open the exported file
 
@@ -98,7 +98,6 @@ The extension automatically loads OpenSCAD libraries from:
   - **macOS**: `$HOME/Documents/OpenSCAD/libraries`
 
 **Important Performance Notes**:
-- The workspace root is **no longer automatically included** to avoid copying large directories like `.git`, `node_modules`, or virtual environments.
 - Files in the same directory as the SCAD file can reference each other without any configuration.
 - If your SCAD file is at the workspace root, all workspace files will be copied, which may cause rendering delays. Consider organizing SCAD files in a subdirectory for better performance.
 - Certain directories are automatically excluded from copying: `.git`, `node_modules`, `venv`, `.venv`, `env`, `.env`, `__pycache__`, `.pytest_cache`, `.tox`, `dist`, `build`, `.cache`, `.vscode`, `.idea`, `target`, `bin`, `obj`
@@ -163,6 +162,15 @@ The editor includes a built-in MCP server that exposes powerful tools for AI ass
 - **1-minute Timeout**: Quick feedback prevents workflow interruption
 
 This integrated approach enables a new style of "visual programming" where AI can understand both your code intent and the actual 3D output, creating a powerful feedback loop for rapid prototyping and design iteration.
+
+### Exposed AI Skills
+
+The following OpenSCAD skills are available to AI assistants through the Contributes extension interface:
+
+- **openscad-customizer**: Use this skill when modifying OpenSCAD files where the user wants to use the customizer features (parameter parsing, UI generation, and conversion to STL/SVG/GLB with parameter overrides).
+- **openscad-development**: Use this skill when modifying OpenSCAD files (*.scad)
+- **openscad-integration**: Use when creating URDF or Xacro files which require non-trivial geometry
+- **openscad-librarian**: Discover, recommend, and install OpenSCAD libraries for your projects. Use when: needing geometry functions, seeking existing modules before creating, managing library dependencies, or exploring what libraries are available in your workspace.
 
 ## OpenSCAD Customizer
 
@@ -246,4 +254,9 @@ When disabled, the Customizer panel will not appear even if customizer variables
 
 Special thanks to the OpenSCAD community for their work.
 
-Thank you to [@lorenzowritescode](https://github.com/lorenzowritescode) for the the prebuilt OpenSCAD WASM module.
+## Resources
+
+- OpenSCAD: https://www.openscad.org/
+- OpenSCAD Libraries: https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Libraries
+- OpenSCAD Customizer: https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Customizer
+- Ranch Hand Robotics - Additional OpenSCAD Skills: https://github.com/Ranch-Hand-Robotics/openscad_skills
