@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="img/favicon.ico" />
+    <title>IntelliSense - Robot Developer Extensions for URDF editing</title>
+    <link rel="stylesheet" href="css/theme.css" />
+    <link rel="stylesheet" href="css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "IntelliSense";
+        var mkdocs_page_input_path = "IntelliSense.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="index.html" class="icon icon-home"> Robot Developer Extensions for URDF editing
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="./search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="index.html">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">IntelliSense</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#go-to-definition-f12">Go to Definition (F12)</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#urdfxacro-navigation">URDF/Xacro Navigation</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#links">Links</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#joints">Joints</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#xacro-macros">Xacro Macros</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#xacro-properties">Xacro Properties</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#file-references">File References</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#openscad-navigation">OpenSCAD Navigation</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#modules">Modules</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#functions">Functions</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#cross-file-resolution">Cross-File Resolution</a>
+    </li>
+        </ul>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#hover-documentation">Hover Documentation</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#urdfxacro-elements">URDF/Xacro Elements</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#attributes">Attributes</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#user-defined-elements">User-Defined Elements</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#xacro-property-references">Xacro Property References</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#openscad-documentation">OpenSCAD Documentation</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#built-in-functions">Built-in Functions</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#user-defined-modules">User-Defined Modules</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#comment-extraction">Comment Extraction</a>
+    </li>
+        </ul>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#code-completion">Code Completion</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#urdfxacro-completion">URDF/Xacro Completion</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#elements">Elements</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#attributes_1">Attributes</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#xacro-properties_1">Xacro Properties</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#openscad-completion">OpenSCAD Completion</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#built-in-functions_1">Built-in Functions</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#user-variables">User Variables</a>
+    </li>
+        </ul>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#context-aware-features">Context-Aware Features</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#smart-detection">Smart Detection</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#workspace-wide-search">Workspace-Wide Search</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#tips-and-tricks">Tips and Tricks</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#quick-navigation">Quick Navigation</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#peek-definition">Peek Definition</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#find-all-references">Find All References</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#rename-symbol">Rename Symbol</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#multi-cursor-editing">Multi-Cursor Editing</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#troubleshooting">Troubleshooting</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#definition-not-found">Definition Not Found</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#hover-shows-no-documentation">Hover Shows No Documentation</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#property-not-found-in-included-file">Property Not Found in Included File</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#completion-not-working">Completion Not Working</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#package-resolution-failed">Package Resolution Failed</a>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="Configuration.html">Configuration</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="WebXRPreview.html">WebXR Preview</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="OpenSCAD.html">OpenSCAD</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="mcp.html">Model Context Protocol</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="Support.html">Support</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Robot Developer Extensions for URDF editing</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html" class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">IntelliSense</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/ranch-hand-robotics/rde-urdf/edit/main/docs/IntelliSense.md" class="icon icon-github"> Edit on GitHub</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="intellisense-features">IntelliSense Features</h1>
+<p>The URDF Editor provides comprehensive IntelliSense support for URDF, Xacro, and OpenSCAD files, making navigation and editing faster and more intuitive.</p>
+<h2 id="go-to-definition-f12">Go to Definition (F12)</h2>
+<p>Press <strong>F12</strong> or <strong>Ctrl+Click</strong> on any symbol to jump to its definition.</p>
+<h3 id="urdfxacro-navigation">URDF/Xacro Navigation</h3>
+<h4 id="links">Links</h4>
+<div class="highlight"><pre><span></span><code><span class="nt">&lt;link</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;base_link&quot;</span><span class="nt">&gt;</span>
+<span class="w">  </span><span class="cm">&lt;!-- F12 on &quot;base_link&quot; jumps here --&gt;</span>
+<span class="w">  </span><span class="nt">&lt;visual&gt;</span>...<span class="nt">&lt;/visual&gt;</span>
+<span class="nt">&lt;/link&gt;</span>
+
+<span class="nt">&lt;joint</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;wheel_joint&quot;</span><span class="w"> </span><span class="na">type=</span><span class="s">&quot;revolute&quot;</span><span class="nt">&gt;</span>
+<span class="w">  </span><span class="nt">&lt;parent</span><span class="w"> </span><span class="na">link=</span><span class="s">&quot;base_link&quot;</span><span class="nt">/&gt;</span><span class="w">  </span><span class="cm">&lt;!-- F12 on &quot;base_link&quot; jumps to definition above --&gt;</span>
+<span class="w">  </span><span class="nt">&lt;child</span><span class="w"> </span><span class="na">link=</span><span class="s">&quot;wheel_link&quot;</span><span class="nt">/&gt;</span>
+<span class="nt">&lt;/joint&gt;</span>
+</code></pre></div>
+<h4 id="joints">Joints</h4>
+<div class="highlight"><pre><span></span><code><span class="nt">&lt;joint</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;arm_joint&quot;</span><span class="w"> </span><span class="na">type=</span><span class="s">&quot;revolute&quot;</span><span class="nt">&gt;</span>
+<span class="w">  </span><span class="cm">&lt;!-- F12 on &quot;arm_joint&quot; jumps here --&gt;</span>
+<span class="w">  </span><span class="nt">&lt;parent</span><span class="w"> </span><span class="na">link=</span><span class="s">&quot;base_link&quot;</span><span class="nt">/&gt;</span>
+<span class="w">  </span><span class="nt">&lt;child</span><span class="w"> </span><span class="na">link=</span><span class="s">&quot;arm_link&quot;</span><span class="nt">/&gt;</span>
+<span class="nt">&lt;/joint&gt;</span>
+
+<span class="nt">&lt;mimic</span><span class="w"> </span><span class="na">joint=</span><span class="s">&quot;arm_joint&quot;</span><span class="w"> </span><span class="na">multiplier=</span><span class="s">&quot;1.0&quot;</span><span class="nt">/&gt;</span><span class="w">  </span><span class="cm">&lt;!-- F12 jumps to joint definition --&gt;</span>
+</code></pre></div>
+<h4 id="xacro-macros">Xacro Macros</h4>
+<div class="highlight"><pre><span></span><code><span class="nt">&lt;xacro:macro</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;wheel&quot;</span><span class="w"> </span><span class="na">params=</span><span class="s">&quot;prefix radius&quot;</span><span class="nt">&gt;</span>
+<span class="w">  </span><span class="cm">&lt;!-- F12 on &quot;wheel&quot; macro name jumps here --&gt;</span>
+<span class="w">  </span><span class="nt">&lt;link</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;${prefix}_wheel&quot;</span><span class="nt">&gt;</span>...<span class="nt">&lt;/link&gt;</span>
+<span class="nt">&lt;/xacro:macro&gt;</span>
+
+<span class="nt">&lt;xacro:wheel</span><span class="w"> </span><span class="na">prefix=</span><span class="s">&quot;left&quot;</span><span class="w"> </span><span class="na">radius=</span><span class="s">&quot;0.1&quot;</span><span class="nt">/&gt;</span><span class="w">  </span><span class="cm">&lt;!-- F12 on &quot;wheel&quot; jumps to macro --&gt;</span>
+</code></pre></div>
+<h4 id="xacro-properties">Xacro Properties</h4>
+<div class="highlight"><pre><span></span><code><span class="nt">&lt;xacro:property</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;wheel_radius&quot;</span><span class="w"> </span><span class="na">value=</span><span class="s">&quot;0.1&quot;</span><span class="nt">/&gt;</span>
+<span class="cm">&lt;!-- F12 on property name jumps here --&gt;</span>
+
+<span class="nt">&lt;cylinder</span><span class="w"> </span><span class="na">radius=</span><span class="s">&quot;${wheel_radius}&quot;</span><span class="w"> </span><span class="na">length=</span><span class="s">&quot;0.05&quot;</span><span class="nt">/&gt;</span><span class="w">  </span><span class="cm">&lt;!-- F12 on property reference --&gt;</span>
+</code></pre></div>
+<h4 id="file-references">File References</h4>
+<div class="highlight"><pre><span></span><code><span class="cm">&lt;!-- F12 opens the referenced file --&gt;</span>
+<span class="nt">&lt;xacro:include</span><span class="w"> </span><span class="na">filename=</span><span class="s">&quot;$(find robot_description)/urdf/common.xacro&quot;</span><span class="nt">/&gt;</span>
+<span class="nt">&lt;mesh</span><span class="w"> </span><span class="na">filename=</span><span class="s">&quot;package://robot_description/meshes/base.stl&quot;</span><span class="nt">/&gt;</span>
+</code></pre></div>
+<p><strong>Package Resolution:</strong>
+- Automatically resolves <code>package://</code> URIs
+- Searches workspace and configured package paths
+- Falls back to ROS distro packages if not found locally</p>
+<h3 id="openscad-navigation">OpenSCAD Navigation</h3>
+<h4 id="modules">Modules</h4>
+<div class="highlight"><pre><span></span><code><span class="c1">// F12 on &quot;servo_mount&quot; jumps here</span>
+<span class="kn">module</span><span class="w"> </span><span class="nn">servo_mount</span><span class="p">(</span><span class="n">width</span><span class="p">,</span><span class="w"> </span><span class="n">height</span><span class="p">,</span><span class="w"> </span><span class="n">depth</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nb">difference</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nb">cube</span><span class="p">([</span><span class="n">width</span><span class="p">,</span><span class="w"> </span><span class="n">height</span><span class="p">,</span><span class="w"> </span><span class="n">depth</span><span class="p">]);</span>
+<span class="w">    </span><span class="c1">// mounting holes...</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// F12 on &quot;servo_mount&quot; jumps to definition</span>
+<span class="n">servo_mount</span><span class="p">(</span><span class="m">40</span><span class="p">,</span><span class="w"> </span><span class="m">20</span><span class="p">,</span><span class="w"> </span><span class="m">10</span><span class="p">);</span>
+</code></pre></div>
+<h4 id="functions">Functions</h4>
+<div class="highlight"><pre><span></span><code><span class="c1">// F12 on &quot;calculate_gear_ratio&quot; jumps here</span>
+<span class="kd">function</span><span class="w"> </span><span class="nf">calculate_gear_ratio</span><span class="p">(</span><span class="n">teeth_driver</span><span class="p">,</span><span class="w"> </span><span class="n">teeth_driven</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>
+<span class="w">  </span><span class="n">teeth_driven</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">teeth_driver</span><span class="p">;</span>
+
+<span class="c1">// F12 on function call jumps to definition</span>
+<span class="n">ratio</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">calculate_gear_ratio</span><span class="p">(</span><span class="m">10</span><span class="p">,</span><span class="w"> </span><span class="m">40</span><span class="p">);</span>
+</code></pre></div>
+<h4 id="cross-file-resolution">Cross-File Resolution</h4>
+<div class="highlight"><pre><span></span><code><span class="c1">// In common.scad:</span>
+<span class="kn">module</span><span class="w"> </span><span class="nn">rounded_box</span><span class="p">(</span><span class="n">size</span><span class="p">,</span><span class="w"> </span><span class="n">radius</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="err">...</span><span class="w"> </span><span class="p">}</span>
+
+<span class="c1">// In robot_part.scad:</span>
+<span class="kn">include</span> <span class="p">&lt;</span><span class="cpf">common.scad</span><span class="p">&gt;</span>
+<span class="n">rounded_box</span><span class="p">([</span><span class="m">50</span><span class="p">,</span><span class="w"> </span><span class="m">30</span><span class="p">,</span><span class="w"> </span><span class="m">20</span><span class="p">],</span><span class="w"> </span><span class="m">2</span><span class="p">);</span><span class="w">  </span><span class="c1">// F12 jumps to common.scad</span>
+</code></pre></div>
+<p><strong>Include Resolution:</strong>
+- Resolves <code>include &lt;&gt;</code> and <code>use &lt;&gt;</code> statements
+- Searches current directory first
+- Then checks configured library paths
+- Works with workspace-relative paths</p>
+<h2 id="hover-documentation">Hover Documentation</h2>
+<p>Hover over any element to see detailed documentation with parameters and types.</p>
+<h3 id="urdfxacro-elements">URDF/Xacro Elements</h3>
+<p>Hover over built-in elements like <code>origin</code>, <code>link</code>, <code>joint</code>, etc.:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">&lt;box</span><span class="w"> </span><span class="na">size=</span><span class="s">&quot;${box_size} ${box_size} ${box_size}&quot;</span><span class="nt">/&gt;</span>
+</code></pre></div>
+<p><strong>Hover shows:</strong>
+<img alt="Hover" src="URDF_Hover_Doc.png" /></p>
+<p><strong>Position and orientation (xyz in meters, rpy in radians)</strong></p>
+<h3 id="attributes">Attributes</h3>
+<div class="highlight"><pre><span></span><code>xyz: vector3 (default: &quot;0 0 0&quot;) - Position in meters
+rpy: vector3 (default: &quot;0 0 0&quot;) - Orientation in radians
+</code></pre></div>
+<h3 id="user-defined-elements">User-Defined Elements</h3>
+<p>For xacro macros and properties in your files:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">&lt;xacro:macro</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;robot_arm&quot;</span><span class="w"> </span><span class="na">params=</span><span class="s">&quot;length radius&quot;</span><span class="nt">&gt;</span>
+<span class="w">  </span><span class="cm">&lt;!-- Creates a robot arm segment --&gt;</span>
+<span class="w">  </span><span class="nt">&lt;link</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;arm_segment&quot;</span><span class="nt">&gt;</span>...<span class="nt">&lt;/link&gt;</span>
+<span class="nt">&lt;/xacro:macro&gt;</span>
+</code></pre></div>
+<p><strong>Hover shows:</strong>
+- Macro signature with all parameters
+- Documentation from preceding comments
+- Source file location if from included file</p>
+<h3 id="xacro-property-references">Xacro Property References</h3>
+<p>Hover over xacro property references to see their values:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">&lt;xacro:property</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;box_color&quot;</span><span class="w"> </span><span class="na">value=</span><span class="s">&quot;0.8 0.2 0.2 1.0&quot;</span><span class="nt">/&gt;</span>
+<span class="nt">&lt;xacro:property</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;box_size&quot;</span><span class="w"> </span><span class="na">value=</span><span class="s">&quot;0.5&quot;</span><span class="nt">/&gt;</span>
+
+<span class="nt">&lt;visual&gt;</span>
+<span class="w">  </span><span class="nt">&lt;geometry&gt;</span>
+<span class="w">    </span><span class="nt">&lt;box</span><span class="w"> </span><span class="na">size=</span><span class="s">&quot;${box_size} ${box_size} ${box_size}&quot;</span><span class="nt">/&gt;</span>
+<span class="w">  </span><span class="nt">&lt;/geometry&gt;</span>
+<span class="w">  </span><span class="nt">&lt;material</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;box_material&quot;</span><span class="nt">&gt;</span>
+<span class="w">    </span><span class="nt">&lt;color</span><span class="w"> </span><span class="na">rgba=</span><span class="s">&quot;${box_color}&quot;</span><span class="nt">/&gt;</span><span class="w">  </span><span class="cm">&lt;!-- Hover shows value --&gt;</span>
+<span class="w">  </span><span class="nt">&lt;/material&gt;</span>
+<span class="nt">&lt;/visual&gt;</span>
+</code></pre></div>
+<p><strong>Hover on <code>${box_color}</code> shows:</strong>
+<div class="highlight"><pre><span></span><code><span class="nt">&lt;xacro:property</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;box_color&quot;</span><span class="w"> </span><span class="na">value=</span><span class="s">&quot;0.8 0.2 0.2 1.0&quot;</span><span class="nt">/&gt;</span>
+</code></pre></div></p>
+<p><strong>Xacro Property</strong></p>
+<p>Value: <code>0.8 0.2 0.2 1.0</code></p>
+<p><strong>Features:</strong>
+- Shows property definition with full XML syntax
+- Displays the current value
+- Works with properties defined in the same file
+- <strong>Searches included files</strong> via <code>&lt;xacro:include&gt;</code> statements
+- Supports <code>$(find package_name)</code> syntax for ROS packages
+- Shows source file name when property is from an included file
+- Handles property expressions like <code>${length/2}</code> or <code>${width*2}</code>
+- Hover anywhere within the <code>${property_name}</code> syntax</p>
+<p><strong>Example with included file:</strong>
+<div class="highlight"><pre><span></span><code><span class="cm">&lt;!-- In robot.xacro --&gt;</span>
+<span class="nt">&lt;xacro:include</span><span class="w"> </span><span class="na">filename=</span><span class="s">&quot;$(find my_robot)/urdf/common.xacro&quot;</span><span class="nt">/&gt;</span>
+
+<span class="nt">&lt;link</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;base&quot;</span><span class="nt">&gt;</span>
+<span class="w">  </span><span class="nt">&lt;visual&gt;</span>
+<span class="w">    </span><span class="nt">&lt;material</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;base_mat&quot;</span><span class="nt">&gt;</span>
+<span class="w">      </span><span class="cm">&lt;!-- Hover shows: &quot;Defined in: common.xacro&quot; --&gt;</span>
+<span class="w">      </span><span class="nt">&lt;color</span><span class="w"> </span><span class="na">rgba=</span><span class="s">&quot;${base_color}&quot;</span><span class="nt">/&gt;</span>
+<span class="w">    </span><span class="nt">&lt;/material&gt;</span>
+<span class="w">  </span><span class="nt">&lt;/visual&gt;</span>
+<span class="nt">&lt;/link&gt;</span>
+</code></pre></div></p>
+<h3 id="openscad-documentation">OpenSCAD Documentation</h3>
+<h4 id="built-in-functions">Built-in Functions</h4>
+<p>Hover over built-in OpenSCAD functions:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cube</span><span class="p">([</span><span class="m">10</span><span class="p">,</span><span class="w"> </span><span class="m">20</span><span class="p">,</span><span class="w"> </span><span class="m">30</span><span class="p">]);</span>
+</code></pre></div>
+<p><strong>Hover shows:</strong>
+<div class="highlight"><pre><span></span><code><span class="nb">cube</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="p">[</span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="p">,</span><span class="w"> </span><span class="n">z</span><span class="p">],</span><span class="w"> </span><span class="n">center</span><span class="o">=</span><span class="l">false</span><span class="p">)</span>
+</code></pre></div>
+Creates a cube with specified dimensions</p>
+<h4 id="user-defined-modules">User-Defined Modules</h4>
+<p>Hover over your own modules:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// Creates a mounting bracket with holes</span>
+<span class="c1">// width: total width in mm</span>
+<span class="c1">// height: total height in mm</span>
+<span class="c1">// hole_diameter: diameter of mounting holes</span>
+<span class="kn">module</span><span class="w"> </span><span class="nn">mounting_bracket</span><span class="p">(</span><span class="n">width</span><span class="p">,</span><span class="w"> </span><span class="n">height</span><span class="p">,</span><span class="w"> </span><span class="n">hole_diameter</span><span class="o">=</span><span class="m">3</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="err">...</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><strong>Hover shows:</strong>
+<div class="highlight"><pre><span></span><code><span class="kn">module</span><span class="w"> </span><span class="nn">mounting_bracket</span><span class="p">(</span><span class="n">width</span><span class="p">,</span><span class="w"> </span><span class="n">height</span><span class="p">,</span><span class="w"> </span><span class="n">hole_diameter</span><span class="o">=</span><span class="m">3</span><span class="p">)</span>
+</code></pre></div></p>
+<p>Creates a mounting bracket with holes
+- width: total width in mm
+- height: total height in mm
+- hole_diameter: diameter of mounting holes</p>
+<p><strong>From:</strong> c:\ws\project\libs\brackets.scad</p>
+<h4 id="comment-extraction">Comment Extraction</h4>
+<p>The extension intelligently extracts documentation:
+- Reads comments directly above definitions
+- Filters out section headers (e.g., "==== UTILITY MODULES ====")
+- Ignores decorative comment lines
+- Preserves parameter descriptions</p>
+<h2 id="code-completion">Code Completion</h2>
+<p>Trigger with <strong>Ctrl+Space</strong> or by typing trigger characters.</p>
+<h3 id="urdfxacro-completion">URDF/Xacro Completion</h3>
+<h4 id="elements">Elements</h4>
+<p>Type <code>&lt;</code> to see available elements:
+- <code>&lt;link&gt;</code> → Inserts link template with placeholders
+- <code>&lt;joint&gt;</code> → Inserts joint with parent/child structure
+- <code>&lt;origin&gt;</code> → Inserts origin with xyz and rpy attributes</p>
+<h4 id="attributes_1">Attributes</h4>
+<p>Start typing attribute names:
+- <code>xyz="</code> → Shows hint about format
+- <code>type="</code> → Lists joint types (revolute, continuous, prismatic, etc.)</p>
+<h4 id="xacro-properties_1">Xacro Properties</h4>
+<p>Type <code>${</code> to see available properties in scope:
+<div class="highlight"><pre><span></span><code><span class="nt">&lt;xacro:property</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;wheel_radius&quot;</span><span class="w"> </span><span class="na">value=</span><span class="s">&quot;0.1&quot;</span><span class="nt">/&gt;</span>
+<span class="nt">&lt;xacro:property</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;wheel_width&quot;</span><span class="w"> </span><span class="na">value=</span><span class="s">&quot;0.05&quot;</span><span class="nt">/&gt;</span>
+
+<span class="cm">&lt;!-- Type ${ to see: wheel_radius, wheel_width --&gt;</span>
+<span class="nt">&lt;cylinder</span><span class="w"> </span><span class="na">radius=</span><span class="s">&quot;${wheel_radius}&quot;</span><span class="w"> </span><span class="na">length=</span><span class="s">&quot;${wheel_width}&quot;</span><span class="nt">/&gt;</span>
+</code></pre></div></p>
+<h3 id="openscad-completion">OpenSCAD Completion</h3>
+<h4 id="built-in-functions_1">Built-in Functions</h4>
+<p>Start typing function names:
+- <code>cube</code> → Shows signature and description
+- <code>translate</code> → Shows parameters and usage
+- <code>color</code> → Shows color formats</p>
+<h4 id="user-variables">User Variables</h4>
+<p>Properties defined in your file appear in completion:
+<div class="highlight"><pre><span></span><code><span class="n">wheel_radius</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">50</span><span class="p">;</span>
+<span class="n">wheel_width</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">20</span><span class="p">;</span>
+
+<span class="c1">// Completion shows: wheel_radius, wheel_width</span>
+<span class="nb">cylinder</span><span class="p">(</span><span class="n">r</span><span class="o">=</span><span class="n">wheel_rad</span><span class="err">...</span><span class="w"> </span><span class="c1">// &lt;-- completion suggests wheel_radius</span>
+</code></pre></div></p>
+<h2 id="context-aware-features">Context-Aware Features</h2>
+<h3 id="smart-detection">Smart Detection</h3>
+<p>The extension uses context to determine what you're referencing:</p>
+<div class="highlight"><pre><span></span><code><span class="cm">&lt;!-- Knows this is a link reference --&gt;</span>
+<span class="nt">&lt;parent</span><span class="w"> </span><span class="na">link=</span><span class="s">&quot;base_link&quot;</span><span class="nt">/&gt;</span>
+
+<span class="cm">&lt;!-- Knows this is a joint reference --&gt;</span>
+<span class="nt">&lt;mimic</span><span class="w"> </span><span class="na">joint=</span><span class="s">&quot;arm_joint&quot;</span><span class="nt">/&gt;</span>
+
+<span class="cm">&lt;!-- Knows this is a macro call --&gt;</span>
+<span class="nt">&lt;xacro:wheel</span><span class="w"> </span><span class="na">prefix=</span><span class="s">&quot;left&quot;</span><span class="nt">/&gt;</span>
+
+<span class="cm">&lt;!-- Knows this is a property reference --&gt;</span>
+<span class="nt">&lt;cylinder</span><span class="w"> </span><span class="na">radius=</span><span class="s">&quot;${wheel_radius}&quot;</span><span class="nt">/&gt;</span>
+
+<span class="cm">&lt;!-- Knows this is a file path --&gt;</span>
+<span class="nt">&lt;mesh</span><span class="w"> </span><span class="na">filename=</span><span class="s">&quot;package://robot/meshes/base.stl&quot;</span><span class="nt">/&gt;</span>
+</code></pre></div>
+<h3 id="workspace-wide-search">Workspace-Wide Search</h3>
+<p>When definitions aren't found in:
+1. Current file
+2. Directly included files
+3. Package-resolved paths</p>
+<p>The extension falls back to searching all relevant files in the workspace.</p>
+<h2 id="tips-and-tricks">Tips and Tricks</h2>
+<h3 id="quick-navigation">Quick Navigation</h3>
+<ul>
+<li><strong>F12</strong>: Go to definition</li>
+<li><strong>Alt+Left/Right</strong>: Navigate back/forward</li>
+<li><strong>Ctrl+T</strong>: Go to symbol in workspace</li>
+<li><strong>Ctrl+Shift+O</strong>: Go to symbol in file</li>
+</ul>
+<h3 id="peek-definition">Peek Definition</h3>
+<ul>
+<li><strong>Alt+F12</strong>: Peek definition in inline window</li>
+<li>Edit definitions without leaving context</li>
+</ul>
+<h3 id="find-all-references">Find All References</h3>
+<ul>
+<li><strong>Shift+F12</strong>: Find all references to symbol</li>
+<li>See everywhere a link, joint, or macro is used</li>
+</ul>
+<h3 id="rename-symbol">Rename Symbol</h3>
+<ul>
+<li><strong>F2</strong>: Rename symbol across all files</li>
+<li>Works for links, joints, properties, and more</li>
+</ul>
+<h3 id="multi-cursor-editing">Multi-Cursor Editing</h3>
+<ul>
+<li><strong>Ctrl+D</strong>: Select next occurrence</li>
+<li><strong>Ctrl+Shift+L</strong>: Select all occurrences</li>
+<li>Edit multiple locations simultaneously</li>
+</ul>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="definition-not-found">Definition Not Found</h3>
+<p><strong>Issue</strong>: F12 doesn't jump to definition</p>
+<p><strong>Solutions:</strong>
+1. Check file is saved (definitions update on save)
+2. Verify included files are in search paths
+3. For packages, check <code>urdf-editor.PackageSearchPaths</code> setting
+4. For OpenSCAD, check <code>urdf-editor.OpenSCADLibraryPaths</code> setting</p>
+<h3 id="hover-shows-no-documentation">Hover Shows No Documentation</h3>
+<p><strong>Issue</strong>: Hover doesn't show property values from included files</p>
+<p><strong>Solutions:</strong>
+1. Verify the <code>&lt;xacro:include&gt;</code> statement is correct
+2. Check that package paths are resolvable (package.xml exists)
+3. Open the "URDF Editor" output channel to see detailed tracing
+4. Ensure files use correct <code>$(find package_name)</code> or relative path syntax
+5. For large files (&gt;10,000 lines), hover may be disabled for performance</p>
+<h3 id="property-not-found-in-included-file">Property Not Found in Included File</h3>
+<p><strong>Issue</strong>: Property defined in included file doesn't show in hover</p>
+<p><strong>Solutions:</strong>
+1. Verify the include file path is correct and file exists
+2. Check the Output panel (View → Output → "URDF Editor") for resolution logs
+3. Ensure property is defined before it's used (xacro processes top-to-bottom)
+4. Try absolute or <code>$(find package)</code> paths instead of relative paths</p>
+<p><strong>Issue</strong>: Hover doesn't show documentation for custom elements</p>
+<p><strong>Solutions:</strong>
+1. Add comments directly above definitions
+2. Avoid decorative comments (===, ALL CAPS HEADERS)
+3. Save file to update documentation cache
+4. Check file is included/used in current file</p>
+<h3 id="completion-not-working">Completion Not Working</h3>
+<p><strong>Issue</strong>: Ctrl+Space shows no suggestions</p>
+<p><strong>Solutions:</strong>
+1. Check cursor position (must be in appropriate context)
+2. For Xacro properties, type <code>${</code> to trigger
+3. For XML elements, type <code>&lt;</code> to trigger
+4. Verify file has correct extension (.urdf, .xacro, .scad)</p>
+<h3 id="package-resolution-failed">Package Resolution Failed</h3>
+<p><strong>Issue</strong>: package:// paths not resolving</p>
+<p><strong>Solutions:</strong>
+1. Add package root to workspace folders
+2. Configure <code>urdf-editor.PackageSearchPaths</code>
+3. Check package.xml exists in package root
+4. Verify package name in package.xml matches reference</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="tutorial.html" class="btn btn-neutral float-left" title="Tutorial"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="Configuration.html" class="btn btn-neutral float-right" title="Configuration">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/ranch-hand-robotics/rde-urdf" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
+    
+      <span><a href="tutorial.html" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="Configuration.html" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = ".";</script>
+    <script src="js/theme_extra.js"></script>
+    <script src="js/theme.js"></script>
+      <script src="search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
