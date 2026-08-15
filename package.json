@@ -20,7 +20,7 @@
   ],
   "publisher": "Ranch-Hand-Robotics",
   "icon": "media/icon.png",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "engines": {
     "vscode": "^1.110.0"
   },
