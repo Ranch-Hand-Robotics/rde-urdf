@@ -197,6 +197,12 @@
         "title": "Export Parts",
         "category": "URDF",
         "icon": "$(list-unordered)"
+      },
+      {
+        "command": "urdf-editor.exportScadPartsWithProfile",
+        "title": "Export Parts with Profile",
+        "category": "URDF",
+        "icon": "$(json)"
       }
     ],
     "submenus": [
@@ -287,6 +293,11 @@
           "command": "urdf-editor.exportScadParts",
           "when": "resourceExtname == .scad",
           "group": "3_export"
+        },
+        {
+          "command": "urdf-editor.exportScadPartsWithProfile",
+          "when": "resourceExtname == .scad",
+          "group": "4_export"
         }
       ],
       "editor/title": [
@@ -489,7 +500,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.3",
     "@polyhobbyist/babylon-collada-loader": "^0.0.8",
-    "@ranchhandrobotics/babylon_ros": "^0.6.3",
+    "@ranchhandrobotics/babylon_ros": "^0.6.4",
     "@vscode/debugadapter": "^1.66.0",
     "babylonjs": "~7.16.0",
     "babylonjs-gui": "~7.16.0",

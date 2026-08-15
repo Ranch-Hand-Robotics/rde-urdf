@@ -17,6 +17,14 @@ import {
     parseOpenSCADCustomizerVariables
 } from './openscad';
 
+const OPENSCAD_EMPTY_OUTPUT_MESSAGE = 'did not generate valid output';
+
+export function isOpenSCADEmptyOutput(logLines: string[]): boolean {
+    return logLines.some(line =>
+        `${line ?? ''}`.toLowerCase().includes(OPENSCAD_EMPTY_OUTPUT_MESSAGE)
+    );
+}
+
 export default class URDFPreview 
 {
     private _resource: vscode.Uri;
@@ -380,12 +388,21 @@ export default class URDFPreview
                         filename: this._webview.webview.asWebviewUri(stlUri).toString()
                     });
                 } else {
-                    const failureDetails = this.getOpenSCADFailureDetailsFromLastRun();
-                    this._webview.webview.postMessage({
-                        command: 'error',
-                        text: failureDetails
-                            || 'OpenSCAD conversion failed. No renderable output was generated.'
-                    });
+                    if (isOpenSCADEmptyOutput(this._lastOpenSCADWorkerLogLines)) {
+                        // An empty top-level model can be intentional (for example, a customizer
+                        // selection that disables every part). Clear stale geometry without
+                        // presenting this as a render failure.
+                        this._convertedSTLPath = undefined;
+                        this._webview.webview.postMessage({ command: 'clear3DFile' });
+                        this._webview.webview.postMessage({ command: 'clearErrorOverlay' });
+                    } else {
+                        const failureDetails = this.getOpenSCADFailureDetailsFromLastRun();
+                        this._webview.webview.postMessage({
+                            command: 'error',
+                            text: failureDetails
+                                || 'OpenSCAD conversion failed. No renderable output was generated.'
+                        });
+                    }
                 }
             } else {
                 this._scadCustomizerParseResult = undefined;
@@ -592,10 +609,22 @@ export default class URDFPreview
 
                 #customizerToolbar {
                 padding: 8px 10px;
-                display: flex;
-                align-items: center;
+                display: grid;
                 gap: 8px;
                 border-bottom: 1px solid var(--vscode-panel-border, #3c3c3c);
+                }
+
+                #customizerToolbar label {
+                grid-column: 1 / -1;
+                }
+
+                .customizer-toolbar-row {
+                display: flex;
+                gap: 8px;
+                }
+
+                .customizer-toolbar-row button {
+                flex: 1;
                 }
 
                 #customizerVariables {
@@ -812,8 +841,15 @@ export default class URDFPreview
                                 <input id="customizerAutoPreview" type="checkbox" checked />
                                 Auto Preview
                             </label>
-                            <button id="customizerApply" type="button">Apply</button>
-                            <button id="customizerReset" type="button">Reset</button>
+                            <div class="customizer-toolbar-row">
+                                <button id="customizerApply" type="button">Apply</button>
+                                <button id="customizerReset" type="button">Reset</button>
+                            </div>
+                            <div class="customizer-toolbar-row">
+                                <button id="customizerSave" type="button" title="Save the current configuration as an OpenSCAD JSON profile">Save</button>
+                                <button id="customizerLoad" type="button" title="Load an OpenSCAD JSON profile">Load</button>
+                            </div>
+                            <input id="customizerProfileFile" type="file" accept=".json,application/json" hidden />
                         </div>
                         <div id="customizerVariables"></div>
                         <div id="customizerWarnings"></div>

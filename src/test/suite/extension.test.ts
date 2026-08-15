@@ -4,13 +4,18 @@ import * as assert from 'assert';
 // as well as import your extension to test it
 import * as vscode from 'vscode';
 import { convertFindToPackageUri, processUrdfContent, isRelativePath } from '../../utils';
+import { isOpenSCADEmptyOutput } from '../../preview';
 import {
 	validateOpenSCAD,
 	getAllOpenSCADLibraryPaths,
 	getDefaultOpenSCADLibraryPaths,
 	parseOpenSCADCustomizerVariables
 } from '../../openscad';
-import { getPreferredExportFormats } from '../../openscadExport';
+import {
+	getPreferredExportFormats,
+	parseOpenSCADParameterProfile,
+	setOpenSCADProfileParameter,
+} from '../../openscadExport';
 import * as path from 'path';
 
 suite('Extension Test Suite', () => {
@@ -56,6 +61,18 @@ suite('Extension Test Suite', () => {
 		const expected = '<mesh filename="package://test_package/meshes/test.stl"/>';
 		const result = processUrdfContent(input);
 		assert.strictEqual(result, expected);
+	});
+
+	test('isOpenSCADEmptyOutput - detects intentional empty output', () => {
+		assert.strictEqual(isOpenSCADEmptyOutput([
+			'OpenSCAD worker error: OpenSCAD did not generate valid output - check for syntax errors or rendering issues in the SCAD file'
+		]), true);
+	});
+
+	test('isOpenSCADEmptyOutput - does not suppress other render errors', () => {
+		assert.strictEqual(isOpenSCADEmptyOutput([
+			"ERROR: Parser error: syntax error in file model.scad, line 3"
+		]), false);
 	});
 
 	test('validateOpenSCAD - valid file', async () => {
@@ -253,6 +270,38 @@ suite('OpenSCAD Export Parts Heuristic Test Suite', () => {
 
 	test('getPreferredExportFormats - still prefers STL for clearly 3D parts', () => {
 		assert.deepStrictEqual(getPreferredExportFormats('main_body_3d'), ['stl', 'svg']);
+	});
+
+	test('parseOpenSCADParameterProfile - reads native parameter sets', () => {
+		const profile = parseOpenSCADParameterProfile(JSON.stringify({
+			fileFormatVersion: '1',
+			parameterSets: {
+				Draft: { quality: '8' },
+				Final: { quality: '64' },
+			},
+		}));
+
+		assert.deepStrictEqual(Object.keys(profile.parameterSets), ['Draft', 'Final']);
+	});
+
+	test('parseOpenSCADParameterProfile - rejects malformed profiles', () => {
+		assert.throws(
+			() => parseOpenSCADParameterProfile('{"fileFormatVersion":"1","parameterSets":{}}'),
+			/no parameter sets/i
+		);
+	});
+
+	test('setOpenSCADProfileParameter - replaces the saved part selection', () => {
+		const updated = setOpenSCADProfileParameter({
+			jsonContent: JSON.stringify({
+				fileFormatVersion: '1',
+				parameterSets: { Default: { part: 'assembly', width: 10 } },
+			}),
+			parameterSetName: 'Default',
+		}, 'part', 'lid');
+
+		const profile = parseOpenSCADParameterProfile(updated.jsonContent);
+		assert.deepStrictEqual(profile.parameterSets.Default, { part: 'lid', width: 10 });
 	});
 });
 	test('parseOpenSCADCustomizerVariables - warns on unsupported expressions', () => {
