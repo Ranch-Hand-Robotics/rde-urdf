@@ -16,6 +16,12 @@ import {
 	parseOpenSCADParameterProfile,
 	setOpenSCADProfileParameter,
 } from '../../openscadExport';
+import { resolveOpenSCADPartsOutputDirectory } from '../../openscadOutputDirectory';
+import {
+	formatOpenSCADPartPattern,
+	isOpenSCADPartPattern,
+	iterateOpenSCADPartPattern,
+} from '../../openscadPartPattern';
 import * as path from 'path';
 
 suite('Extension Test Suite', () => {
@@ -218,18 +224,21 @@ suite('Camera Configuration Test Suite', () => {
 		const beta = config.get("CameraBeta");
 		const distance = config.get("CameraDistanceToRobot");
 		const openScadCustomizerEnabled = config.get("OpenSCADCustomizerEnabled");
+		const openScadPartsOutputDirectory = config.get("OpenSCADPartsOutputDirectory");
 		
 		// Verify they are numbers
 		assert.ok(typeof alpha === 'number', 'CameraAlpha should be a number');
 		assert.ok(typeof beta === 'number', 'CameraBeta should be a number');
 		assert.ok(typeof distance === 'number', 'CameraDistanceToRobot should be a number');
 		assert.ok(typeof openScadCustomizerEnabled === 'boolean', 'OpenSCADCustomizerEnabled should be a boolean');
+		assert.ok(typeof openScadPartsOutputDirectory === 'string', 'OpenSCADPartsOutputDirectory should be a string');
 		
 		// Verify default values in degrees
 		assert.strictEqual(alpha, -60, 'CameraAlpha should default to -60 degrees');
 		assert.strictEqual(beta, 75, 'CameraBeta should default to 75 degrees');
 		assert.strictEqual(distance, 1, 'CameraDistanceToRobot should default to 1');
 		assert.strictEqual(openScadCustomizerEnabled, true, 'OpenSCADCustomizerEnabled should default to true');
+		assert.strictEqual(openScadPartsOutputDirectory, '', 'OpenSCADPartsOutputDirectory should default to empty');
 	});
 });
 
@@ -260,6 +269,139 @@ suite('OpenSCAD Customizer Parser Test Suite', () => {
 
 
 suite('OpenSCAD Export Parts Heuristic Test Suite', () => {
+	test('parts output directory defaults to the source directory', () => {
+		const sourceDirectory = path.resolve('workspace', 'models');
+		assert.strictEqual(
+			resolveOpenSCADPartsOutputDirectory(sourceDirectory, path.resolve('workspace'), ''),
+			sourceDirectory,
+		);
+	});
+
+	test('parts output directory resolves relative to the workspace', () => {
+		const workspaceRoot = path.resolve('workspace');
+		assert.strictEqual(
+			resolveOpenSCADPartsOutputDirectory(
+				path.join(workspaceRoot, 'models'),
+				workspaceRoot,
+				'build/parts',
+			),
+			path.join(workspaceRoot, 'build', 'parts'),
+		);
+	});
+
+	test('parts output directory expands workspaceFolder', () => {
+		const workspaceRoot = path.resolve('workspace');
+		assert.strictEqual(
+			resolveOpenSCADPartsOutputDirectory(
+				path.join(workspaceRoot, 'models'),
+				workspaceRoot,
+				'${workspaceFolder}/build/parts',
+			),
+			path.join(workspaceRoot, 'build', 'parts'),
+		);
+		assert.strictEqual(
+			resolveOpenSCADPartsOutputDirectory(
+				path.join(workspaceRoot, 'models'),
+				workspaceRoot,
+				'${workspaceFolder}',
+			),
+			workspaceRoot,
+		);
+	});
+
+	test('parts output directory rejects paths outside the workspace', () => {
+		const workspaceRoot = path.resolve('workspace');
+		assert.throws(
+			() => resolveOpenSCADPartsOutputDirectory(
+				path.join(workspaceRoot, 'models'),
+				workspaceRoot,
+				'../exports',
+			),
+			/stay inside the workspace/i,
+		);
+		assert.throws(
+			() => resolveOpenSCADPartsOutputDirectory(
+				path.join(workspaceRoot, 'models'),
+				workspaceRoot,
+				path.resolve('absolute-exports'),
+			),
+			/relative to the workspace/i,
+		);
+		assert.throws(
+			() => resolveOpenSCADPartsOutputDirectory(
+				path.join(workspaceRoot, 'models'),
+				workspaceRoot,
+				'${workspaceFolder}/../exports',
+			),
+			/stay inside the workspace/i,
+		);
+	});
+
+	test('configured parts output directory requires a workspace', () => {
+		assert.throws(
+			() => resolveOpenSCADPartsOutputDirectory(path.resolve('models'), undefined, 'exports'),
+			/inside a workspace folder/i,
+		);
+	});
+
+	test('MxN part patterns are recognized and formatted', () => {
+		assert.strictEqual(isOpenSCADPartPattern('bottom_MxN'), true);
+		assert.strictEqual(isOpenSCADPartPattern('bottom_0x0'), false);
+		assert.strictEqual(formatOpenSCADPartPattern('bottom_MxN', 3, 7), 'bottom_3x7');
+	});
+
+	test('iterateOpenSCADPartPattern probes N first, then M', async () => {
+		const available = new Set([
+			'bottom_0x0',
+			'bottom_0x1',
+			'bottom_1x0',
+			'bottom_1x1',
+			'bottom_1x2',
+		]);
+		const probes: string[] = [];
+
+		const generated = await iterateOpenSCADPartPattern('bottom_MxN', async partName => {
+			probes.push(partName);
+			return available.has(partName);
+		});
+
+		assert.deepStrictEqual(generated, [
+			'bottom_0x0',
+			'bottom_0x1',
+			'bottom_1x0',
+			'bottom_1x1',
+			'bottom_1x2',
+		]);
+		assert.deepStrictEqual(probes, [
+			'bottom_0x0',
+			'bottom_0x1',
+			'bottom_0x2',
+			'bottom_1x0',
+			'bottom_1x1',
+			'bottom_1x2',
+			'bottom_1x3',
+			'bottom_2x0',
+		]);
+	});
+
+	test('iterateOpenSCADPartPattern stops when 0x0 is empty', async () => {
+		const probes: string[] = [];
+		const generated = await iterateOpenSCADPartPattern('empty_MxN', async partName => {
+			probes.push(partName);
+			return false;
+		});
+
+		assert.deepStrictEqual(generated, []);
+		assert.deepStrictEqual(probes, ['empty_0x0']);
+	});
+
+	test('iterateOpenSCADPartPattern enforces its probe safety limit', async () => {
+		await assert.rejects(
+			() => iterateOpenSCADPartPattern('infinite_MxN', async () => true, 3),
+			/probe safety limit/i,
+		);
+	});
+
 	test('getPreferredExportFormats - prefers SVG for underscore-delimited 2D parts', () => {
 		assert.deepStrictEqual(getPreferredExportFormats('front_panel_2d'), ['svg', 'stl']);
 	});

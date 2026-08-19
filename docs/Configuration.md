@@ -109,6 +109,18 @@ Add additional custom library paths:
 }
 ```
 
+### Exported Parts Directory
+
+By default, **Export Parts** writes generated STL and SVG files beside the source `.scad` file. To keep generated files separate from checked-in models, configure a workspace-relative output directory:
+
+```json
+{
+  "urdf-editor.OpenSCADPartsOutputDirectory": "${workspaceFolder}/build/openscad-parts"
+}
+```
+
+`${workspaceFolder}` expands to the workspace folder containing the exported `.scad` file, including in multi-root workspaces. A plain relative path such as `build/openscad-parts` is resolved against the same folder. The directory is created automatically. Leave the setting empty to retain the default behavior. Absolute paths and paths that escape the workspace with `..` are rejected.
+
 ### Documentation Generation
 
 Generate comprehensive documentation for your OpenSCAD libraries:

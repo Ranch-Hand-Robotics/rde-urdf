@@ -80,6 +80,18 @@ Example for `robot.scad`:
 
 If a target filename already exists, it is overwritten with the latest export.
 
+### Output Directory
+
+By default, exported parts are written beside the source `.scad` file. Set a workspace-relative directory to keep generated exports separate from checked-in geometry:
+
+```json
+{
+  "urdf-editor.OpenSCADPartsOutputDirectory": "${workspaceFolder}/build/openscad-parts"
+}
+```
+
+`${workspaceFolder}` expands to the workspace folder containing the source file, including in multi-root workspaces. A plain relative value such as `build/openscad-parts` resolves against the same folder. The directory is created automatically. An empty setting preserves the default behavior. Absolute paths and paths outside the workspace are not allowed.
+
 ## OpenSCAD Language Features
 
 The editor provides several language features for OpenSCAD:

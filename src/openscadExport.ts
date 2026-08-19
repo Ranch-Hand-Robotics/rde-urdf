@@ -2,6 +2,11 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import type { OpenSCADParameterConfiguration } from './openscad';
+import {
+    isOpenSCADPartPattern,
+    iterateOpenSCADPartPattern,
+} from './openscadPartPattern';
+import { resolveOpenSCADPartsOutputDirectory } from './openscadOutputDirectory';
 
 export interface OpenSCADParameterProfile {
     fileFormatVersion: string;
@@ -65,6 +70,22 @@ export function setOpenSCADProfileParameter(
         jsonContent: JSON.stringify(profile),
         parameterSetName: configuration.parameterSetName,
     };
+}
+
+async function moveExportedFile(sourcePath: string, destinationPath: string): Promise<void> {
+    await fs.promises.rm(destinationPath, { force: true });
+    try {
+        await fs.promises.rename(sourcePath, destinationPath);
+    } catch (error) {
+        const code = error && typeof error === 'object' && 'code' in error
+            ? String((error as NodeJS.ErrnoException).code)
+            : '';
+        if (code !== 'EXDEV') {
+            throw error;
+        }
+        await fs.promises.copyFile(sourcePath, destinationPath);
+        await fs.promises.rm(sourcePath, { force: true });
+    }
 }
 
 function getDocumentUriFromCommandArg(uri?: vscode.Uri): vscode.Uri | undefined {
@@ -155,6 +176,12 @@ async function exportOpenSCADParts(
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(documentUri);
     const workspaceRoot = workspaceFolder?.uri.fsPath;
     const config = vscode.workspace.getConfiguration('urdf-editor', documentUri);
+    const outputDirectory = resolveOpenSCADPartsOutputDirectory(
+        path.dirname(documentUri.fsPath),
+        workspaceRoot,
+        config.get<string>('OpenSCADPartsOutputDirectory', ''),
+    );
+    await fs.promises.mkdir(outputDirectory, { recursive: true });
     const configuredLibraryPaths = [
         ...config.get<string[]>('OpenSCADLibraryPaths', []),
         ...(vscode.workspace.workspaceFolders ?? []).map(f => f.uri.fsPath),
@@ -170,13 +197,11 @@ async function exportOpenSCADParts(
             const exportedPaths: string[] = [];
             const failedParts: string[] = [];
 
-            for (let i = 0; i < parts.length; i++) {
-                const part = parts[i];
+            const exportPart = async (part: string, progressMessage: string): Promise<boolean> => {
                 const preferredFormats = getPreferredExportFormats(part);
 
                 progress.report({
-                    message: `Exporting part ${i + 1}/${parts.length}: ${part}`,
-                    increment: 100 / parts.length,
+                    message: progressMessage,
                 });
 
                 let outputPath: string | null = null;
@@ -187,7 +212,7 @@ async function exportOpenSCADParts(
 
                 for (const format of preferredFormats) {
                     if (token.isCancellationRequested) {
-                        return;
+                        return false;
                     }
 
                     outputPath = parameterConfiguration
@@ -205,7 +230,7 @@ async function exportOpenSCADParts(
                         });
 
                     if (token.isCancellationRequested) {
-                        return;
+                        return false;
                     }
 
                     if (outputPath) {
@@ -220,32 +245,64 @@ async function exportOpenSCADParts(
                 }
 
                 if (!outputPath || !outputFormat) {
-                    failedParts.push(part);
+                    return false;
+                }
+
+                const baseName = path.basename(documentUri.fsPath, '.scad');
+                const partName = sanitizePartNameForFilename(part);
+                const desiredPath = path.join(outputDirectory, `${baseName}.${partName}.${outputFormat}`);
+
+                try {
+                    await moveExportedFile(outputPath, desiredPath);
+                    exportedPaths.push(desiredPath);
+                } catch (renameError) {
+                    const message = renameError instanceof Error ? renameError.message : String(renameError);
+                    tracing.appendLine(`Failed to move exported part file '${outputPath}' -> '${desiredPath}': ${message}`);
+                    throw new Error(`Failed to move exported part '${part}' into '${outputDirectory}': ${message}`);
+                }
+                return true;
+            };
+
+            for (let i = 0; i < parts.length; i++) {
+                const part = parts[i];
+                if (isOpenSCADPartPattern(part)) {
+                    tracing.appendLine(`Expanding patterned OpenSCAD part '${part}' (N first, then M).`);
+                    const generatedParts = await iterateOpenSCADPartPattern(
+                        part,
+                        async (expandedPart, m, n) => {
+                            if (token.isCancellationRequested) {
+                                return false;
+                            }
+                            return exportPart(
+                                expandedPart,
+                                `Probing ${part}: M=${m}, N=${n} (${expandedPart})`,
+                            );
+                        },
+                    );
+                    tracing.appendLine(
+                        `Pattern '${part}' generated ${generatedParts.length} part file(s): ${generatedParts.join(', ') || '(none)'}.`
+                    );
+                    if (token.isCancellationRequested) {
+                        return;
+                    }
                     continue;
                 }
 
-                const dir = path.dirname(outputPath);
-                const baseName = path.basename(documentUri.fsPath, '.scad');
-                const partName = sanitizePartNameForFilename(part);
-                const desiredPath = path.join(dir, `${baseName}.${partName}.${outputFormat}`);
-
-                try {
-                    await fs.promises.rm(desiredPath, { force: true });
-                    await fs.promises.rename(outputPath, desiredPath);
-                    exportedPaths.push(desiredPath);
-                } catch (renameError) {
-                    tracing.appendLine(
-                        `Failed to rename exported part file '${outputPath}' -> '${desiredPath}': ${
-                            renameError instanceof Error ? renameError.message : String(renameError)
-                        }`
-                    );
-                    exportedPaths.push(outputPath);
+                const generated = await exportPart(
+                    part,
+                    `Exporting part ${i + 1}/${parts.length}: ${part}`,
+                );
+                if (token.isCancellationRequested) {
+                    return;
+                }
+                if (!generated) {
+                    failedParts.push(part);
                 }
             }
 
             if (exportedPaths.length > 0) {
                 const summary = failedParts.length > 0
-                    ? `Exported ${exportedPaths.length}/${parts.length} parts. Failed: ${failedParts.join(', ')}`
+                    ? `Exported ${exportedPaths.length} part file(s). Failed: ${failedParts.join(', ')}`
                     : `Exported ${exportedPaths.length} part file(s) successfully.`;
                 vscode.window.showInformationMessage(summary);
             }

@@ -1,6 +1,6 @@
 ---
 name: openscad-customizer
-description: Use this skill when modifying OpenSCAD files where the user wants to use the customizer features (parameter parsing, UI generation, and conversion to STL/SVG/GLB with parameter overrides).
+description: Use this skill when modifying OpenSCAD files where the user wants customizer features, Parts export, patterned MxN parts, parameter parsing, UI generation, or conversion to STL/SVG/GLB with parameter overrides.
 ---
 
 # OpenSCAD Customization
@@ -18,6 +18,57 @@ part = "assembly"; // [assembly, corner, front, back, side]
 ```
 
 *Assembly* mode would render the full model, while selecting *corner* would only render the corner piece, and so on. The customizer UI will automatically generate a dropdown control for the `part` variable, allowing users to easily switch between configurations and export the desired variant.
+
+### Patterned `MxN` Parts
+
+A part option containing the literal, case-sensitive token `MxN` is an export pattern rather than a single part. For example:
+
+```scad
+// Part Selection
+part = "assembly"; // [assembly, bottom_MxN]
+```
+
+When exporting `bottom_MxN`, the exporter substitutes zero-based integer coordinates and probes parts with **N as the inner iteration**:
+
+1. `bottom_0x0`
+2. `bottom_0x1`
+3. `bottom_0x2` — if this generates no geometry, the current N row ends
+4. `bottom_1x0`
+5. `bottom_1x1`
+6. Continue N until that row generates no geometry
+7. Continue M until an `Mx0` probe generates no geometry
+
+The no-geometry probes are expected boundaries and are not exported or reported as failed parts. Exported files use the expanded part names, such as `bottom_0x0.stl` and `bottom_1x1.stl`.
+
+Model each row as a contiguous sequence beginning at N=0. Do not leave gaps: if `bottom_0x1` is empty, the exporter will not probe `bottom_0x2`. Likewise, every M row must begin at N=0, and an empty `bottom_2x0` ends the entire `bottom_MxN` pattern.
+
+The SCAD model must generate geometry for each valid expanded name and intentionally generate no top-level geometry for out-of-range names:
+
+```scad
+// Part Selection
+part = "assembly"; // [assembly, bottom_MxN]
+
+if (part == "assembly") {
+	assembly();
+} else if (part == "bottom_0x0") {
+	bottom_tile(0, 0);
+} else if (part == "bottom_0x1") {
+	bottom_tile(0, 1);
+} else if (part == "bottom_1x0") {
+	bottom_tile(1, 0);
+} else if (part == "bottom_1x1") {
+	bottom_tile(1, 1);
+}
+// All other bottom_MxN expansions intentionally produce no geometry.
+```
+
+When creating or reviewing patterned parts:
+
+- Use exactly one literal `MxN` token in the part option.
+- Start both dimensions at zero.
+- Keep valid N values contiguous within each M row.
+- Ensure out-of-range selections produce no geometry rather than placeholder geometry.
+- Ensure iteration eventually terminates; exporters enforce a safety limit against patterns that always generate output.
 
 ## Defining Customizable Parameters
 

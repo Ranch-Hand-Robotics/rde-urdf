@@ -33,7 +33,7 @@ This extension provides developer tooling for Unified Robot Description Format (
 ### OpenSCAD Support
 - **Integrated Editing**: Full OpenSCAD language support with syntax highlighting
 - **Live Preview**: Automatic STL conversion and 3D rendering
-- **Export Menu**: Export STL, Export SVG, or batch Export Parts from the OpenSCAD context menu
+- **Export Menu**: Export STL, Export SVG, or batch Export Parts from the OpenSCAD context menu, with an optional workspace-relative parts output directory
 - **Library Management**: Automatic discovery of libraries from workspace and system paths
 - **Performance Optimizations**: Fast preview mode with configurable timeouts
 - **Documentation Generation**: Extract module/function docs from comments
@@ -106,6 +106,18 @@ Example settings.json:
   ]
 }
 ```
+
+### OpenSCAD Exported Parts Directory
+
+By default, **Export Parts** writes generated STL and SVG files beside the source `.scad` file. To place generated parts in a separate directory, set a workspace-relative path:
+
+```json
+{
+  "urdf-editor.OpenSCADPartsOutputDirectory": "${workspaceFolder}/build/openscad-parts"
+}
+```
+
+`${workspaceFolder}` expands to the workspace folder containing the source file; a plain relative value such as `build/openscad-parts` works too. The directory is created automatically. Leave the setting empty to retain the default behavior. Absolute paths and paths outside the workspace are rejected. See the [OpenSCAD guide](https://ranchhandrobotics.com/rde-urdf/OpenSCAD.html#output-directory) for details.
 
 ### Package Search Paths Configuration
 The extension automatically discovers ROS packages from:
