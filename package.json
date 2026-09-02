@@ -197,6 +197,12 @@
         "title": "Export Parts",
         "category": "URDF",
         "icon": "$(list-unordered)"
+      },
+      {
+        "command": "urdf-editor.exportScadPartsWithProfile",
+        "title": "Export Parts with Profile",
+        "category": "URDF",
+        "icon": "$(json)"
       }
     ],
     "submenus": [
@@ -287,6 +293,11 @@
           "command": "urdf-editor.exportScadParts",
           "when": "resourceExtname == .scad",
           "group": "3_export"
+        },
+        {
+          "command": "urdf-editor.exportScadPartsWithProfile",
+          "when": "resourceExtname == .scad",
+          "group": "4_export"
         }
       ],
       "editor/title": [
@@ -391,6 +402,13 @@
           "default": [],
           "description": "Additional library paths for OpenSCAD files. Use ${workspace} to reference subdirectories. The SCAD file's directory and OS-specific default locations are automatically included. Note: The workspace root is no longer automatically included to avoid copying large directories."
         },
+        "urdf-editor.OpenSCADPartsOutputDirectory": {
+          "type": "string",
+          "scope": "resource",
+          "default": "",
+          "title": "OpenSCAD Parts Output Directory",
+          "description": "Workspace-relative directory for files created by Export Parts, for example 'build/parts' or '${workspaceFolder}/build/parts'. Leave empty to export beside the source SCAD file. Absolute paths and paths outside the workspace are not allowed."
+        },
         "urdf-editor.OpenSCADCustomizerEnabled": {
           "type": "boolean",
           "default": true,
@@ -489,7 +507,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.3",
     "@polyhobbyist/babylon-collada-loader": "^0.0.8",
-    "@ranchhandrobotics/babylon_ros": "^0.6.3",
+    "@ranchhandrobotics/babylon_ros": "^0.6.4",
     "@vscode/debugadapter": "^1.66.0",
     "babylonjs": "~7.16.0",
     "babylonjs-gui": "~7.16.0",

@@ -18,6 +18,11 @@ let currentRobotScene : urdf.RobotScene | undefined = undefined;
 
 type CustomizerValue = string | number | boolean | number[];
 
+interface OpenSCADParameterProfile {
+  fileFormatVersion: '1';
+  parameterSets: Record<string, Record<string, CustomizerValue>>;
+}
+
 interface CustomizerOption {
   label?: string;
   value: string | number;
@@ -77,6 +82,94 @@ let currentCustomizerValues: Record<string, CustomizerValue> = {};
 let customizerAutoPreview = true;
 let customizerEnabled = false;
 let customizerDebounceHandle: number | undefined;
+
+function createOpenSCADParameterProfile(): OpenSCADParameterProfile {
+  return {
+    fileFormatVersion: '1',
+    parameterSets: {
+      Default: { ...currentCustomizerValues }
+    }
+  };
+}
+
+function parseOpenSCADParameterProfile(jsonContent: string): OpenSCADParameterProfile {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(jsonContent);
+  } catch (error) {
+    throw new Error(`Invalid JSON: ${error instanceof Error ? error.message : String(error)}`);
+  }
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('The profile must be a JSON object.');
+  }
+
+  const profile = parsed as Record<string, unknown>;
+  if (profile.fileFormatVersion !== '1') {
+    throw new Error('Unsupported or missing OpenSCAD profile fileFormatVersion.');
+  }
+  if (!profile.parameterSets || typeof profile.parameterSets !== 'object' || Array.isArray(profile.parameterSets)) {
+    throw new Error('The profile must contain a parameterSets object.');
+  }
+
+  const parameterSets = profile.parameterSets as Record<string, unknown>;
+  const names = Object.keys(parameterSets);
+  if (names.length === 0) {
+    throw new Error('The profile does not contain any parameter sets.');
+  }
+
+  const selected = parameterSets[names[0]];
+  if (!selected || typeof selected !== 'object' || Array.isArray(selected)) {
+    throw new Error(`Parameter set '${names[0]}' must be an object.`);
+  }
+
+  return {
+    fileFormatVersion: '1',
+    parameterSets: {
+      [names[0]]: selected as Record<string, CustomizerValue>
+    }
+  };
+}
+
+function saveCustomizerProfile(): void {
+  const profile = createOpenSCADParameterProfile();
+  const blob = new Blob([JSON.stringify(profile, null, 2) + '\n'], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  const modelName = (document.getElementById('fileInfo')?.textContent || 'openscad')
+    .split(/[\\/]/).pop()?.replace(/\.scad$/i, '') || 'openscad';
+  link.href = url;
+  link.download = `${modelName}-profile.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function loadCustomizerProfile(file: File): void {
+  void file.text().then(jsonContent => {
+    const profile = parseOpenSCADParameterProfile(jsonContent);
+    const values = Object.values(profile.parameterSets)[0];
+    const allowedNames = new Set(currentCustomizerModel?.variables.map(variable => variable.name) ?? []);
+    const applicableValues = Object.fromEntries(
+      Object.entries(values).filter(([name]) => allowedNames.has(name))
+    ) as Record<string, CustomizerValue>;
+
+    currentCustomizerValues = { ...currentCustomizerValues, ...applicableValues };
+    if (currentCustomizerModel) {
+      renderCustomizer(currentCustomizerModel, currentCustomizerValues, customizerEnabled, customizerAutoPreview);
+    }
+    vscode?.postMessage({
+      command: 'openscadCustomizerSetValues',
+      values: currentCustomizerValues,
+      autoPreview: customizerAutoPreview,
+      applyNow: true
+    });
+  }).catch(error => {
+    vscode?.postMessage({
+      command: 'error',
+      text: `Unable to load OpenSCAD profile: ${error instanceof Error ? error.message : String(error)}`
+    });
+  });
+}
 
 function setErrorOverlay(errorText?: string) {
   const overlay = document.getElementById('openscadErrorOverlay');
@@ -366,6 +459,18 @@ function resetCustomizerValues() {
   renderCustomizer(currentCustomizerModel, currentCustomizerValues, customizerEnabled, customizerAutoPreview);
 }
 
+function clear3DFile() {
+  if (!currentRobotScene) {
+    return;
+  }
+
+  currentRobotScene.clearAxisGizmos();
+  currentRobotScene.clearRotationGizmos();
+  currentRobotScene.clearStatus();
+  currentRobotScene.currentRobot?.dispose();
+  currentRobotScene.currentRobot = undefined;
+}
+
 async function apply3DFile(filename: string) {
   if (currentRobotScene === undefined) {
     return;
@@ -459,6 +564,16 @@ async function main() {
     return;
   }
 
+  // babylon_ros 0.6.3 briefly enables its mirror plane during scene creation.
+  // Hide it before the first frame; the colors message can explicitly enable
+  // it later when MirrorReflectivity is greater than zero.
+  const initialMirrorGround = currentRobotScene.scene.getMeshByName("mirrorGround");
+  if (initialMirrorGround) {
+    initialMirrorGround.setEnabled(false);
+    initialMirrorGround.isVisible = false;
+    initialMirrorGround.visibility = 0;
+  }
+
   currentRobotScene.createUI();
   
   currentRobotScene.engine.runRenderLoop(function () {
@@ -471,6 +586,9 @@ async function main() {
 
   const customizerApplyButton = document.getElementById('customizerApply');
   const customizerResetButton = document.getElementById('customizerReset');
+  const customizerSaveButton = document.getElementById('customizerSave');
+  const customizerLoadButton = document.getElementById('customizerLoad');
+  const customizerProfileFile = document.getElementById('customizerProfileFile') as HTMLInputElement | null;
   const customizerAutoPreviewInput = document.getElementById('customizerAutoPreview') as HTMLInputElement | null;
   const errorDismissButton = document.getElementById('openscadErrorClose') as HTMLButtonElement | null;
 
@@ -488,6 +606,22 @@ async function main() {
     vscode?.postMessage({
       command: 'openscadCustomizerReset'
     });
+  });
+
+  customizerSaveButton?.addEventListener('click', () => {
+    saveCustomizerProfile();
+  });
+
+  customizerLoadButton?.addEventListener('click', () => {
+    customizerProfileFile?.click();
+  });
+
+  customizerProfileFile?.addEventListener('change', () => {
+    const file = customizerProfileFile.files?.[0];
+    if (file) {
+      loadCustomizerProfile(file);
+    }
+    customizerProfileFile.value = '';
   });
 
   customizerAutoPreviewInput?.addEventListener('change', () => {
@@ -522,6 +656,9 @@ async function main() {
         case 'view3DFile':
           setErrorOverlay();
           apply3DFile(message.filename);
+        break;
+        case 'clear3DFile':
+          clear3DFile();
         break;
         case 'urdf':
           setErrorOverlay();

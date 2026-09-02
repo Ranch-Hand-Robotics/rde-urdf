@@ -35,6 +35,7 @@ This Visual Studio Code extension helps you buid Universal Robot Description For
 - [OpenSCAD Rendering](https://ranchhandrobotics.com/rde-urdf/OpenSCAD.html): Full support for programmatically creating robot parts
 - **Integrated Editing**: Syntax highlighting and IntelliSense
 - **Live Preview**: Automatic STL conversion and 3D rendering
+- **Export Menu**: Export STL, Export SVG, or batch Export Parts, with optional profiles and a workspace-relative output directory
 - **Library Management**: Automatic discovery from workspace and system paths
 - **Documentation Generation**: Extract module/function docs from comments
 

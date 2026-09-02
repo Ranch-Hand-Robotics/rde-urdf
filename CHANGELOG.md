@@ -6,6 +6,9 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+### Added
+- Added a workspace-relative output directory setting for exported OpenSCAD parts, including `${workspaceFolder}` expansion.
+
 ## [1.7.0] - 2026-06
 
 ### Added

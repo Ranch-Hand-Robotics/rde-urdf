@@ -1,6 +1,92 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import type { OpenSCADParameterConfiguration } from './openscad';
+import {
+    isOpenSCADPartPattern,
+    iterateOpenSCADPartPattern,
+} from './openscadPartPattern';
+import { resolveOpenSCADPartsOutputDirectory } from './openscadOutputDirectory';
+
+export interface OpenSCADParameterProfile {
+    fileFormatVersion: string;
+    parameterSets: Record<string, Record<string, unknown>>;
+}
+
+export function parseOpenSCADParameterProfile(jsonContent: string): OpenSCADParameterProfile {
+    let parsed: unknown;
+    try {
+        parsed = JSON.parse(jsonContent);
+    } catch (error) {
+        throw new Error(`Invalid JSON: ${error instanceof Error ? error.message : String(error)}`);
+    }
+
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('The profile must be a JSON object.');
+    }
+
+    const candidate = parsed as Record<string, unknown>;
+    if (candidate.fileFormatVersion !== '1') {
+        throw new Error('Unsupported or missing OpenSCAD profile fileFormatVersion.');
+    }
+    if (!candidate.parameterSets || typeof candidate.parameterSets !== 'object' || Array.isArray(candidate.parameterSets)) {
+        throw new Error('The profile must contain a parameterSets object.');
+    }
+
+    const parameterSets = candidate.parameterSets as Record<string, unknown>;
+    for (const [setName, values] of Object.entries(parameterSets)) {
+        if (!values || typeof values !== 'object' || Array.isArray(values)) {
+            throw new Error(`Parameter set '${setName}' must be an object.`);
+        }
+    }
+
+    if (Object.keys(parameterSets).length === 0) {
+        throw new Error('The profile does not contain any parameter sets.');
+    }
+
+    return {
+        fileFormatVersion: '1',
+        parameterSets: parameterSets as Record<string, Record<string, unknown>>,
+    };
+}
+
+export function setOpenSCADProfileParameter(
+    configuration: OpenSCADParameterConfiguration,
+    name: string,
+    value: unknown,
+): OpenSCADParameterConfiguration {
+    const profile = parseOpenSCADParameterProfile(configuration.jsonContent);
+    const selectedSet = profile.parameterSets[configuration.parameterSetName];
+    if (!selectedSet) {
+        throw new Error(`Parameter set '${configuration.parameterSetName}' was not found in the profile.`);
+    }
+
+    profile.parameterSets[configuration.parameterSetName] = {
+        ...selectedSet,
+        [name]: value,
+    };
+
+    return {
+        jsonContent: JSON.stringify(profile),
+        parameterSetName: configuration.parameterSetName,
+    };
+}
+
+async function moveExportedFile(sourcePath: string, destinationPath: string): Promise<void> {
+    await fs.promises.rm(destinationPath, { force: true });
+    try {
+        await fs.promises.rename(sourcePath, destinationPath);
+    } catch (error) {
+        const code = error && typeof error === 'object' && 'code' in error
+            ? String((error as NodeJS.ErrnoException).code)
+            : '';
+        if (code !== 'EXDEV') {
+            throw error;
+        }
+        await fs.promises.copyFile(sourcePath, destinationPath);
+        await fs.promises.rm(sourcePath, { force: true });
+    }
+}
 
 function getDocumentUriFromCommandArg(uri?: vscode.Uri): vscode.Uri | undefined {
     if (uri) {
@@ -71,6 +157,157 @@ function sanitizePartNameForFilename(partName: string): string {
         .replace(/^_+|_+$/g, '');
 
     return sanitized.length > 0 ? sanitized : 'part';
+}
+
+async function exportOpenSCADParts(
+    documentUri: vscode.Uri,
+    tracing: vscode.OutputChannel,
+    parameterConfiguration?: OpenSCADParameterConfiguration,
+): Promise<void> {
+    const scadText = await fs.promises.readFile(documentUri.fsPath, 'utf8');
+    const parts = extractOpenSCADParts(scadText);
+
+    if (parts.length === 0) {
+        vscode.window.showErrorMessage('No part list found. Add something like: part = "assembly"; // [assembly, t_edge, mid]');
+        return;
+    }
+
+    const { convertOpenSCADWithNodeWorker, exportOpenSCAD } = await import('./openscad');
+    const workspaceFolder = vscode.workspace.getWorkspaceFolder(documentUri);
+    const workspaceRoot = workspaceFolder?.uri.fsPath;
+    const config = vscode.workspace.getConfiguration('urdf-editor', documentUri);
+    const outputDirectory = resolveOpenSCADPartsOutputDirectory(
+        path.dirname(documentUri.fsPath),
+        workspaceRoot,
+        config.get<string>('OpenSCADPartsOutputDirectory', ''),
+    );
+    await fs.promises.mkdir(outputDirectory, { recursive: true });
+    const configuredLibraryPaths = [
+        ...config.get<string[]>('OpenSCADLibraryPaths', []),
+        ...(vscode.workspace.workspaceFolders ?? []).map(f => f.uri.fsPath),
+    ];
+
+    await vscode.window.withProgress(
+        {
+            location: vscode.ProgressLocation.Notification,
+            title: parameterConfiguration ? 'Exporting OpenSCAD parts with profile' : 'Exporting OpenSCAD parts',
+            cancellable: true,
+        },
+        async (progress, token) => {
+            const exportedPaths: string[] = [];
+            const failedParts: string[] = [];
+
+            const exportPart = async (part: string, progressMessage: string): Promise<boolean> => {
+                const preferredFormats = getPreferredExportFormats(part);
+
+                progress.report({
+                    message: progressMessage,
+                });
+
+                let outputPath: string | null = null;
+                let outputFormat: 'stl' | 'svg' | null = null;
+                const partParameterConfiguration = parameterConfiguration
+                    ? setOpenSCADProfileParameter(parameterConfiguration, 'part', part)
+                    : undefined;
+
+                for (const format of preferredFormats) {
+                    if (token.isCancellationRequested) {
+                        return false;
+                    }
+
+                    outputPath = parameterConfiguration
+                        ? await convertOpenSCADWithNodeWorker(documentUri.fsPath, tracing, {
+                            outputFormat: format,
+                            parameterConfiguration: partParameterConfiguration,
+                            workspaceRoot,
+                            configuredLibraryPaths,
+                        })
+                        : await exportOpenSCAD(documentUri.fsPath, format, tracing, token, {
+                            parameterOverrides: { part },
+                            suppressErrorMessage: preferredFormats.length > 1,
+                            workspaceRoot,
+                            configuredLibraryPaths,
+                        });
+
+                    if (token.isCancellationRequested) {
+                        return false;
+                    }
+
+                    if (outputPath) {
+                        outputFormat = format;
+                        if (format !== preferredFormats[0]) {
+                            tracing.appendLine(
+                                `Part '${part}' exported as ${format.toUpperCase()} after fallback from ${preferredFormats[0].toUpperCase()}.`
+                            );
+                        }
+                        break;
+                    }
+                }
+
+                if (!outputPath || !outputFormat) {
+                    return false;
+                }
+
+                const baseName = path.basename(documentUri.fsPath, '.scad');
+                const partName = sanitizePartNameForFilename(part);
+                const desiredPath = path.join(outputDirectory, `${baseName}.${partName}.${outputFormat}`);
+
+                try {
+                    await moveExportedFile(outputPath, desiredPath);
+                    exportedPaths.push(desiredPath);
+                } catch (renameError) {
+                    const message = renameError instanceof Error ? renameError.message : String(renameError);
+                    tracing.appendLine(`Failed to move exported part file '${outputPath}' -> '${desiredPath}': ${message}`);
+                    throw new Error(`Failed to move exported part '${part}' into '${outputDirectory}': ${message}`);
+                }
+                return true;
+            };
+
+            for (let i = 0; i < parts.length; i++) {
+                const part = parts[i];
+                if (isOpenSCADPartPattern(part)) {
+                    tracing.appendLine(`Expanding patterned OpenSCAD part '${part}' (N first, then M).`);
+                    const generatedParts = await iterateOpenSCADPartPattern(
+                        part,
+                        async (expandedPart, m, n) => {
+                            if (token.isCancellationRequested) {
+                                return false;
+                            }
+                            return exportPart(
+                                expandedPart,
+                                `Probing ${part}: M=${m}, N=${n} (${expandedPart})`,
+                            );
+                        },
+                    );
+                    tracing.appendLine(
+                        `Pattern '${part}' generated ${generatedParts.length} part file(s): ${generatedParts.join(', ') || '(none)'}.`
+                    );
+                    if (token.isCancellationRequested) {
+                        return;
+                    }
+                    continue;
+                }
+
+                const generated = await exportPart(
+                    part,
+                    `Exporting part ${i + 1}/${parts.length}: ${part}`,
+                );
+                if (token.isCancellationRequested) {
+                    return;
+                }
+                if (!generated) {
+                    failedParts.push(part);
+                }
+            }
+
+            if (exportedPaths.length > 0) {
+                const summary = failedParts.length > 0
+                    ? `Exported ${exportedPaths.length} part file(s). Failed: ${failedParts.join(', ')}`
+                    : `Exported ${exportedPaths.length} part file(s) successfully.`;
+                vscode.window.showInformationMessage(summary);
+            }
+        }
+    );
 }
 
 /**
@@ -200,102 +437,7 @@ export function registerOpenSCADExportCommands(context: vscode.ExtensionContext,
         }
 
         try {
-            const scadText = await fs.promises.readFile(documentUri.fsPath, 'utf8');
-            const parts = extractOpenSCADParts(scadText);
-
-            if (parts.length === 0) {
-                vscode.window.showErrorMessage('No part list found. Add something like: part = "assembly"; // [assembly, t_edge, mid]');
-                return;
-            }
-
-            const { exportOpenSCAD } = await import('./openscad');
-
-            await vscode.window.withProgress(
-                {
-                    location: vscode.ProgressLocation.Notification,
-                    title: 'Exporting OpenSCAD parts',
-                    cancellable: true,
-                },
-                async (progress, token) => {
-                    const exportedPaths: string[] = [];
-                    const failedParts: string[] = [];
-
-                    for (let i = 0; i < parts.length; i++) {
-                        const part = parts[i];
-                        const preferredFormats = getPreferredExportFormats(part);
-
-                        progress.report({
-                            message: `Exporting part ${i + 1}/${parts.length}: ${part}`,
-                            increment: 100 / parts.length,
-                        });
-
-                        let outputPath: string | null = null;
-                        let outputFormat: 'stl' | 'svg' | null = null;
-                        const workspaceFolder = vscode.workspace.getWorkspaceFolder(documentUri);
-                        const workspaceRoot = workspaceFolder?.uri.fsPath;
-                        const config = vscode.workspace.getConfiguration('urdf-editor', documentUri);
-                        const configuredLibraryPaths = [
-                            ...config.get<string[]>('OpenSCADLibraryPaths', []),
-                            ...(vscode.workspace.workspaceFolders ?? []).map(f => f.uri.fsPath),
-                        ];
-
-                        for (const format of preferredFormats) {
-                            outputPath = await exportOpenSCAD(documentUri.fsPath, format, tracing, token, {
-                                parameterOverrides: { part },
-                                suppressErrorMessage: preferredFormats.length > 1,
-                                workspaceRoot,
-                                configuredLibraryPaths,
-                            });
-
-                            if (token.isCancellationRequested) {
-                                return;
-                            }
-
-                            if (outputPath) {
-                                outputFormat = format;
-                                if (format !== preferredFormats[0]) {
-                                    tracing.appendLine(
-                                        `Part '${part}' exported as ${format.toUpperCase()} after fallback from ${preferredFormats[0].toUpperCase()}.`
-                                    );
-                                }
-                                break;
-                            }
-                        }
-
-                        if (!outputPath || !outputFormat) {
-                            failedParts.push(part);
-                            continue;
-                        }
-
-                        const dir = path.dirname(outputPath);
-                        const baseName = path.basename(documentUri.fsPath, '.scad');
-                        const partName = sanitizePartNameForFilename(part);
-                        const desiredPath = path.join(dir, `${baseName}.${partName}.${outputFormat}`);
-
-                        try {
-                            await fs.promises.rm(desiredPath, { force: true });
-                            await fs.promises.rename(outputPath, desiredPath);
-                            exportedPaths.push(desiredPath);
-                        } catch (renameError) {
-                            tracing.appendLine(
-                                `Failed to rename exported part file '${outputPath}' -> '${desiredPath}': ${
-                                    renameError instanceof Error ? renameError.message : String(renameError)
-                                }`
-                            );
-                            exportedPaths.push(outputPath);
-                        }
-                    }
-
-                    if (exportedPaths.length > 0) {
-                        const summary = failedParts.length > 0
-                            ? `Exported ${exportedPaths.length}/${parts.length} parts. Failed: ${failedParts.join(', ')}`
-                            : `Exported ${exportedPaths.length} part file(s) successfully.`;
-                        vscode.window.showInformationMessage(summary);
-                    } else if (!token.isCancellationRequested) {
-                        vscode.window.showErrorMessage('No parts were exported. Check the output panel for details.');
-                    }
-                }
-            );
+            await exportOpenSCADParts(documentUri, tracing);
         } catch (error) {
             vscode.window.showErrorMessage(`Failed to export parts: ${error instanceof Error ? error.message : String(error)}`);
             tracing.appendLine(`Parts export error: ${error instanceof Error ? error.stack : String(error)}`);
@@ -303,4 +445,59 @@ export function registerOpenSCADExportCommands(context: vscode.ExtensionContext,
     });
 
     context.subscriptions.push(exportOpenSCADPartsCommand);
+
+    const exportOpenSCADPartsWithProfileCommand = vscode.commands.registerCommand(
+        'urdf-editor.exportScadPartsWithProfile',
+        async (uri?: vscode.Uri) => {
+            const documentUri = getDocumentUriFromCommandArg(uri);
+            if (!documentUri) {
+                return;
+            }
+
+            if (path.extname(documentUri.fsPath).toLowerCase() !== '.scad') {
+                vscode.window.showErrorMessage('This command is only available for .scad (OpenSCAD) files');
+                return;
+            }
+
+            try {
+                const selectedUris = await vscode.window.showOpenDialog({
+                    title: 'Select OpenSCAD Configuration Profile',
+                    defaultUri: vscode.Uri.file(path.dirname(documentUri.fsPath)),
+                    canSelectFiles: true,
+                    canSelectFolders: false,
+                    canSelectMany: false,
+                    filters: { 'OpenSCAD Configuration Profiles': ['json'] },
+                });
+                const profileUri = selectedUris?.[0];
+                if (!profileUri) {
+                    return;
+                }
+
+                const jsonContent = await fs.promises.readFile(profileUri.fsPath, 'utf8');
+                const profile = parseOpenSCADParameterProfile(jsonContent);
+                const parameterSetNames = Object.keys(profile.parameterSets);
+                const parameterSetName = parameterSetNames.length === 1
+                    ? parameterSetNames[0]
+                    : await vscode.window.showQuickPick(parameterSetNames, {
+                        title: 'Select OpenSCAD Parameter Set',
+                        placeHolder: 'Choose the configuration to apply to all exported parts',
+                    });
+
+                if (!parameterSetName) {
+                    return;
+                }
+
+                await exportOpenSCADParts(documentUri, tracing, { jsonContent, parameterSetName });
+            } catch (error) {
+                vscode.window.showErrorMessage(
+                    `Failed to export parts with profile: ${error instanceof Error ? error.message : String(error)}`
+                );
+                tracing.appendLine(
+                    `Parts profile export error: ${error instanceof Error ? error.stack : String(error)}`
+                );
+            }
+        }
+    );
+
+    context.subscriptions.push(exportOpenSCADPartsWithProfileCommand);
 }
