@@ -43,7 +43,7 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
-    "chatPromptFiles": [
+    "chatAgents": [
       {
         "path": "./dist/assets/agents/urdf.agent.md"
       },
@@ -52,6 +52,9 @@
       }
     ],
     "chatSkills": [
+      {
+        "path": "./assets/skills/openscad-customizer/SKILL.md"
+      },
       {
         "path": "./assets/skills/openscad-development/SKILL.md"
       },

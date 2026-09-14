@@ -41,6 +41,7 @@ This Visual Studio Code extension helps you buid Universal Robot Description For
 
 ### AI-Assisted Development
 - **GitHub Copilot Integration**: Custom prompts for URDF/Xacro/OpenSCAD
+- [AI Skills](AI-Skills.md): Included skills, specialized agents, example prompts, and visual validation workflows
 - [MCP Server](https://ranchhandrobotics.com/rde-urdf/mcp.html): Model Context Protocol for AI visual verification
   - Screenshot capture of 3D previews
   - OpenSCAD library documentation access

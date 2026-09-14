@@ -48,6 +48,7 @@ This extension provides developer tooling for Unified Robot Description Format (
 
 ### AI-Assisted Development
 - **GitHub Copilot Integration**: Custom prompts for URDF/Xacro/OpenSCAD
+- [AI Skills](docs/AI-Skills.md): Included skills, specialized agents, example prompts, and visual validation workflows
 - **Model Context Protocol (MCP) Server**: AI visual verification tools
   - Screenshot capture of 3D previews
   - OpenSCAD validation and error checking
