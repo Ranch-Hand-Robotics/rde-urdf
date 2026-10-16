@@ -11,7 +11,9 @@ import * as fs from 'fs';
 import * as z from 'zod';
 import { tracing } from './extension';
 import * as express from 'express';
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
+import type { Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import {urdfManager} from "./extension";
 import { generateOpenSCADLibrariesDocumentation, convertLibrariesDocumentationToMarkdown, validateOpenSCAD } from './openscad';
 
@@ -23,15 +25,17 @@ import { generateOpenSCADLibrariesDocumentation, convertLibrariesDocumentationTo
  * Includes HTTP transport for client connections and session management.
  */
 export class UrdfMcpServer {
-  private server: McpServer;
   private app: express.Application;
-  private transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
+  private transports = new Map<string, StreamableHTTPServerTransport>();
   private isRunning = false;
   private port: number;
-  private httpServer: any;
+  private httpServer?: Server;
+  private connectionToken?: string;
+  private readonly requestedPort: number;
 
-  constructor(port: number = 3005) {
+  constructor(port: number = 0, public readonly instanceId: string = randomUUID()) {
     this.port = port;
+    this.requestedPort = port;
 
     const expressModule = express as unknown as {
       (...args: any[]): express.Application;
@@ -44,9 +48,30 @@ export class UrdfMcpServer {
 
     const expressFactory = expressModule.default ?? expressModule;
     this.app = expressFactory();
+    // Authenticate before parsing or dispatching any MCP request. Session IDs alone
+    // identify a protocol session, not the VS Code window that owns the preview.
+    this.app.use('/mcp', (req, res, next) => {
+      const token = req.header('Authorization');
+      const expected = this.connectionToken ? `Bearer ${this.connectionToken}` : undefined;
+      const validToken = token !== undefined && expected !== undefined &&
+        Buffer.byteLength(token) === Buffer.byteLength(expected) &&
+        timingSafeEqual(Buffer.from(token), Buffer.from(expected));
+      if (!this.isRunning || req.header('x-urdf-instance') !== this.instanceId || !validToken) {
+        tracing.appendLine(`MCP [${this.instanceId}]: rejected missing or stale window credentials`);
+        res.status(403).json({
+          error: 'This MCP connection does not belong to this VS Code window. Refresh the extension-provided URDF server in this window.'
+        });
+        return;
+      }
+      next();
+    });
     this.app.use(expressFactory.json());
-    
-    this.server = new McpServer(
+
+    this.setupRoutes();
+  }
+
+  private createServer(): McpServer {
+    const server = new McpServer(
       {
         name: 'urdf',
         description: 'URDF/Xacro/OpenSCAD MCP Server',
@@ -59,13 +84,13 @@ export class UrdfMcpServer {
       }
     );
 
-    this.setupRoutes();
-    this.setupTools();
+    this.setupTools(server);
+    return server;
   }
 
-  private setupTools(): void {
+  private setupTools(server: McpServer): void {
     // Register the screenshot tool using McpServer's tool registration
-    this.server.registerTool('take_screenshot', {
+    server.registerTool('take_screenshot', {
         title: 'Returns a Screenshot of the active URDF, Xacro or OpenSCAD File',
         description: 'When you update a URDF, Xacro, or OpenSCAD file, use this to capture an image and verify that the rendered file matches the user\'s expectations. If a filename is provided, will find or open a preview for that file. Otherwise uses the currently active preview.',
         inputSchema: {
@@ -172,7 +197,7 @@ export class UrdfMcpServer {
     });
 
     // Register the OpenSCAD libraries documentation tool
-    this.server.registerTool('get_openscad_libraries', {
+    server.registerTool('get_openscad_libraries', {
         title: 'Get OpenSCAD Libraries Documentation',
         description: 'Retrieves comprehensive documentation of all available OpenSCAD libraries, including modules, functions, and their parameters. Use this to understand what OpenSCAD utilities are available when creating or updating OpenSCAD files.',
         inputSchema: {}
@@ -229,7 +254,7 @@ export class UrdfMcpServer {
     });
 
     // Register the file screenshot tool (with optional save-to-file capability)
-    this.server.registerTool('take_screenshot_of_file', {
+    server.registerTool('take_screenshot_of_file', {
         title: 'Take Screenshot of Specific URDF/Xacro/OpenSCAD File',
         description: 'Takes a screenshot of a specific URDF, Xacro, or OpenSCAD file. Returns the image data, or optionally saves it to a file. Will open a preview if one is not already active for the file.',
         inputSchema: {
@@ -465,10 +490,13 @@ export class UrdfMcpServer {
     });
 
     // Register the OpenSCAD validation tool
-    this.server.registerTool('validate_openscad', {
+    server.registerTool('validate_openscad', {
         title: 'Validate OpenSCAD File for Compilation Errors',
         description: 'Validates an OpenSCAD file by attempting to compile it and returns any syntax or compilation errors. Use this to check if your OpenSCAD code is valid before declaring completion. Parameters: filename (required - path to .scad file), content (optional - file content to validate instead of reading from file).',
-        inputSchema: {}
+        inputSchema: {
+          filename: z.string().describe('The path to an OpenSCAD (.scad) file (absolute or relative to workspace)'),
+          content: z.string().optional().describe('Optional: OpenSCAD source content to validate instead of reading from the file')
+        } as any
     }, async (args) => {
       try {
         const argsObj = args as any;
@@ -681,50 +709,46 @@ export class UrdfMcpServer {
   private setupRoutes(): void {
     // Handle POST requests for client-to-server communication
     this.app.post('/mcp', async (req, res) => {
-      // Check for existing session ID
-      const sessionId = req.headers['mcp-session-id'] as string | undefined;
-      let transport: StreamableHTTPServerTransport;
-
-      if (sessionId && this.transports[sessionId]) {
-        // Reuse existing transport
-        transport = this.transports[sessionId];
-      } else if (!sessionId && isInitializeRequest(req.body)) {
-        // New initialization request
-        transport = new StreamableHTTPServerTransport({
-          sessionIdGenerator: () => randomUUID(),
-          onsessioninitialized: (sessionId) => {
-            // Store the transport by session ID
-            this.transports[sessionId] = transport;
-          },
-          // DNS rebinding protection is disabled by default for backwards compatibility
-          // enableDnsRebindingProtection: true,
-          // allowedHosts: ['127.0.0.1'],
-        });
-
-        // Clean up transport when closed
-        transport.onclose = () => {
-          if (transport.sessionId) {
-            delete this.transports[transport.sessionId];
-          }
-        };
-
-        // Connect to the MCP server
-        await this.server.connect(transport);
-      } else {
-        // Invalid request
-        res.status(400).json({
-          jsonrpc: '2.0',
-          error: {
-            code: -32000,
-            message: 'Bad Request: No valid session ID provided',
-          },
-          id: null,
-        });
-        return;
-      }
-
-      // Handle the request
       try {
+        const sessionId = req.header('mcp-session-id');
+        const existing = sessionId ? this.transports.get(sessionId) : undefined;
+        let transport: StreamableHTTPServerTransport;
+
+        if (existing) {
+          transport = existing;
+        } else if (!sessionId && isInitializeRequest(req.body)) {
+          transport = new StreamableHTTPServerTransport({
+            sessionIdGenerator: () => randomUUID(),
+            onsessioninitialized: (sessionId) => {
+              this.transports.set(sessionId, transport);
+              tracing.appendLine(`MCP [${this.instanceId}]: initialized session ${sessionId}`);
+            },
+            enableDnsRebindingProtection: true,
+            allowedHosts: [`127.0.0.1:${this.port}`],
+          });
+
+          transport.onclose = () => {
+            if (transport.sessionId) {
+              this.transports.delete(transport.sessionId);
+            }
+          };
+
+          // Each client needs its own SDK server: McpServer owns one transport.
+          // Clients still use this extension host's window-local preview manager.
+          await this.createServer().connect(transport);
+        } else {
+          res.status(400).json({
+            jsonrpc: '2.0',
+            error: {
+              code: -32000,
+              message: 'Bad Request: No valid session ID provided',
+            },
+            id: null,
+          });
+          return;
+        }
+
+        tracing.appendLine(`MCP [${this.instanceId}]: POST session ${transport.sessionId ?? 'initializing'}`);
         await transport.handleRequest(req, res, req.body);
       } catch (err: unknown) {
         // Ignore normal client-disconnect / SSE stream termination errors
@@ -732,18 +756,21 @@ export class UrdfMcpServer {
         if (!msg.includes('terminated') && !msg.includes('closed')) {
           tracing.appendLine(`MCP transport error (POST): ${msg}`);
         }
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'MCP request failed. Reconnect to the URDF server in this window.' });
+        }
       }
     });
 
     // Reusable handler for GET and DELETE requests
     const handleSessionRequest = async (req: express.Request, res: express.Response) => {
-      const sessionId = req.headers['mcp-session-id'] as string | undefined;
-      if (!sessionId || !this.transports[sessionId]) {
+      const sessionId = req.header('mcp-session-id');
+      const transport = sessionId ? this.transports.get(sessionId) : undefined;
+      if (!transport) {
         res.status(400).send('Invalid or missing session ID');
         return;
       }
       
-      const transport = this.transports[sessionId];
       try {
         await transport.handleRequest(req, res);
       } catch (err: unknown) {
@@ -771,11 +798,13 @@ export class UrdfMcpServer {
     }
 
     try {
+      // Rotate credentials on every listener start, including restarts on the same port.
+      this.connectionToken = randomBytes(32).toString('hex');
       // Start the Express HTTP server and wait until the port is actually bound.
       // This avoids a startup race where clients attempt the first MCP request
       // before the listener is ready, which surfaces as "fetch failed".
-      this.httpServer = await new Promise<any>((resolve, reject) => {
-        const server = this.app.listen(this.port);
+      this.httpServer = await new Promise<Server>((resolve, reject) => {
+        const server = this.app.listen(this.requestedPort, '127.0.0.1');
 
         const onListening = () => {
           server.off('error', onError);
@@ -791,9 +820,12 @@ export class UrdfMcpServer {
         server.once('error', onError);
       });
 
+      this.port = (this.httpServer.address() as AddressInfo).port;
       this.isRunning = true;
-      tracing.appendLine(`URDF MCP Server started on port ${this.port}`);
+      const workspace = vscode.workspace.workspaceFolders?.map(folder => folder.uri.toString()).join(', ') || '(empty window)';
+      tracing.appendLine(`MCP [${this.instanceId}]: listening at http://127.0.0.1:${this.port}/mcp; workspace: ${workspace}`);
     } catch (error) {
+      this.connectionToken = undefined;
       const message = `Failed to start MCP server: ${error instanceof Error ? error.message : String(error)}`;
       tracing.appendLine(message);
       throw new Error(message);
@@ -804,41 +836,56 @@ export class UrdfMcpServer {
    * Stops the MCP server
    */
   async stop(): Promise<void> {
+    // Fail closed immediately, even while existing transports are shutting down.
+    this.connectionToken = undefined;
     if (!this.isRunning) {
       return;
     }
 
     try {
       // Close all active transports
-      for (const sessionId in this.transports) {
-        const transport = this.transports[sessionId];
-        if (transport) {
-          await transport.close();
-        }
+      for (const transport of this.transports.values()) {
+        await transport.close();
       }
-      this.transports = {};
+      this.transports.clear();
 
       // Stop the HTTP server
       if (this.httpServer) {
+        const server = this.httpServer;
         await new Promise<void>((resolve, reject) => {
-          this.httpServer.close((err: any) => {
+          server.close((err?: Error) => {
             if (err) {
               reject(err);
             } else {
               resolve();
             }
           });
+          server.closeAllConnections();
         });
-        this.httpServer = null;
+        this.httpServer = undefined;
       }
       
       this.isRunning = false;
-      tracing.appendLine('URDF MCP Server stopped');
+      tracing.appendLine(`MCP [${this.instanceId}]: stopped`);
     } catch (error) {
       const message = `Failed to stop MCP server: ${error instanceof Error ? error.message : String(error)}`;
       tracing.appendLine(message);
       throw new Error(message);
     }
+  }
+
+  /**
+   * Connection details are for the window-local definition provider only.
+   * Never log or persist the headers, or expose them as model tool arguments.
+   */
+  getConnection(): { url: string; headers: Record<string, string> } {
+    if (!this.isRunning || !this.connectionToken) {
+      throw new Error('The URDF MCP server is not running in this window.');
+    }
+    return {
+      url: `http://127.0.0.1:${this.port}/mcp`,
+      headers: { 'x-urdf-instance': this.instanceId, Authorization: `Bearer ${this.connectionToken}` }
+    };
   }
 
   /**

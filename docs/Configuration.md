@@ -161,10 +161,15 @@ The generated documentation includes:
 
 ```json
 {
-  "urdf-editor.DebugUI": false,
-  "urdf-editor.mcpServerPort": 3005
+  "urdf-editor.DebugUI": false
 }
 ```
+
+MCP connections are discovered automatically per VS Code window using a private
+loopback listener and connection credentials. The old `urdf-editor.mcpServerPort`
+setting is deprecated and ignored. Remove fixed-port URDF entries from MCP
+configuration and use the extension-provided **URDF** server instead. See
+[Model Context Protocol Support](mcp.md) for migration and routing diagnostics.
 
 ## Example Complete Configuration
 

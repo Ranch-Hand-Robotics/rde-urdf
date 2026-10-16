@@ -380,7 +380,8 @@
         "urdf-editor.mcpServerPort": {
           "type": "integer",
           "default": 3005,
-          "description": "(Preview) The port to use for the MCP Server."
+          "description": "Legacy MCP port setting (ignored). Each VS Code window now uses its own automatically assigned loopback port.",
+          "deprecationMessage": "URDF MCP connections are discovered automatically per VS Code window. Remove this setting and any fixed-port URDF MCP configuration."
         },
         "urdf-editor.OpenSCADLibraryPaths": {
           "type": "array",
@@ -452,6 +453,8 @@
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
+    "test:mcp-schema": "node --test test-mcp-schema.js",
+    "test:mcp": "node --test test-mcp-schema.js test-mcp-isolation.js",
     "test": "vscode-test"
   },
   "devDependencies": {

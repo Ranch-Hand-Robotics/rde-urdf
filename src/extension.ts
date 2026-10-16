@@ -1,10 +1,9 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import * as net from 'net';
 import URDFPreviewManager from "./previewManager";
 import WebXRPreviewManager from "./webXRPreviewManager";
 import * as util from "./utils";
-import { UrdfMcpServer } from './mcp';
+import { WindowMcpConnection } from './mcpConnection';
 import { generateAndSaveLibrariesDocumentation } from './openscad';
 import { OpenSCADCompletionProvider, OpenSCADHoverProvider } from './openscadCompletion';
 import { URDFXacroCompletionProvider, URDFXacroHoverProvider } from './urdfXacroCompletion';
@@ -22,128 +21,7 @@ agents.setTracing(tracing);
 export var urdfManager: URDFPreviewManager | null = null;
 export var urdfXRManager: WebXRPreviewManager | null = null;
 var viewProvider: Viewer3DProvider | null = null;
-var mcpServer: UrdfMcpServer | null = null;
-
-/**
- * Find an available port by probing for open ports
- * @param startPort Starting port to check (default: 3005)
- * @param maxAttempts Maximum number of ports to try (default: 100)
- * @returns Promise that resolves to an available port number
- */
-async function findAvailablePort(startPort: number = 3005, maxAttempts: number = 100): Promise<number> {
-  for (let port = startPort; port < startPort + maxAttempts; port++) {
-    if (await isPortAvailable(port)) {
-      return port;
-    }
-  }
-  throw new Error(`No available port found in range ${startPort}-${startPort + maxAttempts - 1}`);
-}
-
-/**
- * Check if a port is available
- * @param port Port number to check
- * @returns Promise that resolves to true if port is available
- */
-function isPortAvailable(port: number): Promise<boolean> {
-  return new Promise((resolve) => {
-    const server = net.createServer();
-    
-    server.once('error', (err: any) => {
-      if (err.code === 'EADDRINUSE') {
-        resolve(false); // Port is in use
-      } else {
-        resolve(false); // Other error, assume not available
-      }
-    });
-    
-    server.once('listening', () => {
-      server.close();
-      resolve(true); // Port is available
-    });
-    
-    server.listen(port, '127.0.0.1');
-  });
-}
-
-async function startMcpServer(context: vscode.ExtensionContext): Promise<void> {
-  if (mcpServer && mcpServer.getStatus().isRunning) {
-    return; // Already running
-  }
-
-  try {
-    // Find an available port starting from 3005
-    const port = await findAvailablePort(3005);
-    tracing.appendLine(`Found available port for MCP server: ${port}`);
-    
-    mcpServer = new UrdfMcpServer(port);
-    await mcpServer.start();
-    tracing.appendLine(`MCP Server started on port ${port}`);
-
-    // Check if the MCP API is available (only in VS Code, not Cursor)
-    if ('lm' in vscode && vscode.lm && 'registerMcpServerDefinitionProvider' in vscode.lm) {
-      try {
-        // Use type assertion to handle the API that might not be available in all environments
-        const lm = vscode.lm as any;
-        context.subscriptions.push(lm.registerMcpServerDefinitionProvider('URDF', {
-          provideMcpServerDefinitions: async () => {
-            let output: any[] = [];
-
-            // Use the configured port for the MCP server
-            // Note: McpHttpServerDefinition might not be available in all environments
-            if ('McpHttpServerDefinition' in vscode) {
-              const McpHttpServerDefinition = (vscode as any).McpHttpServerDefinition;
-              output.push( 
-                new McpHttpServerDefinition(
-                  "URDF",
-                  vscode.Uri.parse(`http://localhost:${port}/mcp`)
-                )
-              );
-            }
-
-            return output;
-          }
-        }));
-      } catch (error) {
-        tracing.appendLine(`Failed to register MCP server definition provider: ${error instanceof Error ? error.message : String(error)}`);
-      }
-    }
-  } catch (error) {
-    tracing.appendLine(`Failed to auto-start MCP server: ${error instanceof Error ? error.message : String(error)}`);
-  }
-}
-
-async function stopMcpServer(): Promise<void> {
-  if (!mcpServer || !mcpServer.getStatus().isRunning) {
-    return; // Not running
-  }
-
-  try {
-    await mcpServer.stop();
-    mcpServer = null;
-    tracing.appendLine('MCP Server stopped automatically with last preview');
-  } catch (error) {
-    tracing.appendLine(`Failed to auto-stop MCP server: ${error instanceof Error ? error.message : String(error)}`);
-  }
-}
-
-/**
- * Check if workspace contains URDF/Xacro/OpenSCAD files and start MCP server if found
- */
-async function checkAndStartMcpServer(context: vscode.ExtensionContext): Promise<void> {
-  try {
-    // Search for URDF, Xacro, or OpenSCAD files in the workspace
-    const urdfFiles = await vscode.workspace.findFiles('**/*.{urdf,xacro,scad}', '**/node_modules/**', 1);
-    
-    if (urdfFiles.length > 0) {
-      tracing.appendLine('Found URDF/Xacro/OpenSCAD files in workspace, starting MCP server');
-      await startMcpServer(context);
-    } else {
-      tracing.appendLine('No URDF/Xacro/OpenSCAD files found in workspace, MCP server will start on first preview');
-    }
-  } catch (error) {
-    tracing.appendLine(`Failed to check for files and start MCP server: ${error instanceof Error ? error.message : String(error)}`);
-  }
-}
+var mcpConnection: WindowMcpConnection | undefined;
 
 export async function activate(context: vscode.ExtensionContext) {
 
@@ -157,8 +35,13 @@ export async function activate(context: vscode.ExtensionContext) {
   viewProvider = new Viewer3DProvider(context, tracing);
   vscode.window.registerWebviewPanelSerializer('urdfPreview_standalone', urdfManager);
 
-  // Start MCP server if URDF/Xacro/OpenSCAD files exist in workspace
-  checkAndStartMcpServer(context);
+  // This activation belongs to one VS Code window, even when another window
+  // has the same workspace open. Publish only this window's live connection.
+  mcpConnection = new WindowMcpConnection(tracing);
+  mcpConnection.register(context);
+  void mcpConnection.start().catch(error => {
+    tracing.appendLine(`Failed to start window-bound MCP server: ${error instanceof Error ? error.message : String(error)}`);
+  });
 
   // Register OpenSCAD IntelliSense completion provider
   const openscadCompletionProvider = vscode.languages.registerCompletionItemProvider(
@@ -444,7 +327,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
 export async function deactivate() {
   // Stop MCP server when extension deactivates
-  await stopMcpServer();
+  await mcpConnection?.dispose();
+  mcpConnection = undefined;
   
   // Dispose of preview managers
   if (urdfManager) {
